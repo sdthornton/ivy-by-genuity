@@ -1,0 +1,225 @@
+/* Webfont: Lato-Bold */@font-face {
+  font-family: 'Lato';
+  src: url('./assets/fonts/Lato-Bold.eot'); /* IE9 Compat Modes */
+  src: url('./assets/fonts/Lato-Bold.eot?#iefix') format('embedded-opentype'), /* IE6-IE8 */
+       url('./assets/fonts/Lato-Bold.woff2') format('woff2'), /* Modern Browsers */
+       url('./assets/fonts/Lato-Bold.woff') format('woff'), /* Modern Browsers */
+       url('./assets/fonts/Lato-Bold.ttf') format('truetype');
+  font-style: normal;
+  font-weight: 700 1000;
+  text-rendering: optimizeLegibility;
+}
+
+/* Webfont: Lato-BoldItalic */@font-face {
+  font-family: 'Lato';
+  src: url('./assets/fonts/Lato-BoldItalic.eot'); /* IE9 Compat Modes */
+  src: url('./assets/fonts/Lato-BoldItalic.eot?#iefix') format('embedded-opentype'), /* IE6-IE8 */
+    url('./assets/fonts/Lato-BoldItalic.woff2') format('woff2'), /* Modern Browsers */
+    url('./assets/fonts/Lato-BoldItalic.woff') format('woff'), /* Modern Browsers */
+    url('./assets/fonts/Lato-BoldItalic.ttf') format('truetype');
+  font-style: italic;
+  font-weight: 700 1000;
+  text-rendering: optimizeLegibility;
+}
+
+/* Webfont: Lato-Italic */@font-face {
+  font-family: 'Lato';
+  src: url('./assets/fonts/Lato-Italic.eot'); /* IE9 Compat Modes */
+  src: url('./assets/fonts/Lato-Italic.eot?#iefix') format('embedded-opentype'), /* IE6-IE8 */
+       url('./assets/fonts/Lato-Italic.woff2') format('woff2'), /* Modern Browsers */
+       url('./assets/fonts/Lato-Italic.woff') format('woff'), /* Modern Browsers */
+       url('./assets/fonts/Lato-Italic.ttf') format('truetype');
+  font-style: italic;
+  font-weight: 400;
+  text-rendering: optimizeLegibility;
+}
+
+/* Webfont: Lato-Light */@font-face {
+  font-family: 'Lato';
+  src: url('./assets/fonts/Lato-Light.eot'); /* IE9 Compat Modes */
+  src: url('./assets/fonts/Lato-Light.eot?#iefix') format('embedded-opentype'), /* IE6-IE8 */
+      url('./assets/fonts/Lato-Light.woff2') format('woff2'), /* Modern Browsers */
+      url('./assets/fonts/Lato-Light.woff') format('woff'), /* Modern Browsers */
+      url('./assets/fonts/Lato-Light.ttf') format('truetype');
+  font-style: normal;
+  font-weight: 100 300;
+  text-rendering: optimizeLegibility;
+}
+
+/* Webfont: Lato-LightItalic */@font-face {
+  font-family: 'Lato';
+  src: url('./assets/fonts/Lato-LightItalic.eot'); /* IE9 Compat Modes */
+  src: url('./assets/fonts/Lato-LightItalic.eot?#iefix') format('embedded-opentype'), /* IE6-IE8 */
+      url('./assets/fonts/Lato-LightItalic.woff2') format('woff2'), /* Modern Browsers */
+      url('./assets/fonts/Lato-LightItalic.woff') format('woff'), /* Modern Browsers */
+      url('./assets/fonts/Lato-LightItalic.ttf') format('truetype');
+  font-style: italic;
+  font-weight: 100 300;
+  text-rendering: optimizeLegibility;
+}
+
+/* Webfont: Lato-Regular */@font-face {
+  font-family: 'Lato';
+  src: url('./assets/fonts/Lato-Regular.eot'); /* IE9 Compat Modes */
+  src: url('./assets/fonts/Lato-Regular.eot?#iefix') format('embedded-opentype'), /* IE6-IE8 */
+      url('./assets/fonts/Lato-Regular.woff2') format('woff2'), /* Modern Browsers */
+      url('./assets/fonts/Lato-Regular.woff') format('woff'), /* Modern Browsers */
+      url('./assets/fonts/Lato-Regular.ttf') format('truetype');
+  font-style: normal;
+  font-weight: 400 500;
+  text-rendering: optimizeLegibility;
+}
+
+/* Webfont: Lato-Semibold */@font-face {
+  font-family: 'Lato';
+  src: url('./assets/fonts/Lato-Semibold.eot'); /* IE9 Compat Modes */
+  src: url('./assets/fonts/Lato-Semibold.eot?#iefix') format('embedded-opentype'), /* IE6-IE8 */
+      url('./assets/fonts/Lato-Semibold.woff2') format('woff2'), /* Modern Browsers */
+      url('./assets/fonts/Lato-Semibold.woff') format('woff'), /* Modern Browsers */
+      url('./assets/fonts/Lato-Semibold.ttf') format('truetype');
+  font-style: normal;
+  font-weight: 600;
+  text-rendering: optimizeLegibility;
+}
+
+/* Webfont: Lato-SemiboldItalic */@font-face {
+  font-family: 'Lato';
+  src: url('./assets/fonts/Lato-SemiboldItalic.eot'); /* IE9 Compat Modes */
+  src: url('./assets/fonts/Lato-SemiboldItalic.eot?#iefix') format('embedded-opentype'), /* IE6-IE8 */
+      url('./assets/fonts/Lato-SemiboldItalic.woff2') format('woff2'), /* Modern Browsers */
+      url('./assets/fonts/Lato-SemiboldItalic.woff') format('woff'), /* Modern Browsers */
+      url('./assets/fonts/Lato-SemiboldItalic.ttf') format('truetype');
+  font-style: italic;
+  font-weight: 600;
+  text-rendering: optimizeLegibility;
+}
+
+:root {
+  font-family: var(--sans-serif-font);
+  line-height: 1.5;
+  font-weight: 400;
+  color-scheme: light dark;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+
+  --bs-border-radius: 0.75rem !important;
+
+  --bs-gray-100: #F9FAFB;
+  --bs-gray-150: #F1F3F6;
+  --bs-gray-200: #E5E7EB;
+  --bs-gray-300: #D1D5DB;
+  --bs-gray-400: #9AA4B2;
+  --bs-gray-500: #6B7280;
+  --bs-gray-600: #4B5565;
+  --bs-gray-700: #344054;
+  --bs-gray-800: #2A3446;
+  --bs-gray-900: #232B3B;
+  --bs-black:    #1D2939;
+
+  --bs-heading-color: var(--bs-black);
+  --bs-body-color: var(--bs-gray-700);
+  --bs-dark: var(--bs-gray-800);
+  --bs-border-color: var(--bs-gray-200);
+
+  --bs-body-font-family: Outfit, Lato, system-ui, Avenir, Helvetica, Arial, sans-serif;
+}
+
+h1, .h1 {
+  font-size: 3rem;
+}
+
+h2, .h2 {
+  font-size: 2.25rem;
+}
+
+h3, .h3 {
+  font-size: 1.875rem;
+}
+
+h4, .h4 {
+  font-size: 1.5rem;
+}
+
+h5, .h5 {
+  font-size: 1.25rem;
+}
+
+.lead {
+  font-size: 1.125rem;
+}
+
+.dropdown-menu {
+  align-items: center;
+  border: none;
+  border-radius: 0.5rem;
+  box-shadow: 
+    0 8px 10px 1px rgba(0,0,0,0.07), 
+    0 3px 14px 2px rgba(0,0,0,0.06), 
+    0 5px 5px -3px rgba(0,0,0,0.10);
+  font-size: 0.875rem;
+  flex-direction: column;
+  padding: 0.75rem;
+}
+
+.dropdown-item {
+  border-radius: 0.25rem;
+  padding: 0.25rem;
+  transition: all 0.15s ease-in-out;
+
+  &:hover {
+    background-color: var(--bs-gray-200);
+  }
+}
+
+.btn-primary {
+  --bs-btn-bg: #465FFF;
+  --bs-btn-border-color: #465FFF;
+  box-shadow: 0 2px 2px 0 rgba(0,0,0,0.14), 0 3px 1px -2px rgba(0,0,0,0.12), 0 1px 5px 0 rgba(0,0,0,0.20);
+}
+
+.btn-dark {
+  --bs-btn-bg: #232B3B;
+  --bs-btn-border-color: #232B3B;
+}
+
+.bg-lookup {
+  background-color: #00b0b0 !important;
+}
+
+.bg-schedule {
+  background-color: #7260ff !important;
+}
+
+.bg-trigger {
+  background-color: #b760ff !important;
+}
+
+.bg-code {
+  background-color: #fb622a !important;
+}
+
+.bg-wait {
+  background-color: #ffa52f !important;
+}
+
+.bg-note {
+  background-color: #ffdc2f !important;
+}
+
+.bg-split {
+  background-color: #ff782f !important;
+}
+
+.bg-parallel {
+  background-color: #2fb3ff !important;
+}
+
+.bg-loop {
+  background-color: #12B76A;
+}
+
+.bg-alert {
+  background-color: #f3594e;
+}
