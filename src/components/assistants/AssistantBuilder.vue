@@ -5,6 +5,7 @@
 import interact from "interactjs";
 import { onMounted, onBeforeUnmount, reactive, defineEmits, defineProps, watch, ref, nextTick, computed } from "vue";
 import StepOptionsDropdown from "../shared/StepOptionsDropdown.vue";
+import { createBuilderNodeTemplates } from "./mockSteps";
 
 const emit = defineEmits(["toggleSidebar"]);
 
@@ -27,17 +28,23 @@ const showEditorComments = ref(true);
 const panOffset = reactive({ x: 0, y: 0 });
 const panState = reactive({ startX: 0, startY: 0, baseX: 0, baseY: 0 });
 const isPanning = ref(false);
+const isRecentering = ref(false);
 const zoomLevel = ref(1);
 const ZOOM_STEP = 0.1;
 const MIN_ZOOM = 0.5;
 const MAX_ZOOM = 2;
+const RECENTER_TRANSITION_MS = 160;
 
 const canvasPanStyle = computed(() => ({
   backgroundPosition: `${panOffset.x + 2}px ${panOffset.y + 4}px`,
 }));
 
-const scenePanStyle = computed(() => ({
-  transform: `translate3d(${panOffset.x}px, ${panOffset.y}px, 0) scale(${zoomLevel.value})`,
+const sceneTranslateStyle = computed(() => ({
+  transform: `translate3d(${panOffset.x}px, ${panOffset.y}px, 0)`,
+}));
+
+const sceneScaleStyle = computed(() => ({
+  transform: `scale(${zoomLevel.value})`,
 }));
 
 function findNodeById(id) {
@@ -72,7 +79,21 @@ function resetCanvasToBasePoint() {
   panState.baseY = baseTopOffset;
 }
 
+let recenterTimer = 0;
+function beginRecenteringTransition() {
+  if (recenterTimer) {
+    window.clearTimeout(recenterTimer);
+  }
+
+  isRecentering.value = true;
+  recenterTimer = window.setTimeout(() => {
+    isRecentering.value = false;
+    recenterTimer = 0;
+  }, RECENTER_TRANSITION_MS);
+}
+
 function recenterCanvas() {
+  beginRecenteringTransition();
   resetCanvasToBasePoint();
   zoomLevel.value = 1;
   scheduleConnectionLineUpdate();
@@ -108,6 +129,11 @@ function startCanvasPan(event) {
     return;
   }
 
+  if (recenterTimer) {
+    window.clearTimeout(recenterTimer);
+    recenterTimer = 0;
+  }
+  isRecentering.value = false;
   isPanning.value = true;
   panState.startX = event.clientX;
   panState.startY = event.clientY;
@@ -145,19 +171,21 @@ function updateConnectionLines() {
   canvasSize.width = canvasEl.clientWidth;
   canvasSize.height = canvasEl.clientHeight;
 
-  const canvasRect = canvasEl.getBoundingClientRect();
   const nodeEls = Array.from(canvasEl.querySelectorAll(".assistant-step[data-step-id]"));
   const anchors = new Map();
 
   nodeEls.forEach((el) => {
     const nodeId = String(el.dataset.stepId || "");
     if (!nodeId) return;
-    const rect = el.getBoundingClientRect();
-    const scale = zoomLevel.value || 1;
+    const node = findNodeById(nodeId);
+    if (!node) return;
+
+    const visualLeft = el.offsetLeft + node.x;
+    const visualTop = el.offsetTop + node.y;
     anchors.set(nodeId, {
-      x: (rect.left + rect.width / 2 - canvasRect.left - panOffset.x) / scale,
-      topY: (rect.top - canvasRect.top - panOffset.y) / scale,
-      bottomY: (rect.bottom - canvasRect.top - panOffset.y) / scale,
+      x: visualLeft + (el.offsetWidth / 2),
+      topY: visualTop,
+      bottomY: visualTop + el.offsetHeight,
     });
   });
 
@@ -242,9 +270,7 @@ onMounted(() => {
 
 /* BEGIN MOCK DATA */
 
-const scheduleNode = { id: 1, type: "schedule", title: "Every Morning", data: { frequency: "Once Daily", time: "09:00 am", timezone: "CST"}, detailsCollapsed: false, connections: [2], x: 0,  y: 0 };
-const lookupNewNode = { id: 2, type: "lookup", title: "Get SP Audit Data", data: { source: "SharePoint", list: "SP GetAudit", code: "Get yesterday's SharePoint audit activity if present." }, detailsCollapsed: false, connections: [3],  x: 0, y: 60 };
-const emailDataNode = { id: 3, type: "schedule", title: "Do something", data: { frequency: "Once Daily", time: "09:00 am", timezone: "CST"}, detailsCollapsed: false, connections: [],  x: 0,  y: 120 };
+const initialNodeTemplates = createBuilderNodeTemplates();
 
 const nodes = reactive([]);
 
@@ -314,10 +340,9 @@ watch(
   () => props.currentBuilderStep,
   (newStep) => {
     nodes.splice(0, nodes.length);
-
-    if (newStep >= 1) nodes.push(cloneNodeTemplate(scheduleNode));
-    if (newStep >= 2) nodes.push(cloneNodeTemplate(lookupNewNode));
-    if (newStep >= 3) nodes.push(cloneNodeTemplate(emailDataNode));
+    initialNodeTemplates
+      .slice(0, Math.max(0, newStep))
+      .forEach((template) => nodes.push(cloneNodeTemplate(template)));
 
     nextTick(() => scheduleConnectionLineUpdate());
   },
@@ -332,6 +357,10 @@ onBeforeUnmount(() => {
   window.removeEventListener("resize", scheduleConnectionLineUpdate);
   if (lineRaf) cancelAnimationFrame(lineRaf);
   lineRaf = 0;
+  if (recenterTimer) {
+    window.clearTimeout(recenterTimer);
+    recenterTimer = 0;
+  }
 });
 
 </script>
@@ -340,76 +369,96 @@ onBeforeUnmount(() => {
   <article
     ref="canvas"
     class="assistant-builder-canvas"
-    :class="{ 'assistant-builder-canvas--panning': isPanning }"
+    :class="{
+      'assistant-builder-canvas--panning': isPanning,
+      'assistant-builder-canvas--recentering': isRecentering,
+    }"
     :style="canvasPanStyle"
     @pointerdown="startCanvasPan"
     @pointermove="moveCanvasPan"
     @pointerup="endCanvasPan"
     @pointercancel="endCanvasPan"
   >
-    <div class="assistant-builder-scene" :style="scenePanStyle">
-      <svg
-        class="assistant-step-connections"
-        :width="canvasSize.width"
-        :height="canvasSize.height"
-        aria-hidden="true"
-      >
-        <line
-          v-for="line in connectionLines"
-          :key="line.key"
-          class="assistant-step-connection-line"
-          :x1="line.x1"
-          :y1="line.y1"
-          :x2="line.x2"
-          :y2="line.y2"
-        />
-      </svg>
-      <StepOptionsDropdown
-        v-for="line in connectionLines"
-        :key="`mid-add-${line.key}`"
-        class="assistant-step-inline-add"
-        :style="{ left: `${line.midX}px`, top: `${line.midY}px` }"
-      >
-        <template #trigger>
-          <button
-            type="button"
-            class="assistant-step-inline-add-btn d-flex align-items-center justify-content-center"
-            aria-label="Add step between connected nodes"
-          >
-            <img src="../../assets/plus-round.svg" width="11" height="11" class="d-block invert-to-white opacity-90">
-          </button>
-        </template>
-      </StepOptionsDropdown>
-
-      <TransitionGroup name="nodes">
-        <div
-          v-for="node in nodes"
-          :key="node.id"
-          class="assistant-step border rounded bg-white"
-          :class="{ 'assistant-step--has-incoming': hasIncomingConnection(node.id) }"
-          draggable
-          :data-step-id="node.id"
-          :style="{ transform: `translate3d(${node.x}px, ${node.y}px, 0)`}"
-          @click="toggleSidebar(node.id)"
+    <div
+      class="assistant-builder-scene"
+      :class="{ 'assistant-builder-scene--recentering': isRecentering }"
+      :style="sceneTranslateStyle"
+    >
+      <div class="assistant-builder-scene-scale" :style="sceneScaleStyle">
+        <svg
+          class="assistant-step-connections"
+          :width="canvasSize.width"
+          :height="canvasSize.height"
+          overflow="visible"
+          aria-hidden="true"
         >
-          <div class="assistant-step-connector assistant-step-connector--top" aria-hidden="true" />
-          <div
-            v-show="showEditorComments"
-            class="add-comment-to-step bg-white px-2.5 py-2.5 rounded-circle d-flex align-items-center justify-content-center"
-          >
-            <img src="../../assets/comment.svg" width="18" height="18" class="d-block">
-          </div>
+          <line
+            v-for="line in connectionLines"
+            :key="line.key"
+            class="assistant-step-connection-line"
+            :x1="line.x1"
+            :y1="line.y1"
+            :x2="line.x2"
+            :y2="line.y2"
+          />
+        </svg>
+	        <StepOptionsDropdown
+	          v-for="line in connectionLines"
+	          :key="`mid-add-${line.key}`"
+	          class="assistant-step-inline-add"
+	          :style="{ left: `${line.midX}px`, top: `${line.midY}px` }"
+	        >
+	          <template #trigger="{ open }">
+	            <div class="builder-zoom-tooltip-wrap assistant-step-inline-tooltip-wrap">
+	              <button
+	                type="button"
+	                class="assistant-step-inline-add-btn d-flex align-items-center justify-content-center"
+	                aria-label="Add step between connected nodes"
+	              >
+	                <img src="../../assets/plus-round.svg" width="11" height="11" class="d-block invert-to-white opacity-90">
+	              </button>
+	              <div v-if="!open" class="builder-zoom-tooltip true-small" role="tooltip">Add a step here.</div>
+	            </div>
+	          </template>
+	        </StepOptionsDropdown>
 
-          <div class="assistant-step-header border-bottom px-2.5 py-2.5 d-flex align-items-center justify-content-start">
-            <div v-if="node.type === 'schedule'" style="border-radius: 0.25rem;" class="bg-schedule me-2 p-1">
-              <img src="../../assets/sim-ai/calendar.svg" width="16" height="16" class="d-block">
-            </div>
-            <div v-if="node.type === 'lookup'" style="border-radius: 0.25rem;" class="bg-lookup me-2 p-1">
-              <img src="../../assets/sim-ai/lookup.svg" width="16" height="16" class="d-block">
-            </div>
-            <h6 class="fw-bold mb-0 me-2">
-              {{  node.title }}
-            </h6>
+        <TransitionGroup name="nodes">
+          <div
+            v-for="node in nodes"
+            :key="node.id"
+            class="assistant-step border rounded bg-white"
+            :class="{ 'assistant-step--has-incoming': hasIncomingConnection(node.id) }"
+            draggable
+            :data-step-id="node.id"
+            :style="{ transform: `translate3d(${node.x}px, ${node.y}px, 0)`}"
+            @click="toggleSidebar(node.id)"
+          >
+          <div class="assistant-step-connector assistant-step-connector--top" aria-hidden="true" />
+	          <div
+	            v-show="showEditorComments"
+	            class="add-comment-to-step bg-white px-2.5 py-2.5 rounded-circle d-flex align-items-center justify-content-center"
+	          >
+	            <img src="../../assets/comment.svg" width="18" height="18" class="d-block">
+	          </div>
+	
+	          <div class="assistant-step-header border-bottom px-2.5 py-2.5 d-flex align-items-center justify-content-start">
+	            <div
+	              v-if="node.typeMeta"
+	              style="border-radius: 0.25rem;"
+	              class="me-2 p-1"
+	              :class="node.typeMeta.bgClass"
+	            >
+	              <img
+	                :src="node.typeMeta.icon"
+	                width="16"
+	                height="16"
+	                class="d-block"
+	                :class="{ 'invert-to-white': node.typeMeta.iconInvert }"
+	              >
+	            </div>
+	            <h6 class="fw-bold mb-0 me-2">
+	              {{  node.title }}
+	            </h6>
             <img src="../../assets/edit.svg" width="12" height="12" class="opacity-25 me-3">
             <StepOptionsDropdown
               class="assistant-step-menu ms-auto"
@@ -421,6 +470,7 @@ onBeforeUnmount(() => {
                   type="button"
                   class="assistant-step-menu-trigger assistant-step-control"
                   aria-label="Step actions"
+                  @click.stop
                 >
                   <img src="../../assets/ellipses.svg" width="14" height="14" class="assistant-step-menu-trigger__icon">
                 </button>
@@ -474,20 +524,21 @@ onBeforeUnmount(() => {
             </div>
           </div>
           <div class="assistant-step-connector assistant-step-connector--bottom" aria-hidden="true" />
-        </div>
-      </TransitionGroup>
-
-      <StepOptionsDropdown
-        v-if="!nodes.length"
-        class="assistant-step assistant-step--add"
-      >
-        <template #trigger>
-          <div class="border rounded-sm fw-medium bg-white py-2.5 px-3 reduced text-center">
-            <span class="me-1">&plus;</span>
-            Add Step
           </div>
-        </template>
-      </StepOptionsDropdown>
+        </TransitionGroup>
+
+        <StepOptionsDropdown
+          v-if="!nodes.length"
+          class="assistant-step assistant-step--add"
+        >
+          <template #trigger>
+            <div class="border rounded-sm fw-medium bg-white py-2.5 px-3 reduced text-center">
+              <span class="me-1">&plus;</span>
+              Add Step
+            </div>
+          </template>
+        </StepOptionsDropdown>
+      </div>
     </div>
 
     <!-- <div class="assistant-step border rounded bg-white" data-step-id="1" draggable>
@@ -602,15 +653,30 @@ onBeforeUnmount(() => {
   cursor: grabbing;
 }
 
+.assistant-builder-canvas--recentering {
+  transition: background-position 0.16s ease-in-out;
+}
+
 .assistant-builder-scene {
   inset: 0;
   position: absolute;
-  transform-origin: top left;
+}
+
+.assistant-builder-scene--recentering {
+  transition: transform 0.16s ease-in-out;
+}
+
+.assistant-builder-scene-scale {
+  inset: 0;
+  position: absolute;
+  transform-origin: center center;
+  transition: transform 0.2s ease-in-out;
 }
 
 .assistant-step-connections {
   height: 100%;
   inset: 0;
+  overflow: visible;
   pointer-events: none;
   position: absolute;
   width: 100%;
@@ -855,6 +921,14 @@ table {
   transform: translateX(-50%);
 }
 
+.assistant-step-inline-tooltip-wrap .builder-zoom-tooltip {
+  bottom: calc(100% + 0.5rem);
+  left: 50%;
+  right: auto;
+  top: auto;
+  transform: translateX(-50%);
+}
+
 .builder-action--zoom-in,
 .builder-action--recenter,
 .builder-action--zoom-out {
@@ -920,7 +994,4 @@ table {
   top: 50%;
 }
 
-.bg-ivy {
-  background-color: $left-nav-background !important;
-}
 </style>

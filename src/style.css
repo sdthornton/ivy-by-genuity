@@ -233,3 +233,7 @@ h5, .h5 {
 .bg-alert {
   background-color: #f3594e;
 }
+
+.bg-ivy {
+  background-color: var(--bs-primary);
+}

@@ -7,13 +7,15 @@ import ContentHeader from "./shared/ContentHeader.vue";
 import ChatBox from "./shared/ChatBox.vue";
 import Step2Info  from "./assistants/step2Info.vue";
 import AssistantBuilder from "./assistants/AssistantBuilder.vue";
+import { MOCK_STEP_COUNT } from "./assistants/mockSteps";
 import { ref, watch, nextTick, onMounted, onBeforeUnmount } from "vue";
 
 // Most of this is mock work to demo the chat response and scroll functionality
 
 const PREVIEW_ALL_MESSAGES = true; // temporary visual-tuning mode
-const buildStep = ref(PREVIEW_ALL_MESSAGES ? 3 : 0);
+const buildStep = ref(PREVIEW_ALL_MESSAGES ? MOCK_STEP_COUNT : 0);
 const showSidebar = ref(PREVIEW_ALL_MESSAGES);
+const selectedSidebarStepId = ref(2);
 const assistantTitle = ref(PREVIEW_ALL_MESSAGES ? "SharePoint Audit" : "New Assistant");
 const chatContent = ref(null);
 const conversationContent = ref(null);
@@ -104,6 +106,11 @@ onBeforeUnmount(() => {
   scrollObserver?.disconnect();
 });
 
+const onBuilderStepSelect = (nodeId) => {
+  selectedSidebarStepId.value = Number(nodeId) || selectedSidebarStepId.value;
+  showSidebar.value = true;
+};
+
 </script> 
 
 <template>
@@ -169,13 +176,13 @@ onBeforeUnmount(() => {
       <AssistantBuilder 
         class="col p-4" 
         :current-builder-step="buildStep" 
-        @toggleSidebar="!PREVIEW_ALL_MESSAGES && (showSidebar = !showSidebar)"
+        @toggleSidebar="onBuilderStepSelect"
       />
       <article 
         v-if="showSidebar"
         class="col-auto side-content bg-white"
       >
-        <Step2Info @close="showSidebar = false" />
+        <Step2Info :selected-step-id="selectedSidebarStepId" @close="showSidebar = false" />
       </article>
     </div>
   </section>
