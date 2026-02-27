@@ -3,7 +3,7 @@
 <script setup>
 
 import interact from "interactjs";
-import { onMounted, onBeforeUnmount, reactive, defineEmits, defineProps, watch, ref, nextTick } from "vue";
+import { onMounted, onBeforeUnmount, reactive, defineEmits, defineProps, watch, ref, nextTick, computed } from "vue";
 import StepOptionsDropdown from "../shared/StepOptionsDropdown.vue";
 
 const emit = defineEmits(["toggleSidebar"]);
@@ -23,8 +23,22 @@ const props = defineProps({
 const canvas = ref(null);
 const connectionLines = ref([]);
 const canvasSize = reactive({ width: 0, height: 0 });
-const activeStepMenuId = ref(null);
 const showEditorComments = ref(true);
+const panOffset = reactive({ x: 0, y: 0 });
+const panState = reactive({ startX: 0, startY: 0, baseX: 0, baseY: 0 });
+const isPanning = ref(false);
+const zoomLevel = ref(1);
+const ZOOM_STEP = 0.1;
+const MIN_ZOOM = 0.5;
+const MAX_ZOOM = 2;
+
+const canvasPanStyle = computed(() => ({
+  backgroundPosition: `${panOffset.x + 2}px ${panOffset.y + 4}px`,
+}));
+
+const scenePanStyle = computed(() => ({
+  transform: `translate3d(${panOffset.x}px, ${panOffset.y}px, 0) scale(${zoomLevel.value})`,
+}));
 
 function findNodeById(id) {
   return nodes.find(n => String(n.id) === String(id));
@@ -34,24 +48,94 @@ function hasIncomingConnection(nodeId) {
   return nodes.some((node) => node.connections?.some((target) => String(target) === String(nodeId)));
 }
 
-function isStepMenuOpen(nodeId) {
-  return String(activeStepMenuId.value) === String(nodeId);
-}
-
-function closeStepMenu() {
-  activeStepMenuId.value = null;
-}
-
-function toggleStepMenu(nodeId) {
-  activeStepMenuId.value = isStepMenuOpen(nodeId) ? null : nodeId;
-}
-
 function toggleEditorComments() {
   showEditorComments.value = !showEditorComments.value;
 }
 
 function handleUndoClick() {
   // Placeholder until undo stack behavior is implemented.
+}
+
+function getCanvasPaddingTop() {
+  if (!canvas.value) {
+    return 0;
+  }
+
+  return Number.parseFloat(window.getComputedStyle(canvas.value).paddingTop) || 0;
+}
+
+function resetCanvasToBasePoint() {
+  const baseTopOffset = getCanvasPaddingTop();
+  panOffset.x = 0;
+  panOffset.y = baseTopOffset;
+  panState.baseX = 0;
+  panState.baseY = baseTopOffset;
+}
+
+function recenterCanvas() {
+  resetCanvasToBasePoint();
+  zoomLevel.value = 1;
+  scheduleConnectionLineUpdate();
+}
+
+function setZoom(nextZoom) {
+  zoomLevel.value = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, nextZoom));
+  scheduleConnectionLineUpdate();
+}
+
+function zoomIn() {
+  setZoom(zoomLevel.value + ZOOM_STEP);
+}
+
+function zoomOut() {
+  setZoom(zoomLevel.value - ZOOM_STEP);
+}
+
+function canStartCanvasPan(target) {
+  if (!(target instanceof Element)) {
+    return true;
+  }
+
+  return !target.closest(".assistant-step, .assistant-step-control, .step-options-dropdown, .builder-zoom, .assistant-step-floating-controls");
+}
+
+function startCanvasPan(event) {
+  if (event.button !== 0) {
+    return;
+  }
+
+  if (!canStartCanvasPan(event.target)) {
+    return;
+  }
+
+  isPanning.value = true;
+  panState.startX = event.clientX;
+  panState.startY = event.clientY;
+  panState.baseX = panOffset.x;
+  panState.baseY = panOffset.y;
+  canvas.value?.setPointerCapture?.(event.pointerId);
+  event.preventDefault();
+}
+
+function moveCanvasPan(event) {
+  if (!isPanning.value) {
+    return;
+  }
+
+  panOffset.x = panState.baseX + (event.clientX - panState.startX);
+  panOffset.y = panState.baseY + (event.clientY - panState.startY);
+}
+
+function endCanvasPan(event) {
+  if (!isPanning.value) {
+    return;
+  }
+
+  isPanning.value = false;
+
+  if (canvas.value?.hasPointerCapture?.(event.pointerId)) {
+    canvas.value.releasePointerCapture(event.pointerId);
+  }
 }
 
 function updateConnectionLines() {
@@ -69,10 +153,11 @@ function updateConnectionLines() {
     const nodeId = String(el.dataset.stepId || "");
     if (!nodeId) return;
     const rect = el.getBoundingClientRect();
+    const scale = zoomLevel.value || 1;
     anchors.set(nodeId, {
-      x: rect.left + rect.width / 2 - canvasRect.left,
-      topY: rect.top - canvasRect.top,
-      bottomY: rect.bottom - canvasRect.top,
+      x: (rect.left + rect.width / 2 - canvasRect.left - panOffset.x) / scale,
+      topY: (rect.top - canvasRect.top - panOffset.y) / scale,
+      bottomY: (rect.bottom - canvasRect.top - panOffset.y) / scale,
     });
   });
 
@@ -116,27 +201,6 @@ function snapToGrid(val, grid = GRID_SIZE) {
 
 let nodeInteraction = null;
 
-const onDocumentPointerDown = (event) => {
-  if (activeStepMenuId.value === null) {
-    return;
-  }
-
-  if (!(event.target instanceof Element)) {
-    closeStepMenu();
-    return;
-  }
-
-  if (!event.target.closest("[data-step-menu-root]")) {
-    closeStepMenu();
-  }
-};
-
-const onDocumentKeyDown = (event) => {
-  if (event.key === "Escape") {
-    closeStepMenu();
-  }
-};
-
 onMounted(() => {
   nodeInteraction = interact(".assistant-step").draggable({
     inertia: true,
@@ -149,8 +213,9 @@ onMounted(() => {
           return;
         }
 
-        node.x += event.dx;
-        node.y += event.dy;
+        const scale = zoomLevel.value || 1;
+        node.x += event.dx / scale;
+        node.y += event.dy / scale;
 
         el.style.transform = `translate3d(${node.x}px, ${node.y}px, 0)`;
         scheduleConnectionLineUpdate();
@@ -172,9 +237,7 @@ onMounted(() => {
   });
 
   window.addEventListener("resize", scheduleConnectionLineUpdate);
-  document.addEventListener("pointerdown", onDocumentPointerDown);
-  document.addEventListener("keydown", onDocumentKeyDown);
-  nextTick(() => scheduleConnectionLineUpdate());
+  nextTick(() => recenterCanvas());
 });
 
 /* BEGIN MOCK DATA */
@@ -216,7 +279,6 @@ function duplicateStep(nodeId) {
   duplicatedNode.y = sourceNode.y + GRID_SIZE * 2;
 
   nodes.push(duplicatedNode);
-  closeStepMenu();
   nextTick(() => scheduleConnectionLineUpdate());
 }
 
@@ -232,7 +294,6 @@ function removeAllConnections(nodeId) {
     node.connections = (node.connections || []).filter((targetId) => String(targetId) !== selectedId);
   });
 
-  closeStepMenu();
   nextTick(() => scheduleConnectionLineUpdate());
 }
 
@@ -246,7 +307,6 @@ function deleteStep(nodeId) {
     node.connections = (node.connections || []).filter((targetId) => String(targetId) !== selectedId);
   });
 
-  closeStepMenu();
   nextTick(() => scheduleConnectionLineUpdate());
 }
 
@@ -270,8 +330,6 @@ onBeforeUnmount(() => {
   nodeInteraction?.unset();
   nodeInteraction = null;
   window.removeEventListener("resize", scheduleConnectionLineUpdate);
-  document.removeEventListener("pointerdown", onDocumentPointerDown);
-  document.removeEventListener("keydown", onDocumentKeyDown);
   if (lineRaf) cancelAnimationFrame(lineRaf);
   lineRaf = 0;
 });
@@ -279,142 +337,158 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <article class="assistant-builder-canvas" ref="canvas">
-    <svg
-      class="assistant-step-connections"
-      :width="canvasSize.width"
-      :height="canvasSize.height"
-      aria-hidden="true"
-    >
-      <line
-        v-for="line in connectionLines"
-        :key="line.key"
-        class="assistant-step-connection-line"
-        :x1="line.x1"
-        :y1="line.y1"
-        :x2="line.x2"
-        :y2="line.y2"
-      />
-    </svg>
-    <StepOptionsDropdown
-      v-for="line in connectionLines"
-      :key="`mid-add-${line.key}`"
-      class="assistant-step-inline-add"
-      :style="{ left: `${line.midX}px`, top: `${line.midY}px` }"
-    >
-      <template #trigger>
-        <button
-          type="button"
-          class="assistant-step-inline-add-btn d-flex align-items-center justify-content-center"
-          aria-label="Add step between connected nodes"
-        >
-          <img src="../../assets/plus-round.svg" width="11" height="11" class="d-block invert-to-white opacity-90">
-        </button>
-      </template>
-    </StepOptionsDropdown>
-
-    <TransitionGroup name="nodes">
-      <div
-        v-for="node in nodes"
-        :key="node.id"
-        class="assistant-step border rounded bg-white"
-        :class="{ 'assistant-step--has-incoming': hasIncomingConnection(node.id) }"
-        draggable
-        :data-step-id="node.id"
-        :style="{ transform: `translate3d(${node.x}px, ${node.y}px, 0)`}"
-        @click="toggleSidebar(node.id)"
+  <article
+    ref="canvas"
+    class="assistant-builder-canvas"
+    :class="{ 'assistant-builder-canvas--panning': isPanning }"
+    :style="canvasPanStyle"
+    @pointerdown="startCanvasPan"
+    @pointermove="moveCanvasPan"
+    @pointerup="endCanvasPan"
+    @pointercancel="endCanvasPan"
+  >
+    <div class="assistant-builder-scene" :style="scenePanStyle">
+      <svg
+        class="assistant-step-connections"
+        :width="canvasSize.width"
+        :height="canvasSize.height"
+        aria-hidden="true"
       >
-        <div class="assistant-step-connector assistant-step-connector--top" aria-hidden="true" />
-        <div
-          v-show="showEditorComments"
-          class="add-comment-to-step bg-white px-2.5 py-2.5 rounded-circle d-flex align-items-center justify-content-center"
-        >
-          <img src="../../assets/comment.svg" width="18" height="18" class="d-block">
-        </div>
-
-        <div class="assistant-step-header border-bottom px-2.5 py-2.5 d-flex align-items-center justify-content-start">
-          <div v-if="node.type === 'schedule'" style="border-radius: 0.25rem;" class="bg-schedule me-2 p-1">
-            <img src="../../assets/sim-ai/calendar.svg" width="16" height="16" class="d-block">
-          </div>
-          <div v-if="node.type === 'lookup'" style="border-radius: 0.25rem;" class="bg-lookup me-2 p-1">
-            <img src="../../assets/sim-ai/lookup.svg" width="16" height="16" class="d-block">
-          </div>
-          <h6 class="fw-bold mb-0 me-2">
-            {{  node.title }}
-          </h6>
-          <img src="../../assets/edit.svg" width="12" height="12" class="opacity-25 me-3">
-          <div class="assistant-step-menu ms-auto" data-step-menu-root>
-            <button
-              type="button"
-              class="assistant-step-menu-trigger assistant-step-control"
-              aria-label="Step actions"
-              @click.stop="toggleStepMenu(node.id)"
-            >
-              <img src="../../assets/ellipses.svg" width="14" height="14" class="assistant-step-menu-trigger__icon">
-            </button>
-            <div v-if="isStepMenuOpen(node.id)" class="assistant-step-menu-panel dropdown-menu show">
-              <button type="button" class="dropdown-item" @click.stop="duplicateStep(node.id)">Duplicate Step</button>
-              <button type="button" class="dropdown-item" @click.stop="removeAllConnections(node.id)">Remove All Connections</button>
-              <button type="button" class="dropdown-item" @click.stop="deleteStep(node.id)">Delete Step</button>
-            </div>
-          </div>
-        </div>
-        <div class="assistant-step-details">
+        <line
+          v-for="line in connectionLines"
+          :key="line.key"
+          class="assistant-step-connection-line"
+          :x1="line.x1"
+          :y1="line.y1"
+          :x2="line.x2"
+          :y2="line.y2"
+        />
+      </svg>
+      <StepOptionsDropdown
+        v-for="line in connectionLines"
+        :key="`mid-add-${line.key}`"
+        class="assistant-step-inline-add"
+        :style="{ left: `${line.midX}px`, top: `${line.midY}px` }"
+      >
+        <template #trigger>
           <button
             type="button"
-            class="assistant-step-details-toggle assistant-step-control px-2.5 py-1"
-            @click.stop="toggleNodeDetails(node.id)"
+            class="assistant-step-inline-add-btn d-flex align-items-center justify-content-center"
+            aria-label="Add step between connected nodes"
           >
-            <span>Details</span>
-            <img
-              src="../../assets/arrow-down-b.svg"
-              width="11"
-              height="11"
-              class="assistant-step-details-caret"
-              :class="{ 'assistant-step-details-caret--collapsed': node.detailsCollapsed }"
-            >
+            <img src="../../assets/plus-round.svg" width="11" height="11" class="d-block invert-to-white opacity-90">
           </button>
-          <div v-show="!node.detailsCollapsed" class="assistant-step-details-content p-2 not-as-small text-black">
-            <table class="w-100 table table-borderless table-sm mb-0">
-              <tbody>
-                <tr 
-                  v-for="(value, key) in node.data"
-                  :key="key"
-                >
-                  <td class="text-muted text-capitalize assistant-step-detail__key">
-                    {{ key }}
-                  </td>
-                  <td class="text-end assistant-step-detail__val">
-                    {{ value }}
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-            <!-- <div
-              v-for="(value, key) in node.data"
-              :key="key"
-              class="d-flex align-items-center mb-1"
-            >
-              <span class="text-muted me-3 text-capitalize">{{ key }}</span>
-              <span class="ms-auto">{{ value }}</span>
-            </div> -->
-          </div>
-        </div>
-        <div class="assistant-step-connector assistant-step-connector--bottom" aria-hidden="true" />
-      </div>
-    </TransitionGroup>
+        </template>
+      </StepOptionsDropdown>
 
-    <StepOptionsDropdown
-      v-if="!nodes.length"
-      class="assistant-step assistant-step--add"
-    >
-      <template #trigger>
-        <div class="border rounded-sm fw-medium bg-white py-2.5 px-3 reduced text-center">
-          <span class="me-1">&plus;</span>
-          Add Step
+      <TransitionGroup name="nodes">
+        <div
+          v-for="node in nodes"
+          :key="node.id"
+          class="assistant-step border rounded bg-white"
+          :class="{ 'assistant-step--has-incoming': hasIncomingConnection(node.id) }"
+          draggable
+          :data-step-id="node.id"
+          :style="{ transform: `translate3d(${node.x}px, ${node.y}px, 0)`}"
+          @click="toggleSidebar(node.id)"
+        >
+          <div class="assistant-step-connector assistant-step-connector--top" aria-hidden="true" />
+          <div
+            v-show="showEditorComments"
+            class="add-comment-to-step bg-white px-2.5 py-2.5 rounded-circle d-flex align-items-center justify-content-center"
+          >
+            <img src="../../assets/comment.svg" width="18" height="18" class="d-block">
+          </div>
+
+          <div class="assistant-step-header border-bottom px-2.5 py-2.5 d-flex align-items-center justify-content-start">
+            <div v-if="node.type === 'schedule'" style="border-radius: 0.25rem;" class="bg-schedule me-2 p-1">
+              <img src="../../assets/sim-ai/calendar.svg" width="16" height="16" class="d-block">
+            </div>
+            <div v-if="node.type === 'lookup'" style="border-radius: 0.25rem;" class="bg-lookup me-2 p-1">
+              <img src="../../assets/sim-ai/lookup.svg" width="16" height="16" class="d-block">
+            </div>
+            <h6 class="fw-bold mb-0 me-2">
+              {{  node.title }}
+            </h6>
+            <img src="../../assets/edit.svg" width="12" height="12" class="opacity-25 me-3">
+            <StepOptionsDropdown
+              class="assistant-step-menu ms-auto"
+              placement="bottom-end"
+              menu-class="assistant-step-menu-panel"
+            >
+              <template #trigger>
+                <button
+                  type="button"
+                  class="assistant-step-menu-trigger assistant-step-control"
+                  aria-label="Step actions"
+                >
+                  <img src="../../assets/ellipses.svg" width="14" height="14" class="assistant-step-menu-trigger__icon">
+                </button>
+              </template>
+              <template #menu="{ close }">
+                <button type="button" class="dropdown-item" @click.stop="duplicateStep(node.id); close()">Duplicate Step</button>
+                <button type="button" class="dropdown-item" @click.stop="removeAllConnections(node.id); close()">Remove All Connections</button>
+                <button type="button" class="dropdown-item" @click.stop="deleteStep(node.id); close()">Delete Step</button>
+              </template>
+            </StepOptionsDropdown>
+          </div>
+          <div class="assistant-step-details">
+            <button
+              type="button"
+              class="assistant-step-details-toggle assistant-step-control px-2.5 py-1"
+              @click.stop="toggleNodeDetails(node.id)"
+            >
+              <span>Details</span>
+              <img
+                src="../../assets/arrow-down-b.svg"
+                width="11"
+                height="11"
+                class="assistant-step-details-caret"
+                :class="{ 'assistant-step-details-caret--collapsed': node.detailsCollapsed }"
+              >
+            </button>
+            <div v-show="!node.detailsCollapsed" class="assistant-step-details-content p-2 not-as-small text-black">
+              <table class="w-100 table table-borderless table-sm mb-0">
+                <tbody>
+                  <tr 
+                    v-for="(value, key) in node.data"
+                    :key="key"
+                  >
+                    <td class="text-muted text-capitalize assistant-step-detail__key">
+                      {{ key }}
+                    </td>
+                    <td class="text-end assistant-step-detail__val">
+                      {{ value }}
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+              <!-- <div
+                v-for="(value, key) in node.data"
+                :key="key"
+                class="d-flex align-items-center mb-1"
+              >
+                <span class="text-muted me-3 text-capitalize">{{ key }}</span>
+                <span class="ms-auto">{{ value }}</span>
+              </div> -->
+            </div>
+          </div>
+          <div class="assistant-step-connector assistant-step-connector--bottom" aria-hidden="true" />
         </div>
-      </template>
-    </StepOptionsDropdown>
+      </TransitionGroup>
+
+      <StepOptionsDropdown
+        v-if="!nodes.length"
+        class="assistant-step assistant-step--add"
+      >
+        <template #trigger>
+          <div class="border rounded-sm fw-medium bg-white py-2.5 px-3 reduced text-center">
+            <span class="me-1">&plus;</span>
+            Add Step
+          </div>
+        </template>
+      </StepOptionsDropdown>
+    </div>
 
     <!-- <div class="assistant-step border rounded bg-white" data-step-id="1" draggable>
       <div class="border-bottom px-2.5 py-2.5 d-flex align-items-center justify-content-start">
@@ -440,36 +514,72 @@ onBeforeUnmount(() => {
     </div> -->
 
     <div class="builder-zoom">
-      <button class="builder-action--zoom-in btn btn-sm btn-light bg-white py-1 px-2.5 fw-bold">
-        &plus;
-      </button>
-      <button class="builder-action--zoom-out btn btn-sm btn-light bg-white py-1 px-2.5 fw-bold">
-        &minus;
-      </button>
+      <div class="builder-zoom-tooltip-wrap">
+        <button
+          type="button"
+          class="builder-action--zoom-in btn btn-sm btn-light bg-white py-1 px-2.5 fw-bold"
+          aria-label="Zoom in"
+          @click.stop="zoomIn"
+        >
+          &plus;
+        </button>
+        <div class="builder-zoom-tooltip true-small" role="tooltip">Zoom In</div>
+      </div>
+      <div class="builder-zoom-tooltip-wrap">
+        <button
+          type="button"
+          class="builder-action--recenter btn btn-sm btn-light bg-white py-1 px-2.5"
+          aria-label="Reset zoom and position"
+          @click.stop="recenterCanvas"
+        >
+          <img src="../../assets/recenter.svg" width="14" height="14" class="d-block opacity-50">
+        </button>
+        <div class="builder-zoom-tooltip true-small" role="tooltip">Reset zoom and position.</div>
+      </div>
+      <div class="builder-zoom-tooltip-wrap">
+        <button
+          type="button"
+          class="builder-action--zoom-out btn btn-sm btn-light bg-white py-1 px-2.5 fw-bold"
+          aria-label="Zoom out"
+          @click.stop="zoomOut"
+        >
+          &minus;
+        </button>
+        <div class="builder-zoom-tooltip true-small" role="tooltip">Zoom Out</div>
+      </div>
     </div>
     <div class="assistant-step-floating-controls d-flex align-items-center gap-3">
-      <button
-        type="button"
-        class="assistant-step-floating-mini-btn assistant-step-control d-flex align-items-center justify-content-center"
-        aria-label="Undo"
-        @click.stop="handleUndoClick"
-      >
-        <img src="../../assets/undo.svg" width="14" height="14" class="d-block opacity-75">
-      </button>
-      <button
-        type="button"
-        class="assistant-step-floating-mini-btn assistant-step-control d-flex align-items-center justify-content-center"
-        :class="{ 'assistant-step-floating-mini-btn--inactive': !showEditorComments }"
-        aria-label="Toggle comments"
-        @click.stop="toggleEditorComments"
-      >
-        <img src="../../assets/comment.svg" width="14" height="14" class="d-block">
-      </button>
-      <StepOptionsDropdown class="assistant-step-floating-add">
-        <template #trigger>
-          <button class="add-builder-node btn btn-dark rounded-circle d-flex align-items-center justify-content-center">
-            <img src="../../assets/plus-round.svg" width="20" height="20" class="d-block invert-to-white">
-          </button>
+      <div class="builder-zoom-tooltip-wrap assistant-step-floating-tooltip-wrap">
+        <button
+          type="button"
+          class="assistant-step-floating-mini-btn assistant-step-control d-flex align-items-center justify-content-center"
+          aria-label="Undo"
+          @click.stop="handleUndoClick"
+        >
+          <img src="../../assets/undo.svg" width="14" height="14" class="d-block opacity-75">
+        </button>
+        <div class="builder-zoom-tooltip true-small" role="tooltip">Undo</div>
+      </div>
+      <div class="builder-zoom-tooltip-wrap assistant-step-floating-tooltip-wrap">
+        <button
+          type="button"
+          class="assistant-step-floating-mini-btn assistant-step-control d-flex align-items-center justify-content-center"
+          :class="{ 'assistant-step-floating-mini-btn--inactive': !showEditorComments }"
+          aria-label="Toggle comments"
+          @click.stop="toggleEditorComments"
+        >
+          <img src="../../assets/comment.svg" width="14" height="14" class="d-block">
+        </button>
+        <div class="builder-zoom-tooltip true-small" role="tooltip">Toggle comments</div>
+      </div>
+      <StepOptionsDropdown class="assistant-step-floating-add" placement="top-end">
+        <template #trigger="{ open }">
+          <div class="builder-zoom-tooltip-wrap assistant-step-floating-tooltip-wrap">
+            <button class="add-builder-node btn btn-dark rounded-circle d-flex align-items-center justify-content-center">
+              <img src="../../assets/plus-round.svg" width="20" height="20" class="d-block invert-to-white">
+            </button>
+            <div v-if="!open" class="builder-zoom-tooltip true-small" role="tooltip">Add Step</div>
+          </div>
         </template>
       </StepOptionsDropdown>
     </div>
@@ -482,10 +592,20 @@ onBeforeUnmount(() => {
   background-image: radial-gradient(circle, var(--bs-gray-300), 1px, transparent 0);
   background-size: 12px 12px;
   background-position: 2px 4px;
-  cursor: move;
+  cursor: grab;
   overflow: hidden;
   position: relative;
   touch-actions: none;
+}
+
+.assistant-builder-canvas--panning {
+  cursor: grabbing;
+}
+
+.assistant-builder-scene {
+  inset: 0;
+  position: absolute;
+  transform-origin: top left;
 }
 
 .assistant-step-connections {
@@ -584,14 +704,8 @@ onBeforeUnmount(() => {
   transform: rotate(90deg);
 }
 
-.assistant-step-menu-panel {
-  display: block;
-  left: auto;
-  margin-top: 0.35rem;
+:deep(.assistant-step-menu-panel) {
   min-width: 12.5rem;
-  right: 0;
-  top: 100%;
-  z-index: 12;
 }
 
 .assistant-step-details-toggle {
@@ -701,13 +815,48 @@ table {
   border-radius: 0.5rem;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow: visible;
   position: absolute;
   right: 2.25rem;
   top: 1.5rem;
 }
 
+.builder-zoom-tooltip-wrap {
+  position: relative;
+}
+
+.builder-zoom-tooltip {
+  background-color: #1b2434;
+  border-radius: 0.35rem;
+  color: #fff;
+  line-height: 1.3;
+  opacity: 0;
+  padding: 0.35rem 0.5rem;
+  pointer-events: none;
+  position: absolute;
+  right: calc(100% + 0.5rem);
+  top: 50%;
+  transform: translateY(-50%);
+  white-space: nowrap;
+  z-index: 22;
+}
+
+.builder-zoom-tooltip-wrap:hover .builder-zoom-tooltip,
+.builder-zoom-tooltip-wrap:focus-within .builder-zoom-tooltip {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.assistant-step-floating-tooltip-wrap .builder-zoom-tooltip {
+  bottom: calc(100% + 0.5rem);
+  left: 50%;
+  right: auto;
+  top: auto;
+  transform: translateX(-50%);
+}
+
 .builder-action--zoom-in,
+.builder-action--recenter,
 .builder-action--zoom-out {
   border-radius: 0;
   font-size: 1.125rem;
@@ -749,14 +898,6 @@ table {
   height: 2.7rem;
   padding: 0;
   width: 2.7rem;
-}
-
-:deep(.assistant-step-floating-add.step-options-dropdown .step-options-menu) {
-  bottom: calc(100% + 0.35rem);
-  left: auto;
-  margin-top: 0;
-  right: 0;
-  top: auto;
 }
 
 .nodes-enter-active,

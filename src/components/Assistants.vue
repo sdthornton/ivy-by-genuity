@@ -167,7 +167,7 @@ onBeforeUnmount(() => {
       
     <div class="row mx-0 flex-grow-1 ">
       <AssistantBuilder 
-        class="col p-5" 
+        class="col p-4" 
         :current-builder-step="buildStep" 
         @toggleSidebar="!PREVIEW_ALL_MESSAGES && (showSidebar = !showSidebar)"
       />
@@ -175,7 +175,7 @@ onBeforeUnmount(() => {
         v-if="showSidebar"
         class="col-auto side-content bg-white"
       >
-        <Step2Info />
+        <Step2Info @close="showSidebar = false" />
       </article>
     </div>
   </section>

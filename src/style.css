@@ -184,6 +184,16 @@ h5, .h5 {
   --bs-btn-border-color: #232B3B;
 }
 
+.btn-white {
+  background-color: white;
+  border-color: white;
+
+  &:hover {
+    background-color: var(--bs-gray-200);
+    border-color: var(--bs-gray-200);
+  }
+}
+
 .bg-lookup {
   background-color: #00b0b0 !important;
 }
