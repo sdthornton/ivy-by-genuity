@@ -23,6 +23,7 @@ const props = defineProps({
 
 const canvas = ref(null);
 const connectionLines = ref([]);
+const terminalAddControls = ref([]);
 const canvasSize = reactive({ width: 0, height: 0 });
 const showEditorComments = ref(true);
 const panOffset = reactive({ x: 0, y: 0 });
@@ -46,6 +47,10 @@ const sceneTranslateStyle = computed(() => ({
 const sceneScaleStyle = computed(() => ({
   transform: `scale(${zoomLevel.value})`,
 }));
+
+const areAllDetailsCollapsed = computed(() => (
+  nodes.length > 0 && nodes.every((node) => node.detailsCollapsed)
+));
 
 function findNodeById(id) {
   return nodes.find(n => String(n.id) === String(id));
@@ -211,6 +216,29 @@ function updateConnectionLines() {
   });
 
   connectionLines.value = lines;
+
+  const terminalNodes = nodes.filter((node) => !(node.connections || []).length);
+  terminalAddControls.value = terminalNodes
+    .map((node) => {
+      const anchor = anchors.get(String(node.id));
+      if (!anchor) {
+        return null;
+      }
+
+      const top = anchor.bottomY + 28;
+
+      return {
+        key: `terminal-add-${node.id}`,
+        lineKey: `terminal-add-line-${node.id}`,
+        x: anchor.x,
+        top,
+        x1: anchor.x,
+        y1: anchor.bottomY,
+        x2: anchor.x,
+        y2: top,
+      };
+    })
+    .filter(Boolean);
 }
 
 let lineRaf = 0;
@@ -291,6 +319,14 @@ function toggleNodeDetails(nodeId) {
   const node = findNodeById(nodeId);
   if (!node) return;
   node.detailsCollapsed = !node.detailsCollapsed;
+  nextTick(() => scheduleConnectionLineUpdate());
+}
+
+function toggleAllNodeDetails() {
+  const shouldCollapse = !areAllDetailsCollapsed.value;
+  nodes.forEach((node) => {
+    node.detailsCollapsed = shouldCollapse;
+  });
   nextTick(() => scheduleConnectionLineUpdate());
 }
 
@@ -400,6 +436,15 @@ onBeforeUnmount(() => {
             :y1="line.y1"
             :x2="line.x2"
             :y2="line.y2"
+          />
+          <line
+            v-for="terminalAdd in terminalAddControls"
+            :key="terminalAdd.lineKey"
+            class="assistant-step-connection-line"
+            :x1="terminalAdd.x1"
+            :y1="terminalAdd.y1"
+            :x2="terminalAdd.x2"
+            :y2="terminalAdd.y2"
           />
         </svg>
 	        <StepOptionsDropdown
@@ -528,11 +573,25 @@ onBeforeUnmount(() => {
         </TransitionGroup>
 
         <StepOptionsDropdown
+          v-for="terminalAdd in terminalAddControls"
+          :key="terminalAdd.key"
+          class="assistant-step-terminal-add"
+          :style="{ left: `${terminalAdd.x}px`, top: `${terminalAdd.top}px` }"
+        >
+          <template #trigger>
+            <div class="assistant-step-add-card border rounded-sm fw-medium bg-white py-2.5 px-3 reduced text-center">
+              <span class="me-1">&plus;</span>
+              Add Step
+            </div>
+          </template>
+        </StepOptionsDropdown>
+
+        <StepOptionsDropdown
           v-if="!nodes.length"
           class="assistant-step assistant-step--add"
         >
           <template #trigger>
-            <div class="border rounded-sm fw-medium bg-white py-2.5 px-3 reduced text-center">
+            <div class="assistant-step-add-card border rounded-sm fw-medium bg-white py-2.5 px-3 reduced text-center">
               <span class="me-1">&plus;</span>
               Add Step
             </div>
@@ -622,6 +681,18 @@ onBeforeUnmount(() => {
 	          <img src="../../assets/comment.svg" width="14" height="14" class="d-block">
 	        </button>
         <div class="builder-zoom-tooltip true-small" role="tooltip">Toggle comments</div>
+      </div>
+      <div class="builder-zoom-tooltip-wrap assistant-step-floating-tooltip-wrap">
+        <button
+          type="button"
+          class="assistant-step-floating-mini-btn assistant-step-control d-flex align-items-center justify-content-center"
+          :class="{ 'assistant-step-floating-mini-btn--inactive': areAllDetailsCollapsed }"
+          aria-label="Toggle details"
+          @click.stop="toggleAllNodeDetails"
+        >
+          <span class="assistant-step-floating-mini-btn__glyph" aria-hidden="true">-</span>
+        </button>
+        <div class="builder-zoom-tooltip true-small" role="tooltip">Toggle details</div>
       </div>
       <StepOptionsDropdown class="assistant-step-floating-add" placement="top-end">
         <template #trigger="{ open }">
@@ -717,6 +788,23 @@ onBeforeUnmount(() => {
 
 .assistant-step-inline-add-btn:hover {
   background-color: #3e4756;
+}
+
+.assistant-step-terminal-add {
+  position: absolute;
+  transform: translateX(-50%);
+  z-index: 3;
+}
+
+.assistant-step-terminal-add:focus-within,
+.assistant-step-terminal-add:has(.step-options-dropdown--open) {
+  z-index: 40;
+}
+
+.assistant-step-add-card {
+  box-shadow: 0 4px 8px -2px rgba(0,0,0,0.1);
+  cursor: pointer;
+  white-space: nowrap;
 }
 
 @keyframes assistant-step-connection-flow {
@@ -964,6 +1052,17 @@ table {
 
 .assistant-step-floating-mini-btn--inactive img {
   opacity: 0.35;
+}
+
+.assistant-step-floating-mini-btn--inactive .assistant-step-floating-mini-btn__glyph {
+  opacity: 0.35;
+}
+
+.assistant-step-floating-mini-btn__glyph {
+  color: var(--bs-dark);
+  font-size: 1.25rem;
+  font-weight: 600;
+  line-height: 1;
 }
 
 .add-builder-node {
