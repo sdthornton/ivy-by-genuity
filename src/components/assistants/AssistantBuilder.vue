@@ -415,7 +415,7 @@ onBeforeUnmount(() => {
 	                class="assistant-step-inline-add-btn d-flex align-items-center justify-content-center"
 	                aria-label="Add step between connected nodes"
 	              >
-	                <img src="../../assets/plus-round.svg" width="11" height="11" class="d-block invert-to-white opacity-90">
+	                <img src="../../assets/plus-round.svg" width="12" height="12" class="d-block invert-to-white">
 	              </button>
 	              <div v-if="!open" class="builder-zoom-tooltip true-small" role="tooltip">Add a step here.</div>
 	            </div>
@@ -460,24 +460,24 @@ onBeforeUnmount(() => {
 	              {{  node.title }}
 	            </h6>
             <img src="../../assets/edit.svg" width="12" height="12" class="opacity-25 me-3">
-            <StepOptionsDropdown
-              class="assistant-step-menu ms-auto"
-              placement="bottom-end"
-              menu-class="assistant-step-menu-panel"
-            >
-              <template #trigger>
-                <button
-                  type="button"
-                  class="assistant-step-menu-trigger assistant-step-control"
-                  aria-label="Step actions"
-                  @click.stop
-                >
-                  <img src="../../assets/ellipses.svg" width="14" height="14" class="assistant-step-menu-trigger__icon">
-                </button>
+	            <StepOptionsDropdown
+	              class="assistant-step-menu ms-auto"
+	              placement="bottom-end"
+	              menu-class="assistant-step-menu-panel"
+	              @click.stop
+	            >
+	              <template #trigger>
+	                <button
+	                  type="button"
+	                  class="assistant-step-menu-trigger assistant-step-control"
+	                  aria-label="Step actions"
+	                >
+	                  <img src="../../assets/ellipses.svg" width="14" height="14" class="assistant-step-menu-trigger__icon">
+	                </button>
               </template>
               <template #menu="{ close }">
                 <button type="button" class="dropdown-item" @click.stop="duplicateStep(node.id); close()">Duplicate Step</button>
-                <button type="button" class="dropdown-item" @click.stop="removeAllConnections(node.id); close()">Remove All Connections</button>
+                <button type="button" class="dropdown-item" @click.stop="removeAllConnections(node.id); close()">Remove Connections</button>
                 <button type="button" class="dropdown-item" @click.stop="deleteStep(node.id); close()">Delete Step</button>
               </template>
             </StepOptionsDropdown>
@@ -485,7 +485,7 @@ onBeforeUnmount(() => {
           <div class="assistant-step-details">
             <button
               type="button"
-              class="assistant-step-details-toggle assistant-step-control px-2.5 py-1"
+              class="assistant-step-details-toggle assistant-step-control px-2.5 pt-2 pb-1"
               @click.stop="toggleNodeDetails(node.id)"
             >
               <span>Details</span>
@@ -497,7 +497,7 @@ onBeforeUnmount(() => {
                 :class="{ 'assistant-step-details-caret--collapsed': node.detailsCollapsed }"
               >
             </button>
-            <div v-show="!node.detailsCollapsed" class="assistant-step-details-content p-2 not-as-small text-black">
+            <div v-show="!node.detailsCollapsed" class="assistant-step-details-content px-2.5 pb-2 not-as-small text-black">
               <table class="w-100 table table-borderless table-sm mb-0">
                 <tbody>
                   <tr 
@@ -565,62 +565,62 @@ onBeforeUnmount(() => {
     </div> -->
 
     <div class="builder-zoom">
-      <div class="builder-zoom-tooltip-wrap">
-        <button
-          type="button"
-          class="builder-action--zoom-in btn btn-sm btn-light bg-white py-1 px-2.5 fw-bold"
-          aria-label="Zoom in"
-          @click.stop="zoomIn"
-        >
-          &plus;
-        </button>
-        <div class="builder-zoom-tooltip true-small" role="tooltip">Zoom In</div>
-      </div>
-      <div class="builder-zoom-tooltip-wrap">
-        <button
-          type="button"
-          class="builder-action--recenter btn btn-sm btn-light bg-white py-1 px-2.5"
-          aria-label="Reset zoom and position"
-          @click.stop="recenterCanvas"
-        >
-          <img src="../../assets/recenter.svg" width="14" height="14" class="d-block opacity-50">
-        </button>
-        <div class="builder-zoom-tooltip true-small" role="tooltip">Reset zoom and position.</div>
-      </div>
-      <div class="builder-zoom-tooltip-wrap">
-        <button
-          type="button"
-          class="builder-action--zoom-out btn btn-sm btn-light bg-white py-1 px-2.5 fw-bold"
-          aria-label="Zoom out"
-          @click.stop="zoomOut"
-        >
-          &minus;
-        </button>
-        <div class="builder-zoom-tooltip true-small" role="tooltip">Zoom Out</div>
-      </div>
-    </div>
-    <div class="assistant-step-floating-controls d-flex align-items-center gap-3">
-      <div class="builder-zoom-tooltip-wrap assistant-step-floating-tooltip-wrap">
-        <button
-          type="button"
-          class="assistant-step-floating-mini-btn assistant-step-control d-flex align-items-center justify-content-center"
-          aria-label="Undo"
-          @click.stop="handleUndoClick"
-        >
-          <img src="../../assets/undo.svg" width="14" height="14" class="d-block opacity-75">
-        </button>
-        <div class="builder-zoom-tooltip true-small" role="tooltip">Undo</div>
-      </div>
-      <div class="builder-zoom-tooltip-wrap assistant-step-floating-tooltip-wrap">
-        <button
-          type="button"
-          class="assistant-step-floating-mini-btn assistant-step-control d-flex align-items-center justify-content-center"
-          :class="{ 'assistant-step-floating-mini-btn--inactive': !showEditorComments }"
-          aria-label="Toggle comments"
-          @click.stop="toggleEditorComments"
-        >
-          <img src="../../assets/comment.svg" width="14" height="14" class="d-block">
-        </button>
+	      <div class="builder-zoom-tooltip-wrap">
+	        <button
+	          type="button"
+	          class="builder-action--zoom-in btn btn-sm bg-white py-1 px-2.5 fw-bold"
+	          aria-label="Zoom in"
+	          @click.stop="zoomIn"
+	        >
+	          &plus;
+	        </button>
+	        <div class="builder-zoom-tooltip true-small" role="tooltip">Zoom In</div>
+	      </div>
+	      <div class="builder-zoom-tooltip-wrap border-top border-bottom">
+	        <button
+	          type="button"
+	          class="builder-action--recenter btn btn-sm bg-white py-2 px-2.5"
+	          aria-label="Reset zoom and position"
+	          @click.stop="recenterCanvas"
+	        >
+	          <img src="../../assets/recenter.svg" width="10" height="10" class="d-block">
+	        </button>
+	        <div class="builder-zoom-tooltip true-small" role="tooltip">Reset zoom and position.</div>
+	      </div>
+	      <div class="builder-zoom-tooltip-wrap">
+	        <button
+	          type="button"
+	          class="builder-action--zoom-out btn btn-sm bg-white py-1 px-2.5 fw-bold"
+	          aria-label="Zoom out"
+	          @click.stop="zoomOut"
+	        >
+	          &minus;
+	        </button>
+	        <div class="builder-zoom-tooltip true-small" role="tooltip">Zoom Out</div>
+	      </div>
+	    </div>
+	    <div class="assistant-step-floating-controls d-flex align-items-center gap-3">
+	      <div class="builder-zoom-tooltip-wrap assistant-step-floating-tooltip-wrap">
+	        <button
+	          type="button"
+	          class="assistant-step-floating-mini-btn assistant-step-control d-flex align-items-center justify-content-center"
+	          aria-label="Undo"
+	          @click.stop="handleUndoClick"
+	        >
+	          <img src="../../assets/undo.svg" width="14" height="14" class="d-block opacity-75">
+	        </button>
+	        <div class="builder-zoom-tooltip true-small" role="tooltip">Undo</div>
+	      </div>
+	      <div class="builder-zoom-tooltip-wrap assistant-step-floating-tooltip-wrap">
+	        <button
+	          type="button"
+	          class="assistant-step-floating-mini-btn assistant-step-control d-flex align-items-center justify-content-center"
+	          :class="{ 'assistant-step-floating-mini-btn--inactive': !showEditorComments }"
+	          aria-label="Toggle comments"
+	          @click.stop="toggleEditorComments"
+	        >
+	          <img src="../../assets/comment.svg" width="14" height="14" class="d-block">
+	        </button>
         <div class="builder-zoom-tooltip true-small" role="tooltip">Toggle comments</div>
       </div>
       <StepOptionsDropdown class="assistant-step-floating-add" placement="top-end">
@@ -781,7 +781,7 @@ onBeforeUnmount(() => {
   color: var(--bs-gray-600);
   display: flex;
   font-size: 0.625rem;
-  font-weight: 600;
+  font-weight: 500;
   justify-content: space-between;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -907,8 +907,7 @@ table {
   z-index: 22;
 }
 
-.builder-zoom-tooltip-wrap:hover .builder-zoom-tooltip,
-.builder-zoom-tooltip-wrap:focus-within .builder-zoom-tooltip {
+.builder-zoom-tooltip-wrap:hover .builder-zoom-tooltip {
   opacity: 1;
   pointer-events: auto;
 }

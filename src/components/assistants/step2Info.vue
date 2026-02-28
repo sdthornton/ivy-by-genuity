@@ -43,11 +43,15 @@ const fixQueryWarning = () => {
 
     <div class="step2-info-top d-flex flex-column">
       <div class="side-content-scroll d-flex flex-column align-items-start">
-        <div class="step-type-pill true-small fw-medium text-white d-inline-flex align-items-center rounded-pill px-2 py-0" :class="activeStep.typeMeta.bgClass">
-          <img :src="activeStep.typeMeta.icon" width="16" height="16" class="d-inline-block me-1" :class="{ 'invert-to-white': activeStep.typeMeta.iconInvert }">
-          <span>{{ activeStep.pill }}</span>
-          <img src="../../assets/arrow-down-b.svg" width="12" height="12" class="source-pill-caret ms-1">
-        </div>
+        <StepOptionsDropdown class="step-type-pill-dropdown" placement="bottom-start">
+          <template #trigger>
+            <div class="step-type-pill true-small fw-medium text-white d-inline-flex align-items-center rounded-pill px-2 py-0" :class="activeStep.typeMeta.bgClass">
+              <img :src="activeStep.typeMeta.icon" width="16" height="16" class="d-inline-block me-1" :class="{ 'invert-to-white': activeStep.typeMeta.iconInvert }">
+              <span>{{ activeStep.pill }}</span>
+              <img src="../../assets/arrow-down-b.svg" width="12" height="12" class="source-pill-caret ms-1">
+            </div>
+          </template>
+        </StepOptionsDropdown>
 
         <div class="d-flex align-items-center mt-2">
           <h4 class="fw-bold mb-0 me-3">{{ activeStep.title }}</h4>

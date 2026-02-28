@@ -7,8 +7,11 @@ import ContentHeader from "./shared/ContentHeader.vue";
 import ChatBox from "./shared/ChatBox.vue";
 import Step2Info  from "./assistants/step2Info.vue";
 import AssistantBuilder from "./assistants/AssistantBuilder.vue";
+import StepOptionsDropdown from "./shared/StepOptionsDropdown.vue";
 import { MOCK_STEP_COUNT } from "./assistants/mockSteps";
-import { ref, watch, nextTick, onMounted, onBeforeUnmount } from "vue";
+import iconClock from "../assets/clock.svg";
+import iconStar from "../assets/star.svg";
+import { ref, watch, nextTick, onMounted, onBeforeUnmount, computed } from "vue";
 
 // Most of this is mock work to demo the chat response and scroll functionality
 
@@ -24,6 +27,24 @@ const userStep1 = ref(null);
 const ivyStep1 = ref(null);
 const userStep2 = ref(null);
 const ivyStep2 = ref(null);
+const DEFAULT_TRIGGER_OPTION = { key: "weekdays", label: "Weekdays at 9:00 am", pillLabel: "Weekdays at 9:00 am", icon: iconClock, iconClass: "opacity-50" };
+const selectedHeaderTrigger = ref(PREVIEW_ALL_MESSAGES ? { ...DEFAULT_TRIGGER_OPTION } : null);
+
+const headerTriggerOptions = [
+  { key: "every-day", label: "Every day", pillLabel: "Every day at 9:00 am", icon: iconClock, iconClass: "opacity-50" },
+  { key: "every-week", label: "Every week", pillLabel: "Every week on Monday", icon: iconClock, iconClass: "opacity-50" },
+  { key: "every-month", label: "Every month", pillLabel: "Every month on the 1st", icon: iconClock, iconClass: "opacity-50" },
+  { key: "custom", label: "Custom Timing", pillLabel: "Custom schedule", icon: iconClock, iconClass: "opacity-50" },
+  { key: "event", label: "When an event occurs", pillLabel: "When an event occurs", icon: iconStar, iconClass: "" },
+];
+
+const hasConfiguredHeaderTrigger = computed(() => Boolean(selectedHeaderTrigger.value));
+const headerTriggerLabel = computed(() => selectedHeaderTrigger.value?.pillLabel || "Draft, Not Scheduled");
+
+const selectHeaderTrigger = (option, close) => {
+  selectedHeaderTrigger.value = { ...option };
+  close();
+};
 
 watch(buildStep, async (newStep) => {
   if (PREVIEW_ALL_MESSAGES) return;
@@ -32,6 +53,9 @@ watch(buildStep, async (newStep) => {
     assistantTitle.value = "New Assistant";
   } else if (newStep >= 1) {
     assistantTitle.value = "SharePoint Audit";
+    if (!selectedHeaderTrigger.value) {
+      selectedHeaderTrigger.value = { ...DEFAULT_TRIGGER_OPTION };
+    }
   }
 
   if (newStep === 1) {
@@ -139,20 +163,48 @@ const onBuilderStepSelect = (nodeId) => {
       <span class="mx-3 text-secondary reduced">&rsaquo;</span>
       <span class="fw-medium">{{ assistantTitle }}</span>
       <img src="../assets/edit.svg" height="12" width="12" class="ms-2 opacity-25">
-      <span 
-        v-if="buildStep < 1"
-        class="mx-3 badge bg-secondary-subtle text-secondary true-small fw-normal px-2.5"
-      >
-        Draft, Not Scheduled
-      </span>
-      <span 
-        v-else
-        class="mx-4 rounded-sm text-white h6 mb-0 py-1 px-2 true-small fw-normal d-flex align-items-center justify-content-center"
-        style="background-color: rgb(123, 104, 238);"
-      >
-        <img src="../assets/clock.svg" width="16" height="16" class="me-1 invert-to-white">
-        Weekdays at 9:00 am
-      </span>
+      <StepOptionsDropdown class="mx-4" placement="bottom-start" menu-class="header-trigger-menu">
+        <template #trigger>
+          <span
+            class="header-trigger-pill rounded-sm true-small fw-normal d-inline-flex align-items-center justify-content-center"
+            :class="hasConfiguredHeaderTrigger ? 'header-trigger-pill--configured text-white' : 'header-trigger-pill--draft bg-secondary-subtle text-secondary'"
+          >
+            <img
+              v-if="hasConfiguredHeaderTrigger"
+              :src="selectedHeaderTrigger?.icon || iconClock"
+              width="16"
+              height="16"
+              class="me-1 invert-to-white"
+            >
+            <span>{{ headerTriggerLabel }}</span>
+            <img
+              src="../assets/arrow-down-b.svg"
+              width="12"
+              height="12"
+              class="ms-2 header-trigger-pill__arrow"
+              :class="{ 'invert-to-white': hasConfiguredHeaderTrigger }"
+            >
+          </span>
+        </template>
+        <template #menu="{ close }">
+          <button
+            v-for="option in headerTriggerOptions"
+            :key="option.key"
+            type="button"
+            class="dropdown-item text-start d-flex align-items-center"
+            @click="selectHeaderTrigger(option, close)"
+          >
+            <img
+              :src="option.icon"
+              width="14"
+              height="14"
+              class="me-2 flex-shrink-0"
+              :class="option.iconClass"
+            >
+            {{ option.label }}
+          </button>
+        </template>
+      </StepOptionsDropdown>
       <span class="ms-auto">
         <button class="btn btn-sm reduced px-2.5 rounded-sm me-2 d-inline-flex align-items-center">
           <img src="../assets/test.svg" height="12" width="12" class="me-2 opacity-50">
@@ -316,5 +368,30 @@ const onBuilderStepSelect = (nodeId) => {
 .conversation-inner-wrapper {
   min-height: 100%;
   scroll-behavior: smooth;
+}
+
+.header-trigger-pill {
+  cursor: pointer;
+  min-height: 1.75rem;
+  padding: 0.25rem 0.5rem;
+}
+
+.header-trigger-pill--configured {
+  background-color: rgb(123, 104, 238);
+}
+
+.header-trigger-pill__arrow {
+  display: block;
+}
+
+:deep(.header-trigger-menu) {
+  min-width: 14rem;
+  padding: 0.65rem;
+}
+
+:deep(.header-trigger-menu) .dropdown-item {
+  background: transparent;
+  border: 0;
+  width: 100%;
 }
 </style>

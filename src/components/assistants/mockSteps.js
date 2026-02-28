@@ -181,7 +181,7 @@ const stepDefinitions = [
   {
     id: 4,
     type: "action",
-    title: "Do something",
+    title: "Email Audit List",
     pill: "Ivy Action",
     sources: [],
     rows: [
