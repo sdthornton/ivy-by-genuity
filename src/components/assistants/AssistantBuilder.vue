@@ -25,16 +25,63 @@ const canvas = ref(null);
 const connectionLines = ref([]);
 const terminalAddControls = ref([]);
 const canvasSize = reactive({ width: 0, height: 0 });
+const viewportSize = reactive({ width: 0, height: 0 });
 const showEditorComments = ref(true);
+const hoveredConnectionKey = ref(null);
 const panOffset = reactive({ x: 0, y: 0 });
 const panState = reactive({ startX: 0, startY: 0, baseX: 0, baseY: 0 });
 const isPanning = ref(false);
 const isRecentering = ref(false);
-const zoomLevel = ref(1);
+const isReorderingNodes = ref(false);
+const isDraggingStepNode = ref(false);
+const DEFAULT_ZOOM = 0.875;
+const zoomLevel = ref(DEFAULT_ZOOM);
 const ZOOM_STEP = 0.1;
 const MIN_ZOOM = 0.5;
 const MAX_ZOOM = 2;
 const RECENTER_TRANSITION_MS = 160;
+const REORDER_TRANSITION_MS = 180;
+
+const reorderDrag = reactive({
+  active: false,
+  moved: false,
+  originLineKey: null,
+  originConnectionSourceId: null,
+  originConnectionTargetId: null,
+  pointerX: 0,
+  pointerY: 0,
+  startX: 0,
+  startY: 0,
+  sourceId: null,
+  sourceKind: "",
+  sourceX: 0,
+  sourceY: 0,
+  targetId: null,
+  targetKind: "",
+  targetX: 0,
+  targetY: 0,
+});
+
+const connectionMenu = reactive({
+  open: false,
+  sourceId: null,
+  targetId: null,
+  anchorX: 0,
+  anchorY: 0,
+  left: 0,
+  top: 0,
+});
+
+const connectionMenuEl = ref(null);
+const connectionHintTooltip = reactive({
+  open: false,
+  left: 0,
+  top: 0,
+});
+const REORDER_DRAG_THRESHOLD = 8;
+const CONNECTION_MENU_OFFSET = 10;
+const CONNECTION_MENU_PADDING = 8;
+const CONNECTION_TOOLTIP_OFFSET = 12;
 
 const canvasPanStyle = computed(() => ({
   backgroundPosition: `${panOffset.x + 2}px ${panOffset.y + 4}px`,
@@ -52,12 +99,53 @@ const areAllDetailsCollapsed = computed(() => (
   nodes.length > 0 && nodes.every((node) => node.detailsCollapsed)
 ));
 
+const highlightedConnectionKey = computed(() => {
+  if (hoveredConnectionKey.value) {
+    return hoveredConnectionKey.value;
+  }
+
+  if (connectionMenu.open && connectionMenu.sourceId && connectionMenu.targetId) {
+    return `${connectionMenu.sourceId}-${connectionMenu.targetId}`;
+  }
+
+  return null;
+});
+
+const hiddenDraggedConnectionKey = computed(() => (
+  reorderDrag.active && reorderDrag.moved ? reorderDrag.originLineKey : null
+));
+
 function findNodeById(id) {
   return nodes.find(n => String(n.id) === String(id));
 }
 
+function findIncomingConnection(nodeId) {
+  const selectedId = String(nodeId);
+  const sourceNode = nodes.find((node) => node.connections?.some((target) => String(target) === selectedId));
+  if (!sourceNode) {
+    return null;
+  }
+
+  return {
+    sourceId: String(sourceNode.id),
+    targetId: selectedId,
+  };
+}
+
 function hasIncomingConnection(nodeId) {
   return nodes.some((node) => node.connections?.some((target) => String(target) === String(nodeId)));
+}
+
+function isActiveConnectionDragSource(nodeId) {
+  return reorderDrag.active
+    && reorderDrag.moved
+    && String(reorderDrag.sourceId) === String(nodeId);
+}
+
+function isActiveConnectionDragTarget(nodeId) {
+  return reorderDrag.active
+    && reorderDrag.moved
+    && String(reorderDrag.targetId) === String(nodeId);
 }
 
 function toggleEditorComments() {
@@ -66,6 +154,12 @@ function toggleEditorComments() {
 
 function handleUndoClick() {
   // Placeholder until undo stack behavior is implemented.
+}
+
+function syncViewportSize() {
+  viewportSize.width = window.innerWidth;
+  viewportSize.height = window.innerHeight;
+  positionConnectionMenu();
 }
 
 function getCanvasPaddingTop() {
@@ -100,7 +194,7 @@ function beginRecenteringTransition() {
 function recenterCanvas() {
   beginRecenteringTransition();
   resetCanvasToBasePoint();
-  zoomLevel.value = 1;
+  zoomLevel.value = DEFAULT_ZOOM;
   scheduleConnectionLineUpdate();
 }
 
@@ -122,7 +216,7 @@ function canStartCanvasPan(target) {
     return true;
   }
 
-  return !target.closest(".assistant-step, .assistant-step-control, .step-options-dropdown, .builder-zoom, .assistant-step-floating-controls");
+  return !target.closest(".assistant-step, .assistant-step-control, .assistant-step-connection-hit-area, .step-options-dropdown, .builder-zoom, .assistant-step-floating-controls, .assistant-step-connection-menu");
 }
 
 function startCanvasPan(event) {
@@ -169,6 +263,397 @@ function endCanvasPan(event) {
   }
 }
 
+function getConnectorCenter(el) {
+  const rect = el.getBoundingClientRect();
+  return {
+    x: rect.left + (rect.width / 2),
+    y: rect.top + (rect.height / 2),
+  };
+}
+
+function getConnectorElement(nodeId, connectorKind) {
+  return canvas.value?.querySelector(
+    `.assistant-step-connector[data-step-id="${String(nodeId)}"][data-connector-kind="${connectorKind}"]`,
+  ) || null;
+}
+
+function closeConnectionMenu() {
+  connectionMenu.open = false;
+  connectionMenu.sourceId = null;
+  connectionMenu.targetId = null;
+  hoveredConnectionKey.value = null;
+  hideConnectionHintTooltip();
+}
+
+function showConnectionHintTooltip(clientX, clientY) {
+  const tooltipWidth = 170;
+  const tooltipHeight = 28;
+  const left = Math.min(
+    window.innerWidth - CONNECTION_MENU_PADDING - tooltipWidth,
+    Math.max(CONNECTION_MENU_PADDING, clientX + CONNECTION_TOOLTIP_OFFSET),
+  );
+  const top = Math.min(
+    window.innerHeight - CONNECTION_MENU_PADDING - tooltipHeight,
+    Math.max(CONNECTION_MENU_PADDING, clientY - (tooltipHeight / 2)),
+  );
+
+  connectionHintTooltip.open = true;
+  connectionHintTooltip.left = left;
+  connectionHintTooltip.top = top;
+}
+
+function hideConnectionHintTooltip() {
+  connectionHintTooltip.open = false;
+}
+
+function positionConnectionMenu() {
+  if (!connectionMenu.open || !connectionMenuEl.value) {
+    return;
+  }
+
+  const menuRect = connectionMenuEl.value.getBoundingClientRect();
+  const maxLeft = Math.max(CONNECTION_MENU_PADDING, window.innerWidth - CONNECTION_MENU_PADDING - menuRect.width);
+  const maxTop = Math.max(CONNECTION_MENU_PADDING, window.innerHeight - CONNECTION_MENU_PADDING - menuRect.height);
+
+  connectionMenu.left = Math.min(
+    maxLeft,
+    Math.max(CONNECTION_MENU_PADDING, connectionMenu.anchorX + CONNECTION_MENU_OFFSET),
+  );
+  connectionMenu.top = Math.min(
+    maxTop,
+    Math.max(CONNECTION_MENU_PADDING, connectionMenu.anchorY + CONNECTION_MENU_OFFSET),
+  );
+}
+
+function openConnectionMenu(sourceId, targetId, clientX, clientY) {
+  if (!sourceId || !targetId) {
+    return;
+  }
+
+  hideConnectionHintTooltip();
+  connectionMenu.open = true;
+  connectionMenu.sourceId = String(sourceId);
+  connectionMenu.targetId = String(targetId);
+  connectionMenu.anchorX = clientX;
+  connectionMenu.anchorY = clientY;
+  connectionMenu.left = clientX + CONNECTION_MENU_OFFSET;
+  connectionMenu.top = clientY + CONNECTION_MENU_OFFSET;
+
+  nextTick(() => {
+    positionConnectionMenu();
+    requestAnimationFrame(positionConnectionMenu);
+  });
+}
+
+function openConnectionMenuForLine(event, line) {
+  hoveredConnectionKey.value = line.key;
+  openConnectionMenu(line.sourceId, line.targetId, event.clientX, event.clientY);
+}
+
+function getConnectionForConnector(nodeId, connectorKind) {
+  if (connectorKind === "bottom") {
+    const node = findNodeById(nodeId);
+    const targetId = node?.connections?.[0];
+    if (!targetId) {
+      return null;
+    }
+
+    return {
+      sourceId: String(nodeId),
+      targetId: String(targetId),
+    };
+  }
+
+  return findIncomingConnection(nodeId);
+}
+
+function removeConnection(sourceId, targetId) {
+  const sourceNode = findNodeById(sourceId);
+  if (!sourceNode) {
+    return;
+  }
+
+  sourceNode.connections = (sourceNode.connections || []).filter((connectionId) => String(connectionId) !== String(targetId));
+  closeConnectionMenu();
+  nextTick(() => scheduleConnectionLineUpdate());
+}
+
+function setHoveredConnection(lineKey) {
+  hoveredConnectionKey.value = lineKey;
+}
+
+function clearHoveredConnection(lineKey) {
+  if (hoveredConnectionKey.value === lineKey) {
+    hoveredConnectionKey.value = null;
+  }
+  hideConnectionHintTooltip();
+}
+
+function handleLinePointerHover(event, lineKey) {
+  setHoveredConnection(lineKey);
+  showConnectionHintTooltip(event.clientX, event.clientY);
+}
+
+function handleConnectorPointerHover(event, nodeId, connectorKind) {
+  const connection = getConnectionForConnector(nodeId, connectorKind);
+  if (!connection) {
+    hideConnectionHintTooltip();
+    return;
+  }
+
+  hoveredConnectionKey.value = `${connection.sourceId}-${connection.targetId}`;
+  showConnectionHintTooltip(event.clientX, event.clientY);
+}
+
+function clearConnectorHover(nodeId, connectorKind) {
+  const connection = getConnectionForConnector(nodeId, connectorKind);
+  if (!connection) {
+    hideConnectionHintTooltip();
+    return;
+  }
+
+  clearHoveredConnection(`${connection.sourceId}-${connection.targetId}`);
+}
+
+function handleDocumentPointerDown(event) {
+  hideConnectionHintTooltip();
+  if (!connectionMenu.open) {
+    return;
+  }
+
+  const target = event.target;
+  if (connectionMenuEl.value?.contains(target)) {
+    return;
+  }
+
+  closeConnectionMenu();
+}
+
+function handleWindowKeyDown(event) {
+  if (event.key === "Escape") {
+    closeConnectionMenu();
+  }
+}
+
+function resetReorderDrag() {
+  reorderDrag.active = false;
+  reorderDrag.moved = false;
+  reorderDrag.originLineKey = null;
+  reorderDrag.originConnectionSourceId = null;
+  reorderDrag.originConnectionTargetId = null;
+  reorderDrag.pointerX = 0;
+  reorderDrag.pointerY = 0;
+  reorderDrag.startX = 0;
+  reorderDrag.startY = 0;
+  reorderDrag.sourceId = null;
+  reorderDrag.sourceKind = "";
+  reorderDrag.sourceX = 0;
+  reorderDrag.sourceY = 0;
+  reorderDrag.targetId = null;
+  reorderDrag.targetKind = "";
+  reorderDrag.targetX = 0;
+  reorderDrag.targetY = 0;
+}
+
+let reorderTransitionTimer = 0;
+function beginNodeReorderTransition() {
+  if (reorderTransitionTimer) {
+    window.clearTimeout(reorderTransitionTimer);
+  }
+
+  isReorderingNodes.value = true;
+  reorderTransitionTimer = window.setTimeout(() => {
+    isReorderingNodes.value = false;
+    reorderTransitionTimer = 0;
+  }, REORDER_TRANSITION_MS);
+}
+
+function updateReorderTarget(clientX, clientY) {
+  if (!reorderDrag.active) {
+    return;
+  }
+
+  const distanceFromStart = Math.hypot(clientX - reorderDrag.startX, clientY - reorderDrag.startY);
+  if (!reorderDrag.moved && distanceFromStart < REORDER_DRAG_THRESHOLD) {
+    reorderDrag.pointerX = clientX;
+    reorderDrag.pointerY = clientY;
+    return;
+  }
+
+  reorderDrag.moved = true;
+
+  const expectedTargetKind = reorderDrag.sourceKind === "bottom" ? "top" : "bottom";
+  const targetSelector = `.assistant-step-connector[data-connector-kind="${expectedTargetKind}"]`;
+  const candidates = Array.from(canvas.value?.querySelectorAll(targetSelector) || []);
+  const maxSnapDistance = 44;
+  let closestTarget = null;
+
+  candidates.forEach((candidate) => {
+    const candidateNodeId = String(candidate.dataset.stepId || "");
+    if (!candidateNodeId || candidateNodeId === String(reorderDrag.sourceId)) {
+      return;
+    }
+
+    const center = getConnectorCenter(candidate);
+    const distance = Math.hypot(center.x - clientX, center.y - clientY);
+    if (distance > maxSnapDistance) {
+      return;
+    }
+
+    if (!closestTarget || distance < closestTarget.distance) {
+      closestTarget = {
+        distance,
+        nodeId: candidateNodeId,
+        kind: expectedTargetKind,
+        x: center.x,
+        y: center.y,
+      };
+    }
+  });
+
+  reorderDrag.pointerX = clientX;
+  reorderDrag.pointerY = clientY;
+  reorderDrag.targetId = closestTarget?.nodeId || null;
+  reorderDrag.targetKind = closestTarget?.kind || "";
+  reorderDrag.targetX = closestTarget?.x || 0;
+  reorderDrag.targetY = closestTarget?.y || 0;
+}
+
+function handleReorderPointerMove(event) {
+  updateReorderTarget(event.clientX, event.clientY);
+}
+
+function applyNodeReorder() {
+  const sourceId = String(reorderDrag.sourceId || "");
+  const targetId = String(reorderDrag.targetId || "");
+  if (!sourceId || !targetId || sourceId === targetId) {
+    return;
+  }
+
+  const orderedNodes = [...nodes];
+  const slotPositions = orderedNodes.map((node, index) => ({
+    x: node.x,
+    y: node.y ?? (index * 60),
+  }));
+
+  const sourceIndex = orderedNodes.findIndex((node) => String(node.id) === sourceId);
+  if (sourceIndex === -1) {
+    return;
+  }
+
+  const [sourceNode] = orderedNodes.splice(sourceIndex, 1);
+  const targetIndex = orderedNodes.findIndex((node) => String(node.id) === targetId);
+  if (targetIndex === -1) {
+    return;
+  }
+
+  const shouldInsertAfter = reorderDrag.sourceKind === "top" && reorderDrag.targetKind === "bottom";
+  const insertionIndex = shouldInsertAfter ? targetIndex + 1 : targetIndex;
+  orderedNodes.splice(insertionIndex, 0, sourceNode);
+
+  orderedNodes.forEach((node, index) => {
+    const slot = slotPositions[index] || {
+      x: 0,
+      y: index * 60,
+    };
+
+    node.x = slot.x;
+    node.y = slot.y;
+    node.connections = orderedNodes[index + 1] ? [orderedNodes[index + 1].id] : [];
+  });
+
+  beginNodeReorderTransition();
+  nodes.splice(0, nodes.length, ...orderedNodes);
+  nextTick(() => scheduleConnectionLineUpdate());
+}
+
+function finishReorderDrag() {
+  window.removeEventListener("pointermove", handleReorderPointerMove);
+  window.removeEventListener("pointerup", endReorderDrag);
+  window.removeEventListener("pointercancel", endReorderDrag);
+}
+
+function endReorderDrag() {
+  if (!reorderDrag.active) {
+    return;
+  }
+
+  if (reorderDrag.moved && reorderDrag.targetId) {
+    applyNodeReorder();
+  } else if (
+    reorderDrag.moved
+    && reorderDrag.originConnectionSourceId
+    && reorderDrag.originConnectionTargetId
+  ) {
+    removeConnection(reorderDrag.originConnectionSourceId, reorderDrag.originConnectionTargetId);
+  } else if (!reorderDrag.moved) {
+    const connection = getConnectionForConnector(reorderDrag.sourceId, reorderDrag.sourceKind);
+    if (connection) {
+      openConnectionMenu(connection.sourceId, connection.targetId, reorderDrag.startX, reorderDrag.startY);
+    }
+  }
+
+  finishReorderDrag();
+  resetReorderDrag();
+}
+
+function beginReorderDrag(event, nodeId, connectorKind, connectorEl, originLine = null) {
+  if (event.button !== undefined && event.button !== 0) {
+    return;
+  }
+
+  if (!(connectorEl instanceof Element) || nodes.length < 2) {
+    return;
+  }
+
+  const sourceCenter = getConnectorCenter(connectorEl);
+  hideConnectionHintTooltip();
+  closeConnectionMenu();
+  reorderDrag.active = true;
+  reorderDrag.moved = false;
+  reorderDrag.originLineKey = originLine?.key || null;
+  reorderDrag.originConnectionSourceId = originLine?.sourceId || null;
+  reorderDrag.originConnectionTargetId = originLine?.targetId || null;
+  reorderDrag.startX = event.clientX;
+  reorderDrag.startY = event.clientY;
+  reorderDrag.sourceId = String(nodeId);
+  reorderDrag.sourceKind = connectorKind;
+  reorderDrag.sourceX = sourceCenter.x;
+  reorderDrag.sourceY = sourceCenter.y;
+  reorderDrag.pointerX = sourceCenter.x;
+  reorderDrag.pointerY = sourceCenter.y;
+  reorderDrag.targetId = null;
+  reorderDrag.targetKind = "";
+  reorderDrag.targetX = 0;
+  reorderDrag.targetY = 0;
+
+  window.addEventListener("pointermove", handleReorderPointerMove);
+  window.addEventListener("pointerup", endReorderDrag);
+  window.addEventListener("pointercancel", endReorderDrag);
+}
+
+function startReorderDrag(event, nodeId, connectorKind) {
+  beginReorderDrag(event, nodeId, connectorKind, event.currentTarget);
+}
+
+function startLineReorderDrag(event, line) {
+  const lineEl = event.currentTarget;
+  if (!(lineEl instanceof SVGLineElement)) {
+    return;
+  }
+
+  const lineRect = lineEl.getBoundingClientRect();
+  const clickedUpperHalf = event.clientY < (lineRect.top + (lineRect.height / 2));
+  const nodeId = clickedUpperHalf ? line.targetId : line.sourceId;
+  const connectorKind = clickedUpperHalf ? "top" : "bottom";
+  const connectorEl = getConnectorElement(nodeId, connectorKind);
+  if (!connectorEl) {
+    return;
+  }
+
+  beginReorderDrag(event, nodeId, connectorKind, connectorEl, line);
+}
+
 function updateConnectionLines() {
   const canvasEl = canvas.value;
   if (!canvasEl) return;
@@ -205,6 +690,8 @@ function updateConnectionLines() {
 
       lines.push({
         key: `${node.id}-${targetId}`,
+        sourceId: String(node.id),
+        targetId: String(targetId),
         x1: source.x,
         y1: source.bottomY,
         x2: target.x,
@@ -257,11 +744,21 @@ function snapToGrid(val, grid = GRID_SIZE) {
 
 let nodeInteraction = null;
 
+const handleWindowResize = () => {
+  syncViewportSize();
+  scheduleConnectionLineUpdate();
+};
+
 onMounted(() => {
   nodeInteraction = interact(".assistant-step").draggable({
     inertia: true,
-    ignoreFrom: ".assistant-step-control",
+    ignoreFrom: ".assistant-step-control, .assistant-step-connector",
     listeners: {
+      start() {
+        isDraggingStepNode.value = true;
+        hideConnectionHintTooltip();
+        closeConnectionMenu();
+      },
       move(event) {
         const el = event.target;
         const node = findNodeById(el?.dataset?.stepId);
@@ -277,6 +774,7 @@ onMounted(() => {
         scheduleConnectionLineUpdate();
       },
       end(event) {
+        isDraggingStepNode.value = false;
         const el = event.target;
         const node = findNodeById(el?.dataset?.stepId);
         if (!node) {
@@ -292,7 +790,10 @@ onMounted(() => {
     },
   });
 
-  window.addEventListener("resize", scheduleConnectionLineUpdate);
+  syncViewportSize();
+  document.addEventListener("pointerdown", handleDocumentPointerDown);
+  window.addEventListener("keydown", handleWindowKeyDown);
+  window.addEventListener("resize", handleWindowResize);
   nextTick(() => recenterCanvas());
 });
 
@@ -390,12 +891,20 @@ watch(
 onBeforeUnmount(() => {
   nodeInteraction?.unset();
   nodeInteraction = null;
-  window.removeEventListener("resize", scheduleConnectionLineUpdate);
+  isDraggingStepNode.value = false;
+  document.removeEventListener("pointerdown", handleDocumentPointerDown);
+  window.removeEventListener("keydown", handleWindowKeyDown);
+  window.removeEventListener("resize", handleWindowResize);
+  finishReorderDrag();
   if (lineRaf) cancelAnimationFrame(lineRaf);
   lineRaf = 0;
   if (recenterTimer) {
     window.clearTimeout(recenterTimer);
     recenterTimer = 0;
+  }
+  if (reorderTransitionTimer) {
+    window.clearTimeout(reorderTransitionTimer);
+    reorderTransitionTimer = 0;
   }
 });
 
@@ -421,8 +930,36 @@ onBeforeUnmount(() => {
       :style="sceneTranslateStyle"
     >
       <div class="assistant-builder-scene-scale" :style="sceneScaleStyle">
+        <Teleport to="body">
+          <svg
+            v-if="reorderDrag.active && reorderDrag.moved && viewportSize.width && viewportSize.height"
+            class="assistant-step-reorder-overlay"
+            :width="viewportSize.width"
+            :height="viewportSize.height"
+            aria-hidden="true"
+          >
+            <line
+              class="assistant-step-reorder-line"
+              :x1="reorderDrag.sourceX"
+              :y1="reorderDrag.sourceY"
+              :x2="reorderDrag.targetId ? reorderDrag.targetX : reorderDrag.pointerX"
+              :y2="reorderDrag.targetId ? reorderDrag.targetY : reorderDrag.pointerY"
+            />
+          </svg>
+        </Teleport>
+        <Teleport to="body">
+          <div
+            v-if="connectionHintTooltip.open"
+            class="builder-zoom-tooltip true-small assistant-step-hover-tooltip assistant-step-hover-tooltip--visible"
+            :style="{ left: `${connectionHintTooltip.left}px`, top: `${connectionHintTooltip.top}px` }"
+            role="tooltip"
+          >
+            Click to remove. Drag to change.
+          </div>
+        </Teleport>
         <svg
           class="assistant-step-connections"
+          :class="{ 'assistant-step-connections--step-dragging': isDraggingStepNode }"
           :width="canvasSize.width"
           :height="canvasSize.height"
           overflow="visible"
@@ -430,8 +967,34 @@ onBeforeUnmount(() => {
         >
           <line
             v-for="line in connectionLines"
+            :key="`highlight-${line.key}`"
+            v-show="highlightedConnectionKey === line.key && hiddenDraggedConnectionKey !== line.key"
+            class="assistant-step-connection-hover-band"
+            :x1="line.x1"
+            :y1="line.y1"
+            :x2="line.x2"
+            :y2="line.y2"
+          />
+          <line
+            v-for="line in connectionLines"
+            :key="`hit-${line.key}`"
+            v-show="hiddenDraggedConnectionKey !== line.key"
+            class="assistant-step-connection-hit-area"
+            :x1="line.x1"
+            :y1="line.y1"
+            :x2="line.x2"
+            :y2="line.y2"
+            @pointerdown.stop.prevent="startLineReorderDrag($event, line)"
+            @pointerover="handleLinePointerHover($event, line.key)"
+            @pointermove="handleLinePointerHover($event, line.key)"
+            @pointerleave="clearHoveredConnection(line.key)"
+          />
+          <line
+            v-for="line in connectionLines"
             :key="line.key"
+            v-show="hiddenDraggedConnectionKey !== line.key"
             class="assistant-step-connection-line"
+            :class="{ 'assistant-step-connection-line--active': highlightedConnectionKey === line.key }"
             :x1="line.x1"
             :y1="line.y1"
             :x2="line.x2"
@@ -447,9 +1010,26 @@ onBeforeUnmount(() => {
             :y2="terminalAdd.y2"
           />
         </svg>
+        <Teleport to="body">
+          <div
+            v-if="connectionMenu.open"
+            ref="connectionMenuEl"
+            class="assistant-step-connection-menu dropdown-menu show"
+            :style="{ left: `${connectionMenu.left}px`, top: `${connectionMenu.top}px` }"
+          >
+            <button
+              type="button"
+              class="dropdown-item"
+              @click.stop="removeConnection(connectionMenu.sourceId, connectionMenu.targetId)"
+            >
+              Remove connection
+            </button>
+          </div>
+        </Teleport>
 	        <StepOptionsDropdown
 	          v-for="line in connectionLines"
 	          :key="`mid-add-${line.key}`"
+	          v-show="hiddenDraggedConnectionKey !== line.key"
 	          class="assistant-step-inline-add"
 	          :style="{ left: `${line.midX}px`, top: `${line.midY}px` }"
 	        >
@@ -472,13 +1052,31 @@ onBeforeUnmount(() => {
             v-for="node in nodes"
             :key="node.id"
             class="assistant-step border rounded bg-white"
-            :class="{ 'assistant-step--has-incoming': hasIncomingConnection(node.id) }"
+            :class="{
+              'assistant-step--has-incoming': hasIncomingConnection(node.id),
+              'assistant-step--reordering': isReorderingNodes,
+              'border-primary': isActiveConnectionDragSource(node.id) || isActiveConnectionDragTarget(node.id),
+            }"
             draggable
             :data-step-id="node.id"
             :style="{ transform: `translate3d(${node.x}px, ${node.y}px, 0)`}"
             @click="toggleSidebar(node.id)"
           >
-          <div class="assistant-step-connector assistant-step-connector--top" aria-hidden="true" />
+          <div
+            class="assistant-step-connector assistant-step-connector--top assistant-step-control"
+            :class="{
+              'assistant-step-connector--active-target': reorderDrag.targetId === String(node.id) && reorderDrag.targetKind === 'top',
+              'assistant-step-connector--drag-source': reorderDrag.active && reorderDrag.sourceId === String(node.id) && reorderDrag.sourceKind === 'top',
+            }"
+            :data-step-id="node.id"
+            data-connector-kind="top"
+            role="button"
+            @pointerdown.stop.prevent="startReorderDrag($event, node.id, 'top')"
+            @pointerover="handleConnectorPointerHover($event, node.id, 'top')"
+            @pointermove="handleConnectorPointerHover($event, node.id, 'top')"
+            @pointerleave="clearConnectorHover(node.id, 'top')"
+            @click.stop
+          />
 	          <div
 	            v-show="showEditorComments"
 	            class="add-comment-to-step bg-white px-2.5 py-2.5 rounded-circle d-flex align-items-center justify-content-center"
@@ -501,7 +1099,7 @@ onBeforeUnmount(() => {
 	                :class="{ 'invert-to-white': node.typeMeta.iconInvert }"
 	              >
 	            </div>
-	            <h6 class="fw-bold mb-0 me-2">
+	            <h6 class="mb-0 me-2">
 	              {{  node.title }}
 	            </h6>
             <img src="../../assets/edit.svg" width="12" height="12" class="opacity-25 me-3">
@@ -568,7 +1166,21 @@ onBeforeUnmount(() => {
               </div> -->
             </div>
           </div>
-          <div class="assistant-step-connector assistant-step-connector--bottom" aria-hidden="true" />
+          <div
+            class="assistant-step-connector assistant-step-connector--bottom assistant-step-control"
+            :class="{
+              'assistant-step-connector--active-target': reorderDrag.targetId === String(node.id) && reorderDrag.targetKind === 'bottom',
+              'assistant-step-connector--drag-source': reorderDrag.active && reorderDrag.sourceId === String(node.id) && reorderDrag.sourceKind === 'bottom',
+            }"
+            :data-step-id="node.id"
+            data-connector-kind="bottom"
+            role="button"
+            @pointerdown.stop.prevent="startReorderDrag($event, node.id, 'bottom')"
+            @pointerover="handleConnectorPointerHover($event, node.id, 'bottom')"
+            @pointermove="handleConnectorPointerHover($event, node.id, 'bottom')"
+            @pointerleave="clearConnectorHover(node.id, 'bottom')"
+            @click.stop
+          />
           </div>
         </TransitionGroup>
 
@@ -578,10 +1190,16 @@ onBeforeUnmount(() => {
           class="assistant-step-terminal-add"
           :style="{ left: `${terminalAdd.x}px`, top: `${terminalAdd.top}px` }"
         >
-          <template #trigger>
-            <div class="assistant-step-add-card border rounded-sm fw-medium bg-white py-2.5 px-3 reduced text-center">
-              <span class="me-1">&plus;</span>
-              Add Step
+          <template #trigger="{ open }">
+            <div class="builder-zoom-tooltip-wrap assistant-step-inline-tooltip-wrap">
+              <button
+                type="button"
+                class="assistant-step-inline-add-btn d-flex align-items-center justify-content-center"
+                aria-label="Add step after this node"
+              >
+                <img src="../../assets/plus-round.svg" width="12" height="12" class="d-block invert-to-white">
+              </button>
+              <div v-if="!open" class="builder-zoom-tooltip true-small" role="tooltip">Add a step here.</div>
             </div>
           </template>
         </StepOptionsDropdown>
@@ -674,11 +1292,11 @@ onBeforeUnmount(() => {
 	        <button
 	          type="button"
 	          class="assistant-step-floating-mini-btn assistant-step-control d-flex align-items-center justify-content-center"
-	          :class="{ 'assistant-step-floating-mini-btn--inactive': !showEditorComments }"
 	          aria-label="Toggle comments"
 	          @click.stop="toggleEditorComments"
 	        >
-	          <img src="../../assets/comment.svg" width="14" height="14" class="d-block">
+	          <img v-if="showEditorComments" src="../../assets/eye-closed.svg" width="14" height="14" class="d-block">
+	          <img v-else src="../../assets/eye-open.svg" width="14" height="14" class="d-block">
 	        </button>
         <div class="builder-zoom-tooltip true-small" role="tooltip">Toggle comments</div>
       </div>
@@ -686,11 +1304,17 @@ onBeforeUnmount(() => {
         <button
           type="button"
           class="assistant-step-floating-mini-btn assistant-step-control d-flex align-items-center justify-content-center"
-          :class="{ 'assistant-step-floating-mini-btn--inactive': areAllDetailsCollapsed }"
           aria-label="Toggle details"
           @click.stop="toggleAllNodeDetails"
         >
-          <span class="assistant-step-floating-mini-btn__glyph" aria-hidden="true">-</span>
+          <img
+            src="../../assets/arrow-down-b.svg"
+            width="14"
+            height="14"
+            class="d-block assistant-step-floating-mini-btn__icon"
+            :class="{ 'assistant-step-floating-mini-btn__icon--collapsed': areAllDetailsCollapsed }"
+            aria-hidden="true"
+          >
         </button>
         <div class="builder-zoom-tooltip true-small" role="tooltip">Toggle details</div>
       </div>
@@ -740,7 +1364,7 @@ onBeforeUnmount(() => {
 .assistant-builder-scene-scale {
   inset: 0;
   position: absolute;
-  transform-origin: center center;
+  transform-origin: center top;
   transition: transform 0.2s ease-in-out;
 }
 
@@ -754,6 +1378,30 @@ onBeforeUnmount(() => {
   z-index: 1;
 }
 
+.assistant-step-connections--step-dragging .assistant-step-connection-line,
+.assistant-step-connections--step-dragging .assistant-step-connection-hover-band,
+.assistant-step-connections--step-dragging .assistant-step-connection-hit-area {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.assistant-step-reorder-overlay {
+  inset: 0;
+  overflow: visible;
+  pointer-events: none;
+  position: fixed;
+  z-index: 500;
+}
+
+.assistant-step-reorder-line {
+  fill: none;
+  stroke: var(--bs-dark);
+  stroke-dasharray: 5 6;
+  stroke-linecap: round;
+  stroke-width: 2;
+  opacity: 0.9;
+}
+
 .assistant-step-connection-line {
   fill: none;
   stroke: var(--bs-gray-400);
@@ -761,6 +1409,32 @@ onBeforeUnmount(() => {
   stroke-linecap: round;
   stroke-width: 2;
   animation: assistant-step-connection-flow 1.8s linear infinite;
+  pointer-events: none;
+  transition: stroke 120ms ease-in-out, stroke-width 120ms ease-in-out;
+}
+
+.assistant-step-connection-line--active {
+  stroke: var(--bs-gray-600);
+  stroke-width: 3;
+}
+
+.assistant-step-connection-hover-band {
+  fill: none;
+  pointer-events: none;
+  stroke: rgba(222, 226, 230, 0.95);
+  stroke-linecap: round;
+  stroke-width: 20;
+  opacity: 1;
+  transition: opacity 120ms ease-in-out;
+}
+
+.assistant-step-connection-hit-area {
+  cursor: pointer;
+  fill: none;
+  pointer-events: stroke;
+  stroke: transparent;
+  stroke-width: 18;
+  transition: opacity 120ms ease-in-out;
 }
 
 .assistant-step-inline-add {
@@ -792,7 +1466,7 @@ onBeforeUnmount(() => {
 
 .assistant-step-terminal-add {
   position: absolute;
-  transform: translateX(-50%);
+  transform: translate(-50%, -50%);
   z-index: 3;
 }
 
@@ -805,6 +1479,13 @@ onBeforeUnmount(() => {
   box-shadow: 0 4px 8px -2px rgba(0,0,0,0.1);
   cursor: pointer;
   white-space: nowrap;
+}
+
+.assistant-step-connection-menu {
+  display: block;
+  min-width: 11rem;
+  position: fixed;
+  z-index: 520;
 }
 
 @keyframes assistant-step-connection-flow {
@@ -827,6 +1508,10 @@ onBeforeUnmount(() => {
   &:active {
     cursor: grabbing;
   }
+}
+
+.assistant-step--reordering {
+  transition: transform 0.18s ease-in-out;
 }
 
 .assistant-step-control {
@@ -904,19 +1589,21 @@ onBeforeUnmount(() => {
 .assistant-step-connector {
   background-color: var(--bs-dark);
   border-radius: 0.3rem;
+  cursor: grab;
   height: 0.5rem;
   left: 50%;
-  pointer-events: none;
+  pointer-events: auto;
   position: absolute;
   transform: translateX(-50%);
+  transition: opacity 120ms ease-in-out, box-shadow 120ms ease-in-out, background-color 120ms ease-in-out;
   width: 1rem;
 }
 
 .assistant-step-connector--top {
   opacity: 0;
+  pointer-events: none;
   top: 0;
   transform: translate(-50%, -50%);
-  transition: opacity 120ms ease-in-out;
 }
 
 .assistant-step-connector--bottom {
@@ -925,8 +1612,21 @@ onBeforeUnmount(() => {
 }
 
 .assistant-step:hover .assistant-step-connector--top,
-.assistant-step--has-incoming .assistant-step-connector--top {
+.assistant-step--has-incoming .assistant-step-connector--top,
+.assistant-step-connector--top.assistant-step-connector--active-target,
+.assistant-step-connector--top.assistant-step-connector--drag-source {
   opacity: 1;
+  pointer-events: auto;
+}
+
+.assistant-step-connector--active-target,
+.assistant-step-connector--drag-source {
+  background-color: #3e4756;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.24);
+}
+
+.assistant-step-connector--drag-source {
+  cursor: grabbing;
 }
 
 table {
@@ -995,6 +1695,20 @@ table {
   z-index: 22;
 }
 
+.assistant-step-hover-tooltip {
+  left: 0;
+  position: fixed;
+  right: auto;
+  top: 0;
+  transform: none;
+  white-space: nowrap;
+  z-index: 540;
+}
+
+.assistant-step-hover-tooltip--visible {
+  opacity: 1;
+}
+
 .builder-zoom-tooltip-wrap:hover .builder-zoom-tooltip {
   opacity: 1;
   pointer-events: auto;
@@ -1009,11 +1723,11 @@ table {
 }
 
 .assistant-step-inline-tooltip-wrap .builder-zoom-tooltip {
-  bottom: calc(100% + 0.5rem);
-  left: 50%;
+  bottom: auto;
+  left: calc(100% + 0.5rem);
   right: auto;
-  top: auto;
-  transform: translateX(-50%);
+  top: 50%;
+  transform: translateY(-50%);
 }
 
 .builder-action--zoom-in,
@@ -1050,19 +1764,12 @@ table {
   width: 2.7rem;
 }
 
-.assistant-step-floating-mini-btn--inactive img {
-  opacity: 0.35;
+.assistant-step-floating-mini-btn__icon {
+  transition: transform 120ms ease-in-out;
 }
 
-.assistant-step-floating-mini-btn--inactive .assistant-step-floating-mini-btn__glyph {
-  opacity: 0.35;
-}
-
-.assistant-step-floating-mini-btn__glyph {
-  color: var(--bs-dark);
-  font-size: 1.25rem;
-  font-weight: 600;
-  line-height: 1;
+.assistant-step-floating-mini-btn__icon--collapsed {
+  transform: rotate(180deg);
 }
 
 .add-builder-node {

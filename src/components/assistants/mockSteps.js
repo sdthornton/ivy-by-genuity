@@ -151,7 +151,7 @@ const stepDefinitions = [
     detailsCollapsed: false,
     connections: [3],
     x: 0,
-    y: 60,
+    y: 84,
   },
   {
     id: 3,
@@ -176,7 +176,7 @@ const stepDefinitions = [
     detailsCollapsed: false,
     connections: [4],
     x: 0,
-    y: 120,
+    y: 168,
   },
   {
     id: 4,
@@ -202,7 +202,7 @@ const stepDefinitions = [
     detailsCollapsed: false,
     connections: [],
     x: 0,
-    y: 180,
+    y: 252,
   },
 ];
 

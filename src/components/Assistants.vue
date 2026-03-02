@@ -337,7 +337,7 @@ const onBuilderStepSelect = (nodeId) => {
   align-items: center;
   background-color: white;
   display: flex;
-  height: calc(3.5rem + 1px);
+  height: 3.25rem;
   left: 0;
   padding-left: 4rem;
   position: absolute;
