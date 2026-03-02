@@ -5,8 +5,7 @@
 import interact from "interactjs";
 import { onMounted, onBeforeUnmount, reactive, defineEmits, defineProps, watch, ref, nextTick, computed } from "vue";
 import StepOptionsDropdown from "../shared/StepOptionsDropdown.vue";
-import EditableDetailValue from "../shared/EditableDetailValue.vue";
-import { createBuilderNodeTemplates } from "./mockSteps";
+import { createBuilderNodeTemplates, isStepWarningVisible } from "./mockSteps";
 
 const emit = defineEmits(["toggleSidebar"]);
 
@@ -34,7 +33,7 @@ const panState = reactive({ startX: 0, startY: 0, baseX: 0, baseY: 0 });
 const isPanning = ref(false);
 const isRecentering = ref(false);
 const isReorderingNodes = ref(false);
-const isDraggingStepNode = ref(false);
+const commentComposerInput = ref(null);
 const DEFAULT_ZOOM = 0.875;
 const zoomLevel = ref(DEFAULT_ZOOM);
 const ZOOM_STEP = 0.0625;
@@ -116,6 +115,11 @@ const hiddenDraggedConnectionKey = computed(() => (
   reorderDrag.active && reorderDrag.moved ? reorderDrag.originLineKey : null
 ));
 
+const commentComposer = reactive({
+  nodeId: null,
+  text: "",
+});
+
 function findNodeById(id) {
   return nodes.find(n => String(n.id) === String(id));
 }
@@ -151,10 +155,82 @@ function isActiveConnectionDragTarget(nodeId) {
 
 function toggleEditorComments() {
   showEditorComments.value = !showEditorComments.value;
+  if (!showEditorComments.value) {
+    closeCommentComposer();
+  }
+}
+
+function formatStepDetailValue(value) {
+  const nextValue = String(value ?? "").trim();
+  return nextValue || "-";
+}
+
+function shouldShowStepRowWarning(node, row) {
+  return Boolean(row?.isCode && isStepWarningVisible(node.id, row.dataKey, row.showWarning));
 }
 
 function handleUndoClick() {
   // Placeholder until undo stack behavior is implemented.
+}
+
+function formatCommentStamp(date = new Date()) {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(date);
+}
+
+function openCommentComposer(nodeId) {
+  commentComposer.nodeId = String(nodeId);
+  commentComposer.text = "";
+
+  nextTick(() => {
+    commentComposerInput.value?.focus();
+  });
+}
+
+function closeCommentComposer() {
+  commentComposer.nodeId = null;
+  commentComposer.text = "";
+}
+
+function updateCommentComposerText(event) {
+  commentComposer.text = event.target.value;
+}
+
+function saveComment(nodeId) {
+  const node = findNodeById(nodeId);
+  const nextBody = commentComposer.text.trim();
+  if (!node || !nextBody) {
+    return;
+  }
+
+  if (!Array.isArray(node.comments)) {
+    node.comments = [];
+  }
+
+  node.comments.push({
+    author: "You",
+    body: nextBody,
+    stamp: formatCommentStamp(),
+  });
+
+  closeCommentComposer();
+}
+
+function handleCommentComposerKeydown(event, nodeId) {
+  if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+    event.preventDefault();
+    saveComment(nodeId);
+    return;
+  }
+
+  if (event.key === "Escape") {
+    event.preventDefault();
+    closeCommentComposer();
+  }
 }
 
 function syncViewportSize() {
@@ -634,7 +710,14 @@ function beginReorderDrag(event, nodeId, connectorKind, connectorEl, originLine 
 }
 
 function startReorderDrag(event, nodeId, connectorKind) {
-  beginReorderDrag(event, nodeId, connectorKind, event.currentTarget);
+  const originConnection = getConnectionForConnector(nodeId, connectorKind);
+  const originLine = originConnection ? {
+    key: `${originConnection.sourceId}-${originConnection.targetId}`,
+    sourceId: originConnection.sourceId,
+    targetId: originConnection.targetId,
+  } : null;
+
+  beginReorderDrag(event, nodeId, connectorKind, event.currentTarget, originLine);
 }
 
 function startLineReorderDrag(event, line) {
@@ -756,7 +839,6 @@ onMounted(() => {
     ignoreFrom: ".assistant-step-control, .assistant-step-connector",
     listeners: {
       start() {
-        isDraggingStepNode.value = true;
         hideConnectionHintTooltip();
         closeConnectionMenu();
       },
@@ -775,7 +857,6 @@ onMounted(() => {
         scheduleConnectionLineUpdate();
       },
       end(event) {
-        isDraggingStepNode.value = false;
         const el = event.target;
         const node = findNodeById(el?.dataset?.stepId);
         if (!node) {
@@ -805,11 +886,12 @@ const initialNodeTemplates = createBuilderNodeTemplates();
 const nodes = reactive([]);
 
 function cloneNodeTemplate(node, options = {}) {
-  const { shareData = false } = options;
+  const { shareData = false, shareComments = false } = options;
 
   return {
     ...node,
-    comments: (node.comments || []).map((comment) => ({ ...comment })),
+    comments: shareComments ? node.comments : (node.comments || []).map((comment) => ({ ...comment })),
+    rows: (node.rows || []).map((row) => ({ ...row })),
     data: shareData ? node.data : { ...node.data },
     detailsCollapsed: Boolean(node.detailsCollapsed),
     connections: [...(node.connections || [])],
@@ -883,7 +965,7 @@ watch(
     nodes.splice(0, nodes.length);
     initialNodeTemplates
       .slice(0, Math.max(0, newStep))
-      .forEach((template) => nodes.push(cloneNodeTemplate(template, { shareData: true })));
+      .forEach((template) => nodes.push(cloneNodeTemplate(template, { shareData: true, shareComments: true })));
 
     nextTick(() => scheduleConnectionLineUpdate());
   },
@@ -895,7 +977,6 @@ watch(
 onBeforeUnmount(() => {
   nodeInteraction?.unset();
   nodeInteraction = null;
-  isDraggingStepNode.value = false;
   document.removeEventListener("pointerdown", handleDocumentPointerDown);
   window.removeEventListener("keydown", handleWindowKeyDown);
   window.removeEventListener("resize", handleWindowResize);
@@ -963,7 +1044,6 @@ onBeforeUnmount(() => {
         </Teleport>
         <svg
           class="assistant-step-connections"
-          :class="{ 'assistant-step-connections--step-dragging': isDraggingStepNode }"
           :width="canvasSize.width"
           :height="canvasSize.height"
           overflow="visible"
@@ -1067,9 +1147,13 @@ onBeforeUnmount(() => {
             @click="toggleSidebar(node.id)"
           >
           <div
-            v-if="showEditorComments && node.comments?.length"
-            class="assistant-step-comments"
-            :class="nodeIndex % 2 === 0 ? 'assistant-step-comments--left' : 'assistant-step-comments--right'"
+            v-if="showEditorComments"
+            class="assistant-step-comments assistant-step-control"
+            :class="[
+              nodeIndex % 2 === 0 ? 'assistant-step-comments--left' : 'assistant-step-comments--right',
+              { 'assistant-step-comments--composer-open': commentComposer.nodeId === String(node.id) },
+            ]"
+            @click.stop
           >
             <div
               v-for="(comment, commentIndex) in node.comments"
@@ -1086,6 +1170,50 @@ onBeforeUnmount(() => {
                 Step {{ nodeIndex + 1 }}<template v-if="comment.stamp"> &bull; {{ comment.stamp }}</template>
               </div>
             </div>
+            <div
+              v-if="commentComposer.nodeId === String(node.id)"
+              class="assistant-step-comment-item assistant-step-comment-item--composer"
+            >
+              <div class="assistant-step-comment-compose bg-white border rounded-sm p-2 assistant-step-control">
+                <textarea
+                  ref="commentComposerInput"
+                  class="assistant-step-comment-compose__input form-control form-control-sm true-small assistant-step-control"
+                  rows="3"
+                  placeholder="Add a comment"
+                  :value="commentComposer.text"
+                  @click.stop
+                  @input="updateCommentComposerText"
+                  @keydown="handleCommentComposerKeydown($event, node.id)"
+                />
+                <div class="d-flex justify-content-end gap-1 mt-2">
+                  <button
+                    type="button"
+                    class="btn btn-sm btn-white border rounded-sm true-small assistant-step-control"
+                    @click.stop="closeCommentComposer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    class="btn btn-sm bg-dark text-white rounded-sm true-small assistant-step-control"
+                    :disabled="!commentComposer.text.trim()"
+                    @click.stop="saveComment(node.id)"
+                  >
+                    Add
+                  </button>
+                </div>
+              </div>
+            </div>
+            <button
+              v-if="commentComposer.nodeId !== String(node.id)"
+              type="button"
+              class="assistant-step-comment-add assistant-step-control d-flex align-items-center justify-content-center"
+              :class="{ 'assistant-step-comment-add--centered': node.comments?.length }"
+              aria-label="Add comment"
+              @click.stop="openCommentComposer(node.id)"
+            >
+              <img src="../../assets/comment.svg" width="13" height="13" class="d-block opacity-50">
+            </button>
           </div>
           <div
             class="assistant-step-connector assistant-step-connector--top assistant-step-control"
@@ -1167,14 +1295,25 @@ onBeforeUnmount(() => {
 	              <table class="w-100 table table-borderless table-sm mb-0">
                 <tbody>
                   <tr 
-                    v-for="(value, key) in node.data"
-                    :key="key"
+                    v-for="row in node.rows"
+                    :key="row.key"
                   >
                     <td class="text-muted text-capitalize assistant-step-detail__key">
-                      {{ key }}
+                      <span class="assistant-step-detail__key-label">
+                        <img
+                          v-if="shouldShowStepRowWarning(node, row)"
+                          src="../../assets/warning.svg"
+                          width="12"
+                          height="12"
+                          class="assistant-step-detail__warning"
+                          title="Ivy: It looks like this code won't run as intended."
+                          alt=""
+                        >
+                        <span>{{ row.key }}</span>
+                      </span>
                     </td>
                     <td class="text-end assistant-step-detail__val">
-                      <EditableDetailValue v-model="node.data[key]" />
+                      {{ formatStepDetailValue(node.data[row.dataKey]) }}
                     </td>
                   </tr>
                 </tbody>
@@ -1399,13 +1538,6 @@ onBeforeUnmount(() => {
   position: absolute;
   width: 100%;
   z-index: 1;
-}
-
-.assistant-step-connections--step-dragging .assistant-step-connection-line,
-.assistant-step-connections--step-dragging .assistant-step-connection-hover-band,
-.assistant-step-connections--step-dragging .assistant-step-connection-hit-area {
-  opacity: 0;
-  pointer-events: none;
 }
 
 .assistant-step-reorder-overlay {
@@ -1659,6 +1791,17 @@ table {
   word-break: normal;
 }
 
+.assistant-step-detail__key-label {
+  align-items: center;
+  display: inline-flex;
+  gap: 0.25rem;
+}
+
+.assistant-step-detail__warning {
+  display: block;
+  flex: 0 0 auto;
+}
+
 .assistant-step-detail__val {
   overflow-wrap: break-word;
   vertical-align: top;
@@ -1667,29 +1810,45 @@ table {
 }
 
 .assistant-step-comments {
+  box-sizing: content-box;
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
+  min-height: 1.25rem;
   max-width: 11rem;
   position: absolute;
   top: 0.5rem;
   width: 11rem;
+  z-index: 3;
 }
 
 .assistant-step-comments--left {
-  right: calc(100% + 1.25rem);
+  align-items: flex-end;
+  padding-right: 1.25rem;
+  right: 100%;
 }
 
 .assistant-step-comments--right {
-  left: calc(100% + 1.25rem);
+  align-items: flex-start;
+  left: 100%;
+  padding-left: 1.25rem;
 }
 
 .assistant-step-comment-item {
   position: relative;
+  width: 100%;
 }
 
 .assistant-step-comment-box {
   pointer-events: auto;
+}
+
+.assistant-step-comment-compose {
+  pointer-events: auto;
+}
+
+.assistant-step-comment-compose__input {
+  resize: none;
 }
 
 .assistant-step-comment-box__author {
@@ -1722,6 +1881,35 @@ table {
 .assistant-step-comments--right .assistant-step-comment-box__meta {
   left: calc(100% + 0.45rem);
   text-align: left;
+}
+
+.assistant-step-comment-add {
+  background-color: #fff;
+  border: 1px solid var(--bs-gray-300);
+  border-radius: 999px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+  height: 1.5rem;
+  opacity: 0;
+  padding: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease-in-out, background-color 120ms ease-in-out;
+  width: 1.5rem;
+}
+
+.assistant-step-comment-add:hover {
+  background-color: var(--bs-light);
+}
+
+.assistant-step-comment-add--centered {
+  align-self: center;
+}
+
+.assistant-step:hover .assistant-step-comment-add,
+.assistant-step-comments:hover .assistant-step-comment-add,
+.assistant-step-comments--composer-open .assistant-step-comment-add,
+.assistant-step-comment-add--visible {
+  opacity: 1;
+  pointer-events: auto;
 }
 
 .builder-zoom {

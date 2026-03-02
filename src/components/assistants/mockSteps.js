@@ -226,10 +226,69 @@ const sharedStepData = reactive(
   }, {}),
 );
 
+const sharedStepComments = reactive(
+  stepDefinitions.reduce((acc, step) => {
+    acc[step.id] = cloneComments(step.comments);
+    return acc;
+  }, {}),
+);
+
+const sharedStepWarnings = reactive(
+  stepDefinitions.reduce((acc, step) => {
+    acc[step.id] = step.rows.reduce((rowAcc, row) => {
+      if (row.dataKey) {
+        rowAcc[row.dataKey] = Boolean(row.showWarning);
+      }
+      return rowAcc;
+    }, {});
+    return acc;
+  }, {}),
+);
+
 export const MOCK_STEP_COUNT = stepDefinitions.length;
 
 export function getSharedStepData(stepId) {
   return sharedStepData[stepId] || null;
+}
+
+export function getSharedStepComments(stepId) {
+  return sharedStepComments[stepId] || [];
+}
+
+export function isStepWarningVisible(stepId, dataKey, fallback = false) {
+  if (!dataKey) {
+    return false;
+  }
+
+  const warningState = sharedStepWarnings[stepId];
+  if (warningState && dataKey in warningState) {
+    return Boolean(warningState[dataKey]);
+  }
+
+  return Boolean(fallback);
+}
+
+export function setStepWarningVisible(stepId, dataKey, visible) {
+  if (!dataKey) {
+    return;
+  }
+
+  if (!sharedStepWarnings[stepId]) {
+    sharedStepWarnings[stepId] = reactive({});
+  }
+
+  sharedStepWarnings[stepId][dataKey] = Boolean(visible);
+}
+
+export function applyStepWarningFix(stepId, dataKey) {
+  const stepData = getSharedStepData(stepId);
+  if (!stepData || dataKey !== "code") {
+    return false;
+  }
+
+  stepData.code = "SELECT [User], [AuditValue] FROM [SP GetAudit] WHERE [User] IS NOT NULL AND [AuditValue] >= DATEADD(day, -1, GETUTCDATE())";
+  setStepWarningVisible(stepId, dataKey, false);
+  return true;
 }
 
 export function getSidebarStep(stepId) {
@@ -245,7 +304,7 @@ export function getSidebarStep(stepId) {
     sources: cloneSources(step.sources),
     rows: cloneRows(step.rows),
     data: getSharedStepData(step.id),
-    comments: cloneComments(step.comments),
+    comments: getSharedStepComments(step.id),
     ivySays: step.ivySays,
   };
 }
@@ -256,7 +315,8 @@ export function createBuilderNodeTemplates(stepCount = stepDefinitions.length) {
     type: step.type,
     typeMeta: getStepTypeMeta(step.type),
     title: step.builderTitle || step.title,
-    comments: cloneComments(step.comments),
+    comments: getSharedStepComments(step.id),
+    rows: cloneRows(step.rows),
     data: getSharedStepData(step.id),
     detailsCollapsed: step.detailsCollapsed,
     connections: [...step.connections],

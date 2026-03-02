@@ -2,7 +2,7 @@
 import { ref, computed } from "vue";
 import StepOptionsDropdown from "../shared/StepOptionsDropdown.vue";
 import EditableDetailValue from "../shared/EditableDetailValue.vue";
-import { sourceOptions, getSidebarStep, getSharedStepData } from "./mockSteps";
+import { sourceOptions, getSidebarStep, getSharedStepData, isStepWarningVisible, setStepWarningVisible, applyStepWarningFix } from "./mockSteps";
 
 const props = defineProps({
   selectedStepId: {
@@ -13,20 +13,18 @@ const props = defineProps({
 
 const emit = defineEmits(["close"]);
 
-const showQueryWarning = ref(true);
 const sourceSearch = ref("");
 const activeStep = computed(() => getSidebarStep(props.selectedStepId));
 
 const ignoreQueryWarning = () => {
-  showQueryWarning.value = false;
+  setStepWarningVisible(activeStep.value.id, "code", false);
 };
 
 const fixQueryWarning = () => {
-  const stepData = getSharedStepData(2);
+  const stepData = getSharedStepData(activeStep.value.id);
   if (stepData) {
-    stepData.code = "SELECT [User], [AuditValue] FROM [SP GetAudit] WHERE [User] IS NOT NULL AND [AuditValue] >= DATEADD(day, -1, GETUTCDATE())";
+    applyStepWarningFix(activeStep.value.id, "code");
   }
-  showQueryWarning.value = false;
 };
 </script>
 
@@ -115,7 +113,7 @@ const fixQueryWarning = () => {
               >
                 <td class="query-key-cell">
                   <span class="query-key-label">
-                    <span v-if="row.isCode && row.showWarning && showQueryWarning" class="query-warning-wrap">
+                    <span v-if="row.isCode && isStepWarningVisible(activeStep.id, row.dataKey, row.showWarning)" class="query-warning-wrap">
                       <button
                         type="button"
                         class="query-warning-trigger"
