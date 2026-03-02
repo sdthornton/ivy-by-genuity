@@ -5,6 +5,7 @@
 import interact from "interactjs";
 import { onMounted, onBeforeUnmount, reactive, defineEmits, defineProps, watch, ref, nextTick, computed } from "vue";
 import StepOptionsDropdown from "../shared/StepOptionsDropdown.vue";
+import EditableDetailValue from "../shared/EditableDetailValue.vue";
 import { createBuilderNodeTemplates } from "./mockSteps";
 
 const emit = defineEmits(["toggleSidebar"]);
@@ -36,7 +37,7 @@ const isReorderingNodes = ref(false);
 const isDraggingStepNode = ref(false);
 const DEFAULT_ZOOM = 0.875;
 const zoomLevel = ref(DEFAULT_ZOOM);
-const ZOOM_STEP = 0.1;
+const ZOOM_STEP = 0.0625;
 const MIN_ZOOM = 0.5;
 const MAX_ZOOM = 2;
 const RECENTER_TRANSITION_MS = 160;
@@ -803,10 +804,13 @@ const initialNodeTemplates = createBuilderNodeTemplates();
 
 const nodes = reactive([]);
 
-function cloneNodeTemplate(node) {
+function cloneNodeTemplate(node, options = {}) {
+  const { shareData = false } = options;
+
   return {
     ...node,
-    data: { ...node.data },
+    comments: (node.comments || []).map((comment) => ({ ...comment })),
+    data: shareData ? node.data : { ...node.data },
     detailsCollapsed: Boolean(node.detailsCollapsed),
     connections: [...(node.connections || [])],
   };
@@ -879,7 +883,7 @@ watch(
     nodes.splice(0, nodes.length);
     initialNodeTemplates
       .slice(0, Math.max(0, newStep))
-      .forEach((template) => nodes.push(cloneNodeTemplate(template)));
+      .forEach((template) => nodes.push(cloneNodeTemplate(template, { shareData: true })));
 
     nextTick(() => scheduleConnectionLineUpdate());
   },
@@ -1049,7 +1053,7 @@ onBeforeUnmount(() => {
 
         <TransitionGroup name="nodes">
           <div
-            v-for="node in nodes"
+            v-for="(node, nodeIndex) in nodes"
             :key="node.id"
             class="assistant-step border rounded bg-white"
             :class="{
@@ -1062,6 +1066,27 @@ onBeforeUnmount(() => {
             :style="{ transform: `translate3d(${node.x}px, ${node.y}px, 0)`}"
             @click="toggleSidebar(node.id)"
           >
+          <div
+            v-if="showEditorComments && node.comments?.length"
+            class="assistant-step-comments"
+            :class="nodeIndex % 2 === 0 ? 'assistant-step-comments--left' : 'assistant-step-comments--right'"
+          >
+            <div
+              v-for="(comment, commentIndex) in node.comments"
+              :key="`${node.id}-comment-${commentIndex}`"
+              class="assistant-step-comment-item"
+            >
+              <div class="assistant-step-comment-box bg-iceberg-blue border rounded-sm p-2 true-small text-info-emphasis">
+                <div class="assistant-step-comment-box__body">
+                  <span class="assistant-step-comment-box__author fw-semibold">{{ comment.author }}:</span>
+                  <span>{{ comment.body }}</span>
+                </div>
+              </div>
+              <div class="assistant-step-comment-box__meta smallest text-info-emphasis">
+                Step {{ nodeIndex + 1 }}<template v-if="comment.stamp"> &bull; {{ comment.stamp }}</template>
+              </div>
+            </div>
+          </div>
           <div
             class="assistant-step-connector assistant-step-connector--top assistant-step-control"
             :class="{
@@ -1078,13 +1103,12 @@ onBeforeUnmount(() => {
             @click.stop
           />
 	          <div
-	            v-show="showEditorComments"
-	            class="add-comment-to-step bg-white px-2.5 py-2.5 rounded-circle d-flex align-items-center justify-content-center"
+	            class="assistant-step-header px-2.5 py-2.5 d-flex align-items-center justify-content-start"
+	            :class="{
+	              'border-bottom': !node.detailsCollapsed,
+	              'assistant-step-header--collapsed': node.detailsCollapsed,
+	            }"
 	          >
-	            <img src="../../assets/comment.svg" width="18" height="18" class="d-block">
-	          </div>
-	
-	          <div class="assistant-step-header border-bottom px-2.5 py-2.5 d-flex align-items-center justify-content-start">
 	            <div
 	              v-if="node.typeMeta"
 	              style="border-radius: 0.25rem;"
@@ -1102,7 +1126,20 @@ onBeforeUnmount(() => {
 	            <h6 class="mb-0 me-2">
 	              {{  node.title }}
 	            </h6>
-            <img src="../../assets/edit.svg" width="12" height="12" class="opacity-25 me-3">
+	            <button
+	              type="button"
+	              class="assistant-step-header-toggle assistant-step-control me-2"
+	              aria-label="Toggle step details"
+	              @click.stop="toggleNodeDetails(node.id)"
+	            >
+	              <img
+	                src="../../assets/arrow-down-b.svg"
+	                width="11"
+	                height="11"
+	                class="assistant-step-details-caret"
+	                :class="{ 'assistant-step-details-caret--collapsed': node.detailsCollapsed }"
+	              >
+	            </button>
 	            <StepOptionsDropdown
 	              class="assistant-step-menu ms-auto"
 	              placement="bottom-end"
@@ -1122,26 +1159,12 @@ onBeforeUnmount(() => {
                 <button type="button" class="dropdown-item" @click.stop="duplicateStep(node.id); close()">Duplicate Step</button>
                 <button type="button" class="dropdown-item" @click.stop="removeAllConnections(node.id); close()">Remove Connections</button>
                 <button type="button" class="dropdown-item" @click.stop="deleteStep(node.id); close()">Delete Step</button>
-              </template>
-            </StepOptionsDropdown>
-          </div>
-          <div class="assistant-step-details">
-            <button
-              type="button"
-              class="assistant-step-details-toggle assistant-step-control px-2.5 pt-2 pb-1"
-              @click.stop="toggleNodeDetails(node.id)"
-            >
-              <span>Details</span>
-              <img
-                src="../../assets/arrow-down-b.svg"
-                width="11"
-                height="11"
-                class="assistant-step-details-caret"
-                :class="{ 'assistant-step-details-caret--collapsed': node.detailsCollapsed }"
-              >
-            </button>
-            <div v-show="!node.detailsCollapsed" class="assistant-step-details-content px-2.5 pb-2 not-as-small text-black">
-              <table class="w-100 table table-borderless table-sm mb-0">
+	              </template>
+	            </StepOptionsDropdown>
+	          </div>
+	          <div class="assistant-step-details">
+	            <div v-show="!node.detailsCollapsed" class="assistant-step-details-content px-2.5 pb-2 not-as-small text-black">
+	              <table class="w-100 table table-borderless table-sm mb-0">
                 <tbody>
                   <tr 
                     v-for="(value, key) in node.data"
@@ -1151,7 +1174,7 @@ onBeforeUnmount(() => {
                       {{ key }}
                     </td>
                     <td class="text-end assistant-step-detail__val">
-                      {{ value }}
+                      <EditableDetailValue v-model="node.data[key]" />
                     </td>
                   </tr>
                 </tbody>
@@ -1312,7 +1335,7 @@ onBeforeUnmount(() => {
             width="14"
             height="14"
             class="d-block assistant-step-floating-mini-btn__icon"
-            :class="{ 'assistant-step-floating-mini-btn__icon--collapsed': areAllDetailsCollapsed }"
+            :class="{ 'assistant-step-floating-mini-btn__icon--collapsed': !areAllDetailsCollapsed }"
             aria-hidden="true"
           >
         </button>
@@ -1522,6 +1545,22 @@ onBeforeUnmount(() => {
   min-height: 2.5rem;
 }
 
+.assistant-step-header--collapsed {
+  border-bottom-left-radius: 0.5rem;
+  border-bottom-right-radius: 0.5rem;
+}
+
+.assistant-step-header-toggle {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: 0.25rem;
+  display: inline-flex;
+  justify-content: center;
+  line-height: 0;
+  padding: 0.125rem;
+}
+
 .assistant-step-menu {
   position: relative;
 }
@@ -1547,30 +1586,10 @@ onBeforeUnmount(() => {
   min-width: 12.5rem;
 }
 
-.assistant-step-details-toggle {
-  align-items: center;
-  background: transparent;
-  border: 0;
-  color: var(--bs-gray-600);
-  display: flex;
-  font-size: 0.625rem;
-  font-weight: 500;
-  justify-content: space-between;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  width: 100%;
-}
-
 .assistant-step-details {
-  background-color: transparent;
   border-bottom-left-radius: 0.5rem;
   border-bottom-right-radius: 0.5rem;
   overflow: hidden;
-  transition: background-color 120ms ease-in-out;
-}
-
-.assistant-step-details:hover {
-  background-color: var(--bs-gray-100);
 }
 
 .assistant-step-details-content {
@@ -1635,33 +1654,74 @@ table {
 }
 
 .assistant-step-detail__key {
+  overflow-wrap: normal;
   white-space: nowrap;
-  width: 1%;
+  word-break: normal;
 }
 
 .assistant-step-detail__val {
-  max-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  width: 100%;
+  overflow-wrap: break-word;
+  vertical-align: top;
+  white-space: normal;
+  word-break: normal;
 }
 
-.add-comment-to-step {
-  box-shadow: 0 2px 2px 0 rgba(0,0,0,0.14), 0 3px 1px -2px rgba(0,0,0,0.12), 0 1px 5px 0 rgba(0,0,0,0.20);
-  opacity: 0;
+.assistant-step-comments {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-width: 11rem;
   position: absolute;
-  right: 100%;
+  top: 0.5rem;
+  width: 11rem;
+}
+
+.assistant-step-comments--left {
+  right: calc(100% + 1.25rem);
+}
+
+.assistant-step-comments--right {
+  left: calc(100% + 1.25rem);
+}
+
+.assistant-step-comment-item {
+  position: relative;
+}
+
+.assistant-step-comment-box {
+  pointer-events: auto;
+}
+
+.assistant-step-comment-box__author {
+  margin-right: 0.2rem;
+}
+
+.assistant-step-comment-box__body {
+  line-height: 1.35;
+}
+
+.assistant-step-comment-box__meta {
+  opacity: 0;
+  pointer-events: none;
+  position: absolute;
   top: 50%;
-  transform: translate(-1.5rem, -50%);
+  transition: opacity 120ms ease-in-out;
+  transform: translateY(-50%);
+  white-space: nowrap;
+}
 
-  img {
-    transform: translateY(14%);
-  }
+.assistant-step-comment-item:hover .assistant-step-comment-box__meta {
+  opacity: 0.5;
+}
 
-  .assistant-step:hover & {
-    opacity: 1;
-  }
+.assistant-step-comments--left .assistant-step-comment-box__meta {
+  right: calc(100% + 0.45rem);
+  text-align: right;
+}
+
+.assistant-step-comments--right .assistant-step-comment-box__meta {
+  left: calc(100% + 0.45rem);
+  text-align: left;
 }
 
 .builder-zoom {

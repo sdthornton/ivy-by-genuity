@@ -11,6 +11,7 @@ import StepOptionsDropdown from "./shared/StepOptionsDropdown.vue";
 import { MOCK_STEP_COUNT } from "./assistants/mockSteps";
 import iconClock from "../assets/clock.svg";
 import iconStar from "../assets/star.svg";
+import iconStop from "../assets/stop.svg";
 import { ref, watch, nextTick, onMounted, onBeforeUnmount, computed } from "vue";
 
 // Most of this is mock work to demo the chat response and scroll functionality
@@ -27,18 +28,29 @@ const userStep1 = ref(null);
 const ivyStep1 = ref(null);
 const userStep2 = ref(null);
 const ivyStep2 = ref(null);
-const DEFAULT_TRIGGER_OPTION = { key: "weekdays", label: "Weekdays at 9:00 am", pillLabel: "Weekdays at 9:00 am", icon: iconClock, iconClass: "opacity-50" };
+const DEFAULT_TRIGGER_OPTION = { key: "weekdays", label: "Weekdays at 9:00 am", pillLabel: "Weekdays at 9:00am", icon: iconClock, iconClass: "opacity-50" };
+const NO_TRIGGER_OPTION = { key: "none", label: "No trigger", icon: iconStop, iconClass: "opacity-50" };
 const selectedHeaderTrigger = ref(PREVIEW_ALL_MESSAGES ? { ...DEFAULT_TRIGGER_OPTION } : null);
 
 const headerTriggerOptions = [
-  { key: "every-day", label: "Every day", pillLabel: "Every day at 9:00 am", icon: iconClock, iconClass: "opacity-50" },
-  { key: "every-week", label: "Every week", pillLabel: "Every week on Monday", icon: iconClock, iconClass: "opacity-50" },
-  { key: "every-month", label: "Every month", pillLabel: "Every month on the 1st", icon: iconClock, iconClass: "opacity-50" },
+  { key: "every-day", label: "Every day", pillLabel: "Every day at 9am", icon: iconClock, iconClass: "opacity-50" },
+  { key: "weekdays", label: "Weekdays", pillLabel: "Weekdays at 9am", icon: iconClock, iconClass: "opacity-50" },
+  { key: "every-week", label: "Every week", pillLabel: "Every week on Monday at 9am", icon: iconClock, iconClass: "opacity-50" },
+  { key: "every-month", label: "Every month", pillLabel: "Every month on the 1st at 9am", icon: iconClock, iconClass: "opacity-50" },
   { key: "custom", label: "Custom Timing", pillLabel: "Custom schedule", icon: iconClock, iconClass: "opacity-50" },
-  { key: "event", label: "When an event occurs", pillLabel: "When an event occurs", icon: iconStar, iconClass: "" },
+  { key: "event", label: "When an event occurs", pillLabel: "When an event occurs", icon: iconStar, iconClass: "opacity-50" },
+  NO_TRIGGER_OPTION,
+];
+const pageMoreOptions = [
+  "Settings",
+  "Permissions",
+  "Sharing",
+  "Clone",
 ];
 
-const hasConfiguredHeaderTrigger = computed(() => Boolean(selectedHeaderTrigger.value));
+const hasConfiguredHeaderTrigger = computed(() => (
+  Boolean(selectedHeaderTrigger.value && selectedHeaderTrigger.value.key !== NO_TRIGGER_OPTION.key)
+));
 const headerTriggerLabel = computed(() => selectedHeaderTrigger.value?.pillLabel || "Draft, Not Scheduled");
 
 const selectHeaderTrigger = (option, close) => {
@@ -195,12 +207,14 @@ const onBuilderStepSelect = (nodeId) => {
             @click="selectHeaderTrigger(option, close)"
           >
             <img
+              v-if="option.icon"
               :src="option.icon"
               width="14"
               height="14"
               class="me-2 flex-shrink-0"
               :class="option.iconClass"
             >
+            <span v-else class="me-2 d-inline-block flex-shrink-0" style="width: 14px; height: 14px;" aria-hidden="true" />
             {{ option.label }}
           </button>
         </template>
@@ -218,9 +232,29 @@ const onBuilderStepSelect = (nodeId) => {
           <img src="../assets/checkmark.svg" height="14" width="14" class="me-2 opacity-5 invert-to-white">
           Save Assistant
         </button>
-        <button class="btn btn-sm reduced px-2.5 rounded-sm d-inline-flex align-items-center" style="margin-right: -0.5rem;">
-          <img src="../assets/ellipses.svg" height="24" width="24">
-        </button>
+        <StepOptionsDropdown placement="bottom-end" menu-class="page-header-more-menu">
+          <template #trigger>
+            <button
+              type="button"
+              class="btn btn-sm reduced px-2.5 rounded-sm d-inline-flex align-items-center"
+              style="margin-right: -0.5rem;"
+              aria-label="More options"
+            >
+              <img src="../assets/ellipses.svg" height="24" width="24" style="transform: rotate(90deg);">
+            </button>
+          </template>
+          <template #menu="{ close }">
+            <button
+              v-for="option in pageMoreOptions"
+              :key="option"
+              type="button"
+              class="dropdown-item text-start"
+              @click="close()"
+            >
+              {{ option }}
+            </button>
+          </template>
+        </StepOptionsDropdown>
       </span>
     </ContentHeader>
       
@@ -232,7 +266,7 @@ const onBuilderStepSelect = (nodeId) => {
       />
       <article 
         v-if="showSidebar"
-        class="col-auto side-content bg-white"
+        class="col-auto px-0 side-content bg-white"
       >
         <Step2Info :selected-step-id="selectedSidebarStepId" @close="showSidebar = false" />
       </article>
@@ -390,6 +424,17 @@ const onBuilderStepSelect = (nodeId) => {
 }
 
 :deep(.header-trigger-menu) .dropdown-item {
+  background: transparent;
+  border: 0;
+  width: 100%;
+}
+
+:deep(.page-header-more-menu) {
+  min-width: 12rem;
+  padding: 0.35rem 0;
+}
+
+:deep(.page-header-more-menu) .dropdown-item {
   background: transparent;
   border: 0;
   width: 100%;

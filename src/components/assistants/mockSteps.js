@@ -1,3 +1,4 @@
+import { reactive } from "vue";
 import iconCalendar from "../../assets/sim-ai/calendar.svg";
 import iconLookup from "../../assets/sim-ai/lookup.svg";
 import iconCode from "../../assets/sim-ai/code.svg";
@@ -108,9 +109,9 @@ const stepDefinitions = [
     title: "Every Morning",
     sources: [],
     rows: [
-      { key: "Frequency", value: "Once Daily" },
-      { key: "Time", value: "09:00 am" },
-      { key: "Timezone", value: "CST" },
+      { key: "Frequency", dataKey: "frequency" },
+      { key: "Time", dataKey: "time" },
+      { key: "Timezone", dataKey: "timezone" },
     ],
     comments: [
       { author: "Ivy", body: "Schedule is set for weekday mornings.", stamp: "Feb 26, 8:57 AM" },
@@ -135,8 +136,8 @@ const stepDefinitions = [
     pill: "Data Source(s)",
     sources: [{ label: "SharePoint", icon: sharepointLogo }],
     rows: [
-      { key: "Source Table/List", value: "SP GetAudit" },
-      { key: "Code", isCode: true, showWarning: true },
+      { key: "Source Table/List", dataKey: "list" },
+      { key: "Code", dataKey: "code", isCode: true, showWarning: true },
     ],
     comments: [
       { author: "Ivy", body: "Using the SP GetAudit list as the source.", stamp: "Feb 26, 9:02 AM" },
@@ -159,9 +160,9 @@ const stepDefinitions = [
     title: "Prune Audit Data",
     sources: [],
     rows: [
-      { key: "Operation", value: "Delete old audit records" },
-      { key: "Target", value: "SP GetAudit" },
-      { key: "Code", isCode: true, code: "DELETE FROM [SP GetAudit] WHERE [Created] < DATEADD(day, -7, GETUTCDATE())", showWarning: false },
+      { key: "Operation", dataKey: "operation" },
+      { key: "Target", dataKey: "target" },
+      { key: "Code", dataKey: "code", isCode: true, showWarning: false },
     ],
     comments: [
       { author: "Ivy", body: "This cleanup keeps the list focused on recent activity.", stamp: "Feb 26, 9:05 AM" },
@@ -185,9 +186,9 @@ const stepDefinitions = [
     pill: "Ivy Action",
     sources: [],
     rows: [
-      { key: "Action", value: "Send Daily Audit Summary" },
-      { key: "Channel", value: "Email" },
-      { key: "Recipients", value: "Security Team" },
+      { key: "Action", dataKey: "action" },
+      { key: "Channel", dataKey: "channel" },
+      { key: "Recipients", dataKey: "recipients" },
     ],
     comments: [
       { author: "Ivy", body: "This action will send an email digest.", stamp: "Feb 26, 9:06 AM" },
@@ -218,22 +219,35 @@ function cloneSources(sources) {
   return sources.map((source) => ({ ...source }));
 }
 
+const sharedStepData = reactive(
+  stepDefinitions.reduce((acc, step) => {
+    acc[step.id] = { ...step.builderData };
+    return acc;
+  }, {}),
+);
+
 export const MOCK_STEP_COUNT = stepDefinitions.length;
 
-export function createSidebarStepMap() {
-  return stepDefinitions.reduce((acc, step) => {
-    const typeMeta = getStepTypeMeta(step.type);
-    acc[step.id] = {
-      pill: step.pill || typeMeta.label,
-      typeMeta,
-      title: step.title,
-      sources: cloneSources(step.sources),
-      rows: cloneRows(step.rows),
-      comments: cloneComments(step.comments),
-      ivySays: step.ivySays,
-    };
-    return acc;
-  }, {});
+export function getSharedStepData(stepId) {
+  return sharedStepData[stepId] || null;
+}
+
+export function getSidebarStep(stepId) {
+  const selectedId = Number(stepId);
+  const step = stepDefinitions.find((definition) => definition.id === selectedId) || stepDefinitions[1];
+  const typeMeta = getStepTypeMeta(step.type);
+
+  return {
+    id: step.id,
+    pill: step.pill || typeMeta.label,
+    typeMeta,
+    title: step.title,
+    sources: cloneSources(step.sources),
+    rows: cloneRows(step.rows),
+    data: getSharedStepData(step.id),
+    comments: cloneComments(step.comments),
+    ivySays: step.ivySays,
+  };
 }
 
 export function createBuilderNodeTemplates(stepCount = stepDefinitions.length) {
@@ -242,7 +256,8 @@ export function createBuilderNodeTemplates(stepCount = stepDefinitions.length) {
     type: step.type,
     typeMeta: getStepTypeMeta(step.type),
     title: step.builderTitle || step.title,
-    data: { ...step.builderData },
+    comments: cloneComments(step.comments),
+    data: getSharedStepData(step.id),
     detailsCollapsed: step.detailsCollapsed,
     connections: [...step.connections],
     x: step.x,

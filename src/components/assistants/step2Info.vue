@@ -1,7 +1,8 @@
 <script setup>
 import { ref, computed } from "vue";
 import StepOptionsDropdown from "../shared/StepOptionsDropdown.vue";
-import { sourceOptions, createSidebarStepMap } from "./mockSteps";
+import EditableDetailValue from "../shared/EditableDetailValue.vue";
+import { sourceOptions, getSidebarStep, getSharedStepData } from "./mockSteps";
 
 const props = defineProps({
   selectedStepId: {
@@ -13,19 +14,18 @@ const props = defineProps({
 const emit = defineEmits(["close"]);
 
 const showQueryWarning = ref(true);
-const queryCode = ref("GET foo.bar");
 const sourceSearch = ref("");
-
-const stepMap = createSidebarStepMap();
-
-const activeStep = computed(() => stepMap[props.selectedStepId] || stepMap[2]);
+const activeStep = computed(() => getSidebarStep(props.selectedStepId));
 
 const ignoreQueryWarning = () => {
   showQueryWarning.value = false;
 };
 
 const fixQueryWarning = () => {
-  queryCode.value = "SELECT [User], [AuditValue] FROM [SP GetAudit] WHERE [User] IS NOT NULL AND [AuditValue] >= DATEADD(day, -1, GETUTCDATE())";
+  const stepData = getSharedStepData(2);
+  if (stepData) {
+    stepData.code = "SELECT [User], [AuditValue] FROM [SP GetAudit] WHERE [User] IS NOT NULL AND [AuditValue] >= DATEADD(day, -1, GETUTCDATE())";
+  }
   showQueryWarning.value = false;
 };
 </script>
@@ -34,7 +34,7 @@ const fixQueryWarning = () => {
   <div class="step2-info-panel d-flex flex-column h-100">
     <button
       type="button"
-      class="step2-info-close-btn btn btn-sm btn-white d-flex align-items-center justify-content-center"
+      class="step2-info-close-btn btn btn-sm btn-white rounded-circle d-flex align-items-center justify-content-center"
       aria-label="Close step details"
       @click="emit('close')"
     >
@@ -107,22 +107,21 @@ const fixQueryWarning = () => {
 
         <div class="mt-4 w-100">
           <h6 class="fw-medium mb-1">Details</h6>
-          <table class="table table-striped w-100 not-as-small mb-0">
+          <table class="table table-striped w-100 not-as-small mb-0 step2-info-details-table">
             <tbody>
               <tr
                 v-for="row in activeStep.rows"
                 :key="row.key"
               >
-                <td>{{ row.key }}</td>
-                <td :class="{ 'query-code-cell': row.isCode }">
-                  <template v-if="row.isCode">
-                    <div v-if="row.showWarning && showQueryWarning" class="query-warning-wrap">
+                <td class="query-key-cell">
+                  <span class="query-key-label">
+                    <span v-if="row.isCode && row.showWarning && showQueryWarning" class="query-warning-wrap">
                       <button
                         type="button"
                         class="query-warning-trigger"
                         aria-label="Ivy warning: It looks like this code won't run as intended."
                       >
-                        <img src="../../assets/warning.svg" width="14" height="14" alt="">
+                        <img src="../../assets/warning.svg" width="20" height="20" alt="Ivy found an issue in how this might run.">
                       </button>
                       <div class="query-warning-tooltip true-small" role="tooltip">
                         <p class="query-warning-copy mb-1">Ivy: It looks like this code won't run as intended.</p>
@@ -143,12 +142,16 @@ const fixQueryWarning = () => {
                           </button>
                         </div>
                       </div>
-                    </div>
-                    <code>{{ row.code || queryCode }}</code>
-                  </template>
-                  <template v-else>
-                    {{ row.value }}
-                  </template>
+                    </span>
+                    <span>{{ row.key }}</span>
+                  </span>
+                </td>
+                <td :class="{ 'query-code-cell': row.isCode }">
+                  <EditableDetailValue
+                    v-model="activeStep.data[row.dataKey]"
+                    align="start"
+                    :multiline="row.isCode"
+                  />
                 </td>
               </tr>
             </tbody>
@@ -227,6 +230,22 @@ const fixQueryWarning = () => {
   position: relative;
 }
 
+.step2-info-details-table td {
+  vertical-align: top;
+  white-space: normal;
+}
+
+.step2-info-details-table td:first-child {
+  overflow-wrap: normal;
+  white-space: nowrap;
+  word-break: normal;
+}
+
+.step2-info-details-table td:last-child {
+  overflow-wrap: break-word;
+  word-break: normal;
+}
+
 .source-picker-trigger {
   border-color: var(--bs-gray-300) !important;
 }
@@ -294,14 +313,20 @@ const fixQueryWarning = () => {
   margin-top: 0.35rem;
 }
 
-.query-code-cell {
-  position: relative;
+.query-key-cell {
+  white-space: nowrap;
+}
+
+.query-key-label {
+  align-items: center;
+  display: inline-flex;
+  gap: 0.3rem;
 }
 
 .query-warning-wrap {
-  position: absolute;
-  right: 0.45rem;
-  top: 0.45rem;
+  display: inline-flex;
+  line-height: 0;
+  position: relative;
   z-index: 6;
 }
 
@@ -323,7 +348,7 @@ const fixQueryWarning = () => {
   padding: 0.35rem 0.5rem;
   pointer-events: none;
   position: absolute;
-  right: 0;
+  left: 0;
   top: 100%;
   transform: translateY(-2px);
   transition: opacity 120ms ease, transform 120ms ease;
