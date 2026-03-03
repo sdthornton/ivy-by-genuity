@@ -8,29 +8,23 @@ import ChatBox from "./shared/ChatBox.vue";
 import Step2Info  from "./assistants/step2Info.vue";
 import AssistantBuilder from "./assistants/AssistantBuilder.vue";
 import StepOptionsDropdown from "./shared/StepOptionsDropdown.vue";
-import { MOCK_STEP_COUNT } from "./assistants/mockSteps";
 import iconClock from "../assets/clock.svg";
 import iconStar from "../assets/star.svg";
 import iconStop from "../assets/stop.svg";
-import { ref, watch, nextTick, onMounted, onBeforeUnmount, computed } from "vue";
+import { ref, nextTick, onMounted, onBeforeUnmount, computed } from "vue";
 
-// Most of this is mock work to demo the chat response and scroll functionality
-
-const PREVIEW_ALL_MESSAGES = true; // temporary visual-tuning mode
-const buildStep = ref(PREVIEW_ALL_MESSAGES ? MOCK_STEP_COUNT : 0);
-const showSidebar = ref(PREVIEW_ALL_MESSAGES);
-const selectedSidebarStepId = ref(2);
-const assistantTitle = ref(PREVIEW_ALL_MESSAGES ? "SharePoint Audit" : "New Assistant");
-const chatContent = ref(null);
+const buildStep = ref(0);
+const showSidebar = ref(false);
+const selectedSidebarStepId = ref(1);
+const assistantTitle = ref("New Assistant");
 const conversationContent = ref(null);
 const conversationScroller = ref(null);
-const userStep1 = ref(null);
-const ivyStep1 = ref(null);
-const userStep2 = ref(null);
-const ivyStep2 = ref(null);
 const DEFAULT_TRIGGER_OPTION = { key: "weekdays", label: "Weekdays at 9:00 am", pillLabel: "Weekdays at 9:00am", icon: iconClock, iconClass: "opacity-50" };
 const NO_TRIGGER_OPTION = { key: "none", label: "No trigger", icon: iconStop, iconClass: "opacity-50" };
-const selectedHeaderTrigger = ref(PREVIEW_ALL_MESSAGES ? { ...DEFAULT_TRIGGER_OPTION } : null);
+const selectedHeaderTrigger = ref(null);
+const conversationStageIndex = ref(0);
+const isConversationBusy = ref(false);
+let activeTypewriterController = null;
 
 const headerTriggerOptions = [
   { key: "every-day", label: "Every day", pillLabel: "Every day at 9am", icon: iconClock, iconClass: "opacity-50" },
@@ -58,88 +52,177 @@ const selectHeaderTrigger = (option, close) => {
   close();
 };
 
-watch(buildStep, async (newStep) => {
-  if (PREVIEW_ALL_MESSAGES) return;
+const INTRO_MESSAGE = `
+  <p>Hi! I'm here to help you build your assistant. You can still build out your flow on your own, but you can also chat with me and I'll automatically build things out for you to review.</p>
+`;
 
-  if (newStep === 0) {
-    assistantTitle.value = "New Assistant";
-  } else if (newStep >= 1) {
-    assistantTitle.value = "SharePoint Audit";
-    if (!selectedHeaderTrigger.value) {
-      selectedHeaderTrigger.value = { ...DEFAULT_TRIGGER_OPTION };
-    }
-  }
+const conversationStages = [
+  {
+    user: "I want an assistant that sends a daily summary of recent SharePoint audit activity.",
+    ivy: `
+      <p>Good direction. I can help you build that out step by step.</p>
+      <p>First, what should we call the assistant, and should it run every weekday or every single day?</p>
+    `,
+  },
+  {
+    user: "Call it SharePoint Audit and run it every weekday at 9:00 am.",
+    ivy: `
+      <p>Perfect. I set the assistant name and added a weekday morning schedule.</p>
+      <p>Next, tell me where the audit data lives so I can wire up the lookup step.</p>
+    `,
+    state: {
+      assistantTitle: "SharePoint Audit",
+      buildStep: 1,
+      selectedSidebarStepId: 1,
+      selectedHeaderTrigger: DEFAULT_TRIGGER_OPTION,
+      showSidebar: true,
+    },
+  },
+  {
+    user: 'Use the SharePoint list named "SP GetAudit".',
+    ivy: `
+      <p>Added. I'm pulling from the <strong>SP GetAudit</strong> list now.</p>
+      <p>I also set up the lookup so we can focus the flow on recent audit activity. Do you want me to clean up anything older than a week after the lookup runs?</p>
+    `,
+    state: {
+      buildStep: 2,
+      selectedSidebarStepId: 2,
+      showSidebar: true,
+    },
+  },
+  {
+    user: "Yes. Delete anything older than seven days after the lookup runs.",
+    ivy: `
+      <p>Done. I added a code step to prune old audit data after the lookup completes.</p>
+      <p>Last piece: where should the final summary go once the list is ready?</p>
+    `,
+    state: {
+      buildStep: 3,
+      selectedSidebarStepId: 3,
+      showSidebar: true,
+    },
+  },
+  {
+    user: "Email the daily audit summary to the Security Team.",
+    ivy: `
+      <p>Done. I added the final Ivy action to email the summary to the Security Team.</p>
+      <p>Your full flow is ready for review: schedule it, pull the SharePoint audit list, prune older items, then send the summary.</p>
+    `,
+    state: {
+      buildStep: 4,
+      selectedSidebarStepId: 4,
+      showSidebar: true,
+    },
+  },
+];
 
-  if (newStep === 1) {
-    await nextTick();
-    
-    const userChat = userStep1.value.cloneNode(true);
-    userChat.classList.remove("d-none");
-    conversationContent.value.appendChild(userChat);
-    
-    await nextTick();
-
-    const ivyChat = ivyStep1.value.cloneNode(true);
-    const ivyChatContent = ivyChat.innerHTML;
-    ivyChat.innerHTML = "";
-    ivyChat.classList.remove("d-none");
-    conversationContent.value.appendChild(ivyChat);
-    await typewriter(ivyChat, ivyChatContent);
-  }
-
-  if (newStep === 2) {
-    const { paddingTop, paddingBottom } = getComputedStyle(conversationScroller.value);
-    const extraHeight = chatContent.value.offsetHeight - parseInt(paddingBottom, 10) - parseInt(paddingTop, 10);
-    conversationContent.value.style.minHeight = `${conversationContent.value.offsetHeight + extraHeight}px`;
-
-    await nextTick();
-
-    const userChat = userStep2.value.cloneNode(true);
-    userChat.classList.remove("d-none");
-    conversationContent.value.appendChild(userChat);
-    
-    await nextTick();
-
-    const ivyChat = ivyStep2.value.cloneNode(true);
-    const ivyChatContent = ivyChat.innerHTML;
-    ivyChat.innerHTML = "";
-    ivyChat.classList.remove("d-none");
-    conversationContent.value.appendChild(ivyChat);
-    await typewriter(ivyChat, ivyChatContent);
-  }
-});
-
-
-let chatScrollEl, scrollObserver;
-
-const appendAllMessages = () => {
-  const content = conversationContent.value;
-  if (!content) return;
-
-  [userStep1, ivyStep1, userStep2, ivyStep2].forEach((tpl) => {
-    if (!tpl?.value) return;
-    const message = tpl.value.cloneNode(true);
-    message.classList.remove("d-none");
-    content.appendChild(message);
-  });
-};
-
-onMounted(async () => {
-  if (PREVIEW_ALL_MESSAGES) {
-    await nextTick();
-    appendAllMessages();
+function scrollConversationToBottom() {
+  const scroller = conversationScroller.value;
+  if (!scroller) {
     return;
   }
 
-  chatScrollEl = conversationScroller.value;
-  scrollObserver = new MutationObserver(() => {
-    chatScrollEl.scrollTop = chatScrollEl.scrollHeight;
-  });
-  scrollObserver.observe(chatScrollEl, { childList: true, subtree: true });
+  scroller.scrollTop = scroller.scrollHeight;
+}
+
+function appendUserMessage(text) {
+  const content = conversationContent.value;
+  if (!content) {
+    return;
+  }
+
+  const article = document.createElement("article");
+  article.className = "user-chat-bubble rounded bg-iceberg-blue px-3 py-2 mb-4";
+  article.textContent = text;
+  content.appendChild(article);
+  scrollConversationToBottom();
+}
+
+async function appendIvyMessage(markup) {
+  const content = conversationContent.value;
+  if (!content) {
+    return;
+  }
+
+  const article = document.createElement("article");
+  article.className = "assistant-chat-message mb-4";
+  content.appendChild(article);
+  scrollConversationToBottom();
+
+  const controller = new AbortController();
+  activeTypewriterController?.abort();
+  activeTypewriterController = controller;
+
+  try {
+    await typewriter(article, markup, {
+      clearElementFirst: true,
+      onUpdate: scrollConversationToBottom,
+      signal: controller.signal,
+    });
+  } catch (error) {
+    if (error?.name !== "AbortError") {
+      throw error;
+    }
+  } finally {
+    if (activeTypewriterController === controller) {
+      activeTypewriterController = null;
+    }
+  }
+
+  scrollConversationToBottom();
+}
+
+function applyConversationState(state = {}) {
+  if (typeof state.buildStep === "number") {
+    buildStep.value = state.buildStep;
+  }
+
+  if ("assistantTitle" in state) {
+    assistantTitle.value = state.assistantTitle;
+  }
+
+  if (typeof state.selectedSidebarStepId === "number") {
+    selectedSidebarStepId.value = state.selectedSidebarStepId;
+  }
+
+  if ("showSidebar" in state) {
+    showSidebar.value = state.showSidebar;
+  }
+
+  if ("selectedHeaderTrigger" in state) {
+    selectedHeaderTrigger.value = state.selectedHeaderTrigger ? { ...state.selectedHeaderTrigger } : null;
+  }
+}
+
+async function advanceConversation() {
+  if (isConversationBusy.value || conversationStageIndex.value >= conversationStages.length) {
+    return;
+  }
+
+  const stage = conversationStages[conversationStageIndex.value];
+  isConversationBusy.value = true;
+
+  try {
+    appendUserMessage(stage.user);
+    await appendIvyMessage(stage.ivy);
+    applyConversationState(stage.state);
+    conversationStageIndex.value += 1;
+  } finally {
+    isConversationBusy.value = false;
+  }
+}
+
+async function initializeConversation() {
+  await nextTick();
+  await appendIvyMessage(INTRO_MESSAGE);
+};
+
+onMounted(async () => {
+  await initializeConversation();
 });
 
 onBeforeUnmount(() => { 
-  scrollObserver?.disconnect();
+  activeTypewriterController?.abort();
 });
 
 const onBuilderStepSelect = (nodeId) => {
@@ -150,7 +233,7 @@ const onBuilderStepSelect = (nodeId) => {
 </script> 
 
 <template>
-  <section class="left-content d-flex flex-column" ref="chatContent">
+  <section class="left-content d-flex flex-column">
     <div class="small-chat-header border-bottom pe-4 mb-4">
       <h5 class="mb-0 mr-2 d-flex align-items-center fw-normal lead">
         <!-- <img src="../assets/nav-chat.svg" class="me-2 opacity-50" width="16" height="16"> -->
@@ -166,7 +249,7 @@ const onBuilderStepSelect = (nodeId) => {
       <ChatBox 
         class="w-100"
         :show-quick-actions="false" 
-        @click="!PREVIEW_ALL_MESSAGES && (buildStep += 1)"
+        @click="advanceConversation"
       />
     </div>
   </section>
@@ -272,32 +355,6 @@ const onBuilderStepSelect = (nodeId) => {
       </article>
     </div>
   </section>
-
-  <!-- A bunch of mock content templates below -->
-  <article ref="userStep1" class="d-none user-chat-bubble rounded px-3 py-2 reduced mb-4">
-    I'd like to make an assistant that sends me a daily list of my SharePoint audit items.
-  </article>
-
-  <article ref="ivyStep1" class="d-none">
-    <p>Got it — you want an automation that, <strong>every day</strong>, sends you a list of <strong>any SharePoint audit items</strong>. Let’s make it happen.</p>
-    <p>First, I want to make sure we’re talking about the same “audit items.”</p>
-    <h5 class="fw-semibold">Where do these audit items live?</h5>
-    <p>Are your “audit items”:</p>
-    <ul>
-      <li>A <strong>SharePoint List</strong> named something like Audit (custom list your org uses), or</li>
-      <li>A <strong>Microsoft 365 audit log</strong> (that’s a different connector/path), or</li>
-      <li>A <strong>Document Library</strong> where “audit items” are files?</li>
-    </ul>
-    <p>If it’s a SharePoint list, tell me the list name (even roughly), and I’ll assume we’re pulling list rows.</p>
-  </article>
-
-  <article ref="userStep2" class="d-none user-chat-bubble rounded px-3 py-2 reduced my-4">
-    It's a SharePoint list called "SP GetAudit".
-  </article>
-
-  <article ref="ivyStep2" class="d-none">
-    <p>Great! I'll adjust the builder to pull from the "SP GetAudit" list. I'll also set it to pull any items created yesterday, since you mentioned you want a daily list. Does that sound right?</p>
-  </article>
 </template>
 
 <style lang="scss" scoped>

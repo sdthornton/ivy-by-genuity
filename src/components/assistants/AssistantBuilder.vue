@@ -41,6 +41,7 @@ const MIN_ZOOM = 0.5;
 const MAX_ZOOM = 2;
 const RECENTER_TRANSITION_MS = 160;
 const REORDER_TRANSITION_MS = 180;
+const DEFAULT_TERMINAL_SEGMENT_LENGTH = 42;
 
 const reorderDrag = reactive({
   active: false,
@@ -768,7 +769,7 @@ function updateConnectionLines() {
     const source = anchors.get(String(node.id));
     if (!source) return;
 
-    node.connections?.forEach((targetId) => {
+    (node.connections || []).forEach((targetId) => {
       const target = anchors.get(String(targetId));
       if (!target) return;
 
@@ -788,7 +789,13 @@ function updateConnectionLines() {
 
   connectionLines.value = lines;
 
-  const terminalNodes = nodes.filter((node) => !(node.connections || []).length);
+  const terminalSegmentLength = lines.length
+    ? lines.reduce((sum, line) => sum + Math.abs(line.midY - line.y1), 0) / lines.length
+    : DEFAULT_TERMINAL_SEGMENT_LENGTH;
+
+  const terminalNodes = nodes.filter((node) => (
+    !(node.connections || []).some((targetId) => anchors.has(String(targetId)))
+  ));
   terminalAddControls.value = terminalNodes
     .map((node) => {
       const anchor = anchors.get(String(node.id));
@@ -796,7 +803,7 @@ function updateConnectionLines() {
         return null;
       }
 
-      const top = anchor.bottomY + 28;
+      const top = anchor.bottomY + terminalSegmentLength;
 
       return {
         key: `terminal-add-${node.id}`,
@@ -1313,7 +1320,9 @@ onBeforeUnmount(() => {
                       </span>
                     </td>
                     <td class="text-end assistant-step-detail__val">
-                      {{ formatStepDetailValue(node.data[row.dataKey]) }}
+                      <div class="assistant-step-detail__val-text">
+                        {{ formatStepDetailValue(node.data[row.dataKey]) }}
+                      </div>
                     </td>
                   </tr>
                 </tbody>
@@ -1805,6 +1814,24 @@ table {
 .assistant-step-detail__val {
   overflow-wrap: break-word;
   vertical-align: top;
+  white-space: normal;
+  word-break: normal;
+}
+
+.assistant-step-detail__val-text {
+  display: block;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  display: -webkit-box;
+  line-clamp: 3;
+  line-height: 1.35;
+  max-height: calc(1.35em * 3);
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  overflow-wrap: break-word;
+  text-align: right;
+  text-overflow: ellipsis;
   white-space: normal;
   word-break: normal;
 }

@@ -114,7 +114,6 @@ const stepDefinitions = [
       { key: "Timezone", dataKey: "timezone" },
     ],
     comments: [
-      { author: "Ivy", body: "Schedule is set for weekday mornings.", stamp: "Feb 26, 8:57 AM" },
       { author: "You", body: "Keep this at 9:00 am local time.", stamp: "Feb 26, 8:59 AM" },
     ],
     ivySays: "This step triggers the assistant each weekday morning at 9:00 am.",
@@ -140,7 +139,6 @@ const stepDefinitions = [
       { key: "Code", dataKey: "code", isCode: true, showWarning: true },
     ],
     comments: [
-      { author: "Ivy", body: "Using the SP GetAudit list as the source.", stamp: "Feb 26, 9:02 AM" },
       { author: "You", body: "Confirm this should run every weekday morning.", stamp: "Feb 26, 9:05 AM" },
     ],
     ivySays: 'This step pulls your SharePoint data for recent users from the "SP GetAudit" list.',
@@ -165,7 +163,6 @@ const stepDefinitions = [
       { key: "Code", dataKey: "code", isCode: true, showWarning: false },
     ],
     comments: [
-      { author: "Ivy", body: "This cleanup keeps the list focused on recent activity.", stamp: "Feb 26, 9:05 AM" },
       { author: "You", body: "Delete anything older than one week.", stamp: "Feb 26, 9:06 AM" },
     ],
     ivySays: "This code step removes SharePoint audit rows older than seven days.",
@@ -191,7 +188,6 @@ const stepDefinitions = [
       { key: "Recipients", dataKey: "recipients" },
     ],
     comments: [
-      { author: "Ivy", body: "This action will send an email digest.", stamp: "Feb 26, 9:06 AM" },
       { author: "You", body: "Use this as the final delivery step.", stamp: "Feb 26, 9:07 AM" },
     ],
     ivySays: "This action step sends the summarized audit result to your configured recipients.",
