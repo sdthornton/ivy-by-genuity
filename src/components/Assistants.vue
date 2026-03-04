@@ -5,18 +5,28 @@
 import typewriter from "../utils/typewriter";
 import ContentHeader from "./shared/ContentHeader.vue";
 import ChatBox from "./shared/ChatBox.vue";
-import Step2Info  from "./assistants/step2Info.vue";
+import StepInfo  from "./assistants/StepInfo.vue";
 import AssistantBuilder from "./assistants/AssistantBuilder.vue";
+import AssistantSettingsPanel from "./assistants/AssistantSettingsPanel.vue";
 import StepOptionsDropdown from "./shared/StepOptionsDropdown.vue";
 import iconClock from "../assets/clock.svg";
 import iconStar from "../assets/star.svg";
 import iconStop from "../assets/stop.svg";
-import { ref, nextTick, onMounted, onBeforeUnmount, computed } from "vue";
+import { ref, nextTick, onMounted, onBeforeUnmount, computed, reactive } from "vue";
 
 const buildStep = ref(0);
 const showSidebar = ref(false);
 const selectedSidebarStepId = ref(1);
-const assistantTitle = ref("New Assistant");
+const assistantSettings = reactive({
+  title: "New Assistant",
+  description: "",
+  creator: "You",
+  ownerTeam: "Security Team",
+  permissions: "Workspace editors",
+  status: "Draft",
+  category: "security",
+  updatedAt: "Mar 3, 9:00am",
+});
 const conversationContent = ref(null);
 const conversationScroller = ref(null);
 const DEFAULT_TRIGGER_OPTION = { key: "weekdays", label: "Weekdays at 9:00 am", pillLabel: "Weekdays at 9:00am", icon: iconClock, iconClass: "opacity-50" };
@@ -39,8 +49,15 @@ const pageMoreOptions = [
   "Settings",
   "Permissions",
   "Sharing",
-  "Clone",
+  "Make a Copy",
 ];
+
+const assistantTitle = computed({
+  get: () => assistantSettings.title || "New Assistant",
+  set: (value) => {
+    assistantSettings.title = value || "";
+  },
+});
 
 const hasConfiguredHeaderTrigger = computed(() => (
   Boolean(selectedHeaderTrigger.value && selectedHeaderTrigger.value.key !== NO_TRIGGER_OPTION.key)
@@ -72,6 +89,7 @@ const conversationStages = [
     `,
     state: {
       assistantTitle: "SharePoint Audit",
+      assistantDescription: "Send a weekday summary of recent SharePoint audit activity from SharePoint.",
       buildStep: 1,
       selectedSidebarStepId: 1,
       selectedHeaderTrigger: DEFAULT_TRIGGER_OPTION,
@@ -110,6 +128,7 @@ const conversationStages = [
     `,
     state: {
       buildStep: 4,
+      assistantDescription: "Build a weekday SharePoint audit summary by scheduling the flow, pulling SP GetAudit data, pruning anything older than seven days, and emailing the Security Team.",
       selectedSidebarStepId: 4,
       showSidebar: true,
     },
@@ -179,6 +198,10 @@ function applyConversationState(state = {}) {
 
   if ("assistantTitle" in state) {
     assistantTitle.value = state.assistantTitle;
+  }
+
+  if ("assistantDescription" in state) {
+    assistantSettings.description = state.assistantDescription;
   }
 
   if (typeof state.selectedSidebarStepId === "number") {
@@ -254,73 +277,78 @@ const onBuilderStepSelect = (nodeId) => {
     </div>
   </section>
   <section class="main-content d-flex flex-column">
-    <ContentHeader>
-      <span class="mx-3 text-secondary reduced">&rsaquo;</span>
-      <span class="fw-medium">{{ assistantTitle }}</span>
-      <img src="../assets/edit.svg" height="12" width="12" class="ms-2 opacity-25">
-      <StepOptionsDropdown class="mx-4" placement="bottom-start" menu-class="header-trigger-menu">
-        <template #trigger>
-          <span
-            class="header-trigger-pill rounded-sm true-small fw-normal d-inline-flex align-items-center justify-content-center"
-            :class="hasConfiguredHeaderTrigger ? 'header-trigger-pill--configured text-white' : 'header-trigger-pill--draft bg-secondary-subtle text-secondary'"
-          >
-            <img
-              v-if="hasConfiguredHeaderTrigger"
-              :src="selectedHeaderTrigger?.icon || iconClock"
-              width="16"
-              height="16"
-              class="me-1 invert-to-white"
+    <ContentHeader class="assistant-page-header">
+      <div class="assistant-header-primary min-w-0 d-flex align-items-center">
+        <div class="d-flex align-items-center me-4">
+          <span class="mx-3 text-secondary reduced flex-shrink-0">&rsaquo;</span>
+          <span class="assistant-header-title fw-medium text-truncate">{{ assistantTitle }}</span>
+          <img src="../assets/edit.svg" height="12" width="12" class="assistant-header-title-edit ms-2 opacity-25 flex-shrink-0">
+        </div>
+        <StepOptionsDropdown class="assistant-header-trigger" placement="bottom-start" menu-class="header-trigger-menu">
+          <template #trigger>
+            <span
+              class="header-trigger-pill rounded-sm true-small fw-normal d-inline-flex align-items-center justify-content-center"
+              :class="hasConfiguredHeaderTrigger ? 'header-trigger-pill--configured text-white' : 'header-trigger-pill--draft bg-secondary-subtle text-secondary'"
             >
-            <span>{{ headerTriggerLabel }}</span>
-            <img
-              src="../assets/arrow-down-b.svg"
-              width="12"
-              height="12"
-              class="ms-2 header-trigger-pill__arrow"
-              :class="{ 'invert-to-white': hasConfiguredHeaderTrigger }"
+              <img
+                v-if="hasConfiguredHeaderTrigger"
+                :src="selectedHeaderTrigger?.icon || iconClock"
+                width="16"
+                height="16"
+                class="me-1 invert-to-white header-trigger-pill__icon"
+              >
+              <span class="header-trigger-pill__label">{{ headerTriggerLabel }}</span>
+              <img
+                src="../assets/arrow-down-b.svg"
+                width="12"
+                height="12"
+                class="ms-2 header-trigger-pill__arrow"
+                :class="{ 'invert-to-white': hasConfiguredHeaderTrigger }"
+              >
+            </span>
+          </template>
+          <template #menu="{ close }">
+            <button
+              v-for="option in headerTriggerOptions"
+              :key="option.key"
+              type="button"
+              class="dropdown-item text-start d-flex align-items-center"
+              @click="selectHeaderTrigger(option, close)"
             >
-          </span>
-        </template>
-        <template #menu="{ close }">
-          <button
-            v-for="option in headerTriggerOptions"
-            :key="option.key"
-            type="button"
-            class="dropdown-item text-start d-flex align-items-center"
-            @click="selectHeaderTrigger(option, close)"
-          >
-            <img
-              v-if="option.icon"
-              :src="option.icon"
-              width="14"
-              height="14"
-              class="me-2 flex-shrink-0"
-              :class="option.iconClass"
-            >
-            <span v-else class="me-2 d-inline-block flex-shrink-0" style="width: 14px; height: 14px;" aria-hidden="true" />
-            {{ option.label }}
-          </button>
-        </template>
-      </StepOptionsDropdown>
-      <span class="ms-auto">
-        <button class="btn btn-sm reduced px-2.5 rounded-sm me-2 d-inline-flex align-items-center">
-          <img src="../assets/test.svg" height="12" width="12" class="me-2 opacity-50">
-          Test & Preview
+              <img
+                v-if="option.icon"
+                :src="option.icon"
+                width="14"
+                height="14"
+                class="me-2 flex-shrink-0"
+                :class="option.iconClass"
+              >
+              <span v-else class="me-2 d-inline-block flex-shrink-0" style="width: 14px; height: 14px;" aria-hidden="true" />
+              {{ option.label }}
+            </button>
+          </template>
+        </StepOptionsDropdown>
+      </div>
+      <div class="assistant-header-actions d-flex align-items-center flex-shrink-0">
+        <button class="assistant-header-action-btn assistant-header-action-btn--test btn btn-sm btn-white border reduced px-2.5 rounded-sm me-2 d-inline-flex align-items-center">
+          <img src="../assets/test.svg" height="14" width="14" class="assistant-header-action-icon me-2 opacity-75">
+          <span class="assistant-header-action-label assistant-header-action-label--test">Test & Preview</span>
         </button>
-        <button class="btn btn-sm reduced bg-dark-subtle px-2.5 rounded-sm me-3 d-inline-flex align-items-center">
-          <img src="../assets/play.svg" height="12" width="12" class="me-2 opacity-50">
-          Run
+        <button class="assistant-header-action-btn assistant-header-action-btn--run btn btn-sm btn-white border reduced px-2.5 rounded-sm me-3 d-inline-flex align-items-center">
+          <img src="../assets/play.svg" height="14" width="14" class="assistant-header-action-icon me-2 opacity-75">
+          <span class="assistant-header-action-label assistant-header-action-label--run">Run</span>
         </button>
-        <button class="btn btn-sm reduced btn-primary rounded-sm px-3 fw-medium d-inline-flex align-items-center me-2">
-          <img src="../assets/checkmark.svg" height="14" width="14" class="me-2 opacity-5 invert-to-white">
-          Save Assistant
+        <button class="assistant-header-action-btn assistant-header-action-btn--save btn btn-sm true-small btn-primary rounded-sm px-2.5 fw-medium d-inline-flex align-items-center me-2">
+          <img src="../assets/checkmark.svg" height="14" width="14" class="me-2 opacity-75 invert-to-white">
+          <span class="assistant-header-save-label assistant-header-save-label--long">Save Assistant</span>
+          <span class="assistant-header-save-label assistant-header-save-label--short">Save</span>
         </button>
         <StepOptionsDropdown placement="bottom-end" menu-class="page-header-more-menu">
           <template #trigger>
             <button
               type="button"
               class="btn btn-sm reduced px-2.5 rounded-sm d-inline-flex align-items-center"
-              style="margin-right: -0.5rem;"
+              style="margin-right: -1rem;"
               aria-label="More options"
             >
               <img src="../assets/ellipses.svg" height="24" width="24" style="transform: rotate(90deg);">
@@ -338,7 +366,7 @@ const onBuilderStepSelect = (nodeId) => {
             </button>
           </template>
         </StepOptionsDropdown>
-      </span>
+      </div>
     </ContentHeader>
       
     <div class="row mx-0 flex-grow-1 ">
@@ -351,10 +379,18 @@ const onBuilderStepSelect = (nodeId) => {
         v-if="showSidebar"
         class="col-auto px-0 side-content bg-white"
       >
-        <Step2Info :selected-step-id="selectedSidebarStepId" @close="showSidebar = false" />
+        <StepInfo :selected-step-id="selectedSidebarStepId" @close="showSidebar = false" />
       </article>
     </div>
   </section>
+  <aside class="settings-content">
+    <AssistantSettingsPanel
+      :settings="assistantSettings"
+      :trigger-label="headerTriggerLabel"
+      :trigger-configured="hasConfiguredHeaderTrigger"
+      :trigger-icon="selectedHeaderTrigger?.icon || iconClock"
+    />
+  </aside>
 </template>
 
 <style lang="scss" scoped>
@@ -365,15 +401,51 @@ const onBuilderStepSelect = (nodeId) => {
   overflow: hidden;
 }
 
-.left-content {
+:deep(.assistant-page-header) {
+  container-type: inline-size;
+  flex-wrap: nowrap;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.left-content,
+.settings-content {
   background-color: white;
   box-shadow: 0 0 18px -4px rgba(0,0,0,0.15);
-  border-right: 1px solid var(--bs-gray-200);
   height: 100%;
-  overflow: visible;
   position: relative;
-  width: 24rem;
   z-index: 2;
+}
+
+.left-content {
+  border-right: 1px solid var(--bs-gray-200);
+  overflow: visible;
+  width: 24rem;
+}
+
+.settings-content {
+  background-color: none;
+  border-bottom-left-radius: 1rem;
+  border-top-left-radius: 1rem;
+  box-shadow: 0 24px 38px 3px rgba(0,0,0,0.14), 0 9px 46px 8px rgba(0,0,0,0.12), 0 11px 15px -7px rgba(0,0,0,0.20);
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  max-width: 95%;
+  min-width: 0;
+  overflow: hidden;
+  position: fixed;
+  right: 0;
+  top: 0;
+  width: 32rem;
+
+  &:before {
+    background-color: rgba(0,0,0,0.35);
+    content: "";
+    inset: 0;
+    position: fixed;
+    z-index: -1;
+  }
 }
 
 .main-content {
@@ -383,11 +455,39 @@ const onBuilderStepSelect = (nodeId) => {
   //   0px 3.9px 4.4px -1.7px hsl(0deg 0% 0% / 0.11),
   //   0.1px 9.5px 10.7px -2.5px hsl(0deg 0% 0% / 0.11);
   flex: 1;
+  min-width: 0;
   z-index: 1;
 }
 
 .main-content > .row {
   min-height: 0;
+}
+
+.assistant-header-primary {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.assistant-header-title {
+  min-width: 0;
+}
+
+.assistant-header-trigger {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.assistant-header-actions {
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+.assistant-header-action-btn {
+  flex-shrink: 0;
+}
+
+.assistant-header-save-label--short {
+  display: none;
 }
 
 .right-content,
@@ -464,11 +564,18 @@ const onBuilderStepSelect = (nodeId) => {
 .header-trigger-pill {
   cursor: pointer;
   min-height: 1.75rem;
+  min-width: 0;
   padding: 0.25rem 0.5rem;
+  white-space: nowrap;
 }
 
 .header-trigger-pill--configured {
   background-color: rgb(123, 104, 238);
+}
+
+.header-trigger-pill__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .header-trigger-pill__arrow {
@@ -495,5 +602,56 @@ const onBuilderStepSelect = (nodeId) => {
   background: transparent;
   border: 0;
   width: 100%;
+}
+
+@container (max-width: 70rem) {
+  .assistant-header-save-label--long {
+    display: none;
+  }
+
+  .assistant-header-save-label--short {
+    display: inline;
+  }
+}
+
+@container (max-width: 62rem) {
+  .assistant-header-action-label--test,
+  .assistant-header-action-label--run {
+    display: none;
+  }
+
+  .assistant-header-action-btn--test,
+  .assistant-header-action-btn--run {
+    padding-left: 0.5rem !important;
+    padding-right: 0.5rem !important;
+  }
+
+  .assistant-header-action-btn--test .assistant-header-action-icon,
+  .assistant-header-action-btn--run .assistant-header-action-icon {
+    margin-right: 0 !important;
+  }
+}
+
+@container (max-width: 56rem) {
+  .header-trigger-pill {
+    font-size: 0.625rem;
+    min-height: 1.5rem;
+    padding: 0.2rem 0.4rem;
+  }
+
+  .assistant-header-trigger {
+    margin-left: 0.75rem !important;
+  }
+
+  .header-trigger-pill__icon {
+    height: 14px;
+    width: 14px;
+  }
+
+  .header-trigger-pill__arrow {
+    height: 10px;
+    margin-left: 0.35rem !important;
+    width: 10px;
+  }
 }
 </style>

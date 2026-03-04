@@ -118,6 +118,8 @@
   --bs-gray-900: #232B3B;
   --bs-black:    #1D2939;
 
+  --bs-light-rgb: 249, 250, 251;
+
   --bs-heading-color: var(--bs-black);
   --bs-body-color: var(--bs-gray-700);
   --bs-dark: var(--bs-gray-800);
@@ -227,13 +229,64 @@ h5, .h5 {
 }
 
 .bg-loop {
-  background-color: #12B76A;
+  background-color: #12B76A !important;
 }
 
 .bg-alert {
-  background-color: #f3594e;
+  background-color: #f3594e !important;
 }
 
 .bg-ivy {
-  background-color: var(--bs-primary);
+  background-color: var(--bs-primary) !important;
+}
+
+.bg-security {
+  background-color: #FEDF89 !important;
+}
+
+.bg-threats {
+  background-color: #FDDCAB !important;
+}
+
+.bg-activity {
+  background-color: #FECDCA !important;
+}
+
+.bg-monitoring {
+  background-color: #FECDD6 !important;
+}
+
+.bg-backup {
+  background-color: #FCCEEE !important;
+}
+
+.bg-sync {
+  background-color: #D9D6FE !important;
+}
+
+.bg-operations {
+  background-color: #C8CCE5 !important;
+}
+
+.bg-compliance {
+  background-color: #C2D6FF !important;
+}
+
+.bg-access {
+  background-color: #A6F4C5 !important;
+}
+
+.text-avatar {
+  align-items: center;
+  display: inline-flex;
+  font-size: 0.875rem;
+  height: 2.25rem;
+  justify-content: center;
+  width: 2.25rem;
+}
+
+.text-avatar--small {
+  font-size: 0.8125rem;
+  height: 1.5rem;
+  width: 1.5rem;
 }
