@@ -9,6 +9,7 @@ import StepInfo  from "./assistants/StepInfo.vue";
 import AssistantBuilder from "./assistants/AssistantBuilder.vue";
 import AssistantSettingsPanel from "./assistants/AssistantSettingsPanel.vue";
 import StepOptionsDropdown from "./shared/StepOptionsDropdown.vue";
+import { createBuilderNodeTemplates, isStepWarningVisible } from "./assistants/mockSteps";
 import iconClock from "../assets/clock.svg";
 import iconStar from "../assets/star.svg";
 import iconStop from "../assets/stop.svg";
@@ -16,6 +17,7 @@ import { ref, nextTick, onMounted, onBeforeUnmount, computed, reactive } from "v
 
 const buildStep = ref(0);
 const showSidebar = ref(false);
+const showSettingsModal = ref(false);
 const selectedSidebarStepId = ref(1);
 const assistantSettings = reactive({
   title: "New Assistant",
@@ -23,6 +25,15 @@ const assistantSettings = reactive({
   creator: "You",
   ownerTeam: "Security Team",
   permissions: "Workspace editors",
+  permissionLevel: "Read/Write",
+  permissionEntries: [
+    {
+      id: "workspace-editors",
+      label: "Workspace Editors",
+      level: "Read/Write",
+      type: "team",
+    },
+  ],
   status: "Draft",
   category: "security",
   updatedAt: "Mar 3, 9:00am",
@@ -45,13 +56,6 @@ const headerTriggerOptions = [
   { key: "event", label: "When an event occurs", pillLabel: "When an event occurs", icon: iconStar, iconClass: "opacity-50" },
   NO_TRIGGER_OPTION,
 ];
-const pageMoreOptions = [
-  "Settings",
-  "Permissions",
-  "Sharing",
-  "Make a Copy",
-];
-
 const assistantTitle = computed({
   get: () => assistantSettings.title || "New Assistant",
   set: (value) => {
@@ -62,11 +66,52 @@ const assistantTitle = computed({
 const hasConfiguredHeaderTrigger = computed(() => (
   Boolean(selectedHeaderTrigger.value && selectedHeaderTrigger.value.key !== NO_TRIGGER_OPTION.key)
 ));
-const headerTriggerLabel = computed(() => selectedHeaderTrigger.value?.pillLabel || "Draft, Not Scheduled");
+const headerTriggerLabel = computed(() => selectedHeaderTrigger.value?.pillLabel || "Not Scheulded");
+const settingsIvyContent = computed(() => {
+  const description = assistantSettings.description?.trim();
+  const visibleNodes = createBuilderNodeTemplates(buildStep.value);
+  const warningSteps = visibleNodes
+    .filter((node) => node.rows.some((row) => isStepWarningVisible(node.id, row.dataKey, row.showWarning)))
+    .map((node) => node.title);
+
+  let overview = description;
+
+  if (!overview) {
+    if (!visibleNodes.length) {
+      overview = "This assistant is still in draft. It does not have a trigger or flow configured yet.";
+    } else if (visibleNodes.length === 1) {
+      overview = "This assistant currently has a trigger configured, but the rest of the flow is still being built.";
+    } else {
+      overview = `This assistant currently includes ${visibleNodes.length} configured steps in its flow.`;
+    }
+  }
+
+  let issue = "";
+
+  if (warningSteps.length === 1) {
+    issue = `"${warningSteps[0]}" still looks like it may not run as intended.`;
+  } else if (warningSteps.length > 1) {
+    issue = `${warningSteps.length} steps still look like they may not run as intended.`;
+  }
+
+  return { overview, issue };
+});
+
+const updateSelectedTrigger = (option) => {
+  selectedHeaderTrigger.value = option ? { ...option } : null;
+};
 
 const selectHeaderTrigger = (option, close) => {
-  selectedHeaderTrigger.value = { ...option };
+  updateSelectedTrigger(option);
   close();
+};
+
+const openSettingsModal = () => {
+  showSettingsModal.value = true;
+};
+
+const closeSettingsModal = () => {
+  showSettingsModal.value = false;
 };
 
 const INTRO_MESSAGE = `
@@ -343,54 +388,67 @@ const onBuilderStepSelect = (nodeId) => {
           <span class="assistant-header-save-label assistant-header-save-label--long">Save Assistant</span>
           <span class="assistant-header-save-label assistant-header-save-label--short">Save</span>
         </button>
-        <StepOptionsDropdown placement="bottom-end" menu-class="page-header-more-menu">
-          <template #trigger>
-            <button
-              type="button"
-              class="btn btn-sm reduced px-2.5 rounded-sm d-inline-flex align-items-center"
-              style="margin-right: -1rem;"
-              aria-label="More options"
-            >
-              <img src="../assets/ellipses.svg" height="24" width="24" style="transform: rotate(90deg);">
-            </button>
-          </template>
-          <template #menu="{ close }">
-            <button
-              v-for="option in pageMoreOptions"
-              :key="option"
-              type="button"
-              class="dropdown-item text-start"
-              @click="close()"
-            >
-              {{ option }}
-            </button>
-          </template>
-        </StepOptionsDropdown>
+        <button
+          type="button"
+          class="btn btn-sm reduced px-2.5 rounded-sm d-inline-flex align-items-center"
+          style="margin-right: -1rem;"
+          aria-label="Assistant settings"
+          @click="openSettingsModal"
+        >
+          <img src="../assets/ellipses.svg" height="24" width="24" style="transform: rotate(90deg);">
+        </button>
       </div>
     </ContentHeader>
       
-    <div class="row mx-0 flex-grow-1 ">
+    <div
+      class="assistant-main-row row mx-0 flex-grow-1"
+      :class="{ 'assistant-main-row--sidebar-open': showSidebar }"
+    >
       <AssistantBuilder 
-        class="col p-4" 
+        class="assistant-builder-column col p-4" 
         :current-builder-step="buildStep" 
         @toggleSidebar="onBuilderStepSelect"
       />
-      <article 
-        v-if="showSidebar"
-        class="col-auto px-0 side-content bg-white"
+      <article
+        class="assistant-sidebar-column px-0 side-content bg-white"
+        :class="{ 'assistant-sidebar-column--open': showSidebar }"
+        :aria-hidden="!showSidebar"
       >
         <StepInfo :selected-step-id="selectedSidebarStepId" @close="showSidebar = false" />
       </article>
     </div>
   </section>
-  <aside class="settings-content">
-    <AssistantSettingsPanel
-      :settings="assistantSettings"
-      :trigger-label="headerTriggerLabel"
-      :trigger-configured="hasConfiguredHeaderTrigger"
-      :trigger-icon="selectedHeaderTrigger?.icon || iconClock"
-    />
-  </aside>
+  <Teleport to="body">
+    <Transition name="assistant-settings-backdrop">
+      <button
+        v-if="showSettingsModal"
+        type="button"
+        class="settings-modal-backdrop"
+        aria-label="Close assistant settings"
+        @click="closeSettingsModal"
+      />
+    </Transition>
+    <Transition name="assistant-settings-panel">
+      <aside
+        v-if="showSettingsModal"
+        class="settings-content"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Assistant settings"
+      >
+        <AssistantSettingsPanel
+          :settings="assistantSettings"
+          :trigger-label="headerTriggerLabel"
+          :trigger-configured="hasConfiguredHeaderTrigger"
+          :trigger-icon="selectedHeaderTrigger?.icon || iconClock"
+          :trigger-options="headerTriggerOptions"
+          :ivy-content="settingsIvyContent"
+          @select-trigger="updateSelectedTrigger"
+          @close="closeSettingsModal"
+        />
+      </aside>
+    </Transition>
+  </Teleport>
 </template>
 
 <style lang="scss" scoped>
@@ -404,12 +462,14 @@ const onBuilderStepSelect = (nodeId) => {
 :deep(.assistant-page-header) {
   container-type: inline-size;
   flex-wrap: nowrap;
+  height: 3.5rem;
+  max-height: 3.5rem;
+  min-height: 3.5rem;
   min-width: 0;
   overflow: hidden;
 }
 
-.left-content,
-.settings-content {
+.left-content {
   background-color: white;
   box-shadow: 0 0 18px -4px rgba(0,0,0,0.15);
   height: 100%;
@@ -421,31 +481,6 @@ const onBuilderStepSelect = (nodeId) => {
   border-right: 1px solid var(--bs-gray-200);
   overflow: visible;
   width: 24rem;
-}
-
-.settings-content {
-  background-color: none;
-  border-bottom-left-radius: 1rem;
-  border-top-left-radius: 1rem;
-  box-shadow: 0 24px 38px 3px rgba(0,0,0,0.14), 0 9px 46px 8px rgba(0,0,0,0.12), 0 11px 15px -7px rgba(0,0,0,0.20);
-  bottom: 0;
-  display: flex;
-  flex-direction: column;
-  max-width: 95%;
-  min-width: 0;
-  overflow: hidden;
-  position: fixed;
-  right: 0;
-  top: 0;
-  width: 32rem;
-
-  &:before {
-    background-color: rgba(0,0,0,0.35);
-    content: "";
-    inset: 0;
-    position: fixed;
-    z-index: -1;
-  }
 }
 
 .main-content {
@@ -461,6 +496,18 @@ const onBuilderStepSelect = (nodeId) => {
 
 .main-content > .row {
   min-height: 0;
+}
+
+.assistant-main-row {
+  flex-wrap: nowrap;
+  min-height: 0;
+  overflow: hidden;
+  transition: all 0.2s ease-in-out;
+}
+
+.assistant-builder-column {
+  flex: 1 1 auto;
+  min-width: 0;
 }
 
 .assistant-header-primary {
@@ -507,6 +554,27 @@ const onBuilderStepSelect = (nodeId) => {
   min-height: 0;
   overflow: hidden;
   position: relative;
+}
+
+.assistant-sidebar-column {
+  flex: 0 0 0;
+  min-width: 0;
+  opacity: 0;
+  overflow: hidden;
+  pointer-events: none;
+  transform: translateX(100%);
+  transition: all 0.2s ease-in-out;
+  visibility: hidden;
+  width: 0;
+}
+
+.assistant-sidebar-column--open {
+  flex-basis: 22rem;
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(0);
+  visibility: visible;
+  width: 22rem;
 }
 
 .user-chat-bubble {
@@ -598,10 +666,60 @@ const onBuilderStepSelect = (nodeId) => {
   padding: 0.35rem 0;
 }
 
-:deep(.page-header-more-menu) .dropdown-item {
-  background: transparent;
+.settings-modal-backdrop {
+  background-color: rgba(0,0,0,0.35);
   border: 0;
-  width: 100%;
+  inset: 0;
+  padding: 0;
+  position: fixed;
+  z-index: 24;
+}
+
+.settings-content {
+  background-color: transparent;
+  border-bottom-left-radius: 1rem;
+  border-top-left-radius: 1rem;
+  bottom: 0;
+  box-shadow: 0 24px 38px 3px rgba(0,0,0,0.14), 0 9px 46px 8px rgba(0,0,0,0.12), 0 11px 15px -7px rgba(0,0,0,0.20);
+  display: flex;
+  flex-direction: column;
+  max-width: 95%;
+  min-width: 0;
+  overflow: hidden;
+  position: fixed;
+  right: 0;
+  top: 0;
+  width: 32rem;
+  z-index: 25;
+}
+
+.assistant-settings-backdrop-enter-active,
+.assistant-settings-backdrop-leave-active,
+.assistant-settings-panel-enter-active,
+.assistant-settings-panel-leave-active {
+  transition: all 0.2s ease-in-out;
+}
+
+.assistant-settings-backdrop-enter-from,
+.assistant-settings-backdrop-leave-to {
+  opacity: 0;
+}
+
+.assistant-settings-backdrop-enter-to,
+.assistant-settings-backdrop-leave-from {
+  opacity: 1;
+}
+
+.assistant-settings-panel-enter-from,
+.assistant-settings-panel-leave-to {
+  opacity: 0;
+  transform: translateX(100%);
+}
+
+.assistant-settings-panel-enter-to,
+.assistant-settings-panel-leave-from {
+  opacity: 1;
+  transform: translateX(0);
 }
 
 @container (max-width: 70rem) {

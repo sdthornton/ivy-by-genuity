@@ -828,6 +828,8 @@ const scheduleConnectionLineUpdate = () => {
   });
 };
 
+let canvasResizeObserver = null;
+
 const GRID_SIZE = 12;
 function snapToGrid(val, grid = GRID_SIZE) {
   return Math.round(val / grid) * grid;
@@ -883,6 +885,12 @@ onMounted(() => {
   document.addEventListener("pointerdown", handleDocumentPointerDown);
   window.addEventListener("keydown", handleWindowKeyDown);
   window.addEventListener("resize", handleWindowResize);
+  if (typeof ResizeObserver !== "undefined" && canvas.value) {
+    canvasResizeObserver = new ResizeObserver(() => {
+      scheduleConnectionLineUpdate();
+    });
+    canvasResizeObserver.observe(canvas.value);
+  }
   nextTick(() => recenterCanvas());
 });
 
@@ -987,6 +995,8 @@ onBeforeUnmount(() => {
   document.removeEventListener("pointerdown", handleDocumentPointerDown);
   window.removeEventListener("keydown", handleWindowKeyDown);
   window.removeEventListener("resize", handleWindowResize);
+  canvasResizeObserver?.disconnect();
+  canvasResizeObserver = null;
   finishReorderDrag();
   if (lineRaf) cancelAnimationFrame(lineRaf);
   lineRaf = 0;

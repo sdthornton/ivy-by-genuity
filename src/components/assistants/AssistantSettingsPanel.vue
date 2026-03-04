@@ -1,6 +1,9 @@
 <script setup>
-import { computed, onMounted, ref, watch } from "vue";
+import { computed } from "vue";
+import StepOptionsDropdown from "../shared/StepOptionsDropdown.vue";
 import iconClock from "../../assets/clock.svg";
+import iconEyeOpen from "../../assets/eye-open.svg";
+import iconEdit from "../../assets/edit.svg";
 
 const props = defineProps({
   settings: {
@@ -9,7 +12,7 @@ const props = defineProps({
   },
   triggerLabel: {
     type: String,
-    default: "Draft, Not Scheduled",
+    default: "Not Scheulded",
   },
   triggerConfigured: {
     type: Boolean,
@@ -19,13 +22,74 @@ const props = defineProps({
     type: String,
     default: iconClock,
   },
+  triggerOptions: {
+    type: Array,
+    default: () => [],
+  },
+  ivyContent: {
+    type: Object,
+    default: () => ({
+      overview: "",
+      issue: "",
+    }),
+  },
 });
 
-const titleRef = ref(null);
+const emit = defineEmits(["close", "select-trigger"]);
+const categoryOptions = [
+  "security",
+  "threats",
+  "activity",
+  "monitoring",
+  "backup",
+  "sync",
+  "operations",
+  "compliance",
+  "access",
+];
+const permissionAccessOptions = [
+  "Read Only",
+  "Read/Write",
+  "Remove Permissions",
+];
+const PERMISSION_LEVEL_META = {
+  "Read Only": {
+    icon: iconEyeOpen,
+    width: 14,
+    height: 14,
+    className: "",
+  },
+  "Read/Write": {
+    icon: iconEdit,
+    width: 12,
+    height: 12,
+    className: "opacity-75",
+  },
+  "Remove Permissions": {
+    glyph: "×",
+  },
+};
+const CREATOR_AVATAR_COLOR = "#3f51b5";
+const DEFAULT_TEAM_AVATAR_COLOR = "#4caf50";
+const permissionUsers = [
+  { label: "Sarith Rigsby", initials: "SR", color: "#f44336", type: "user" },
+  { label: "Keira Moss", initials: "KM", color: "#03a9f4", type: "user" },
+  { label: "Jordan Lee", initials: "JL", color: "#ff9800", type: "user" },
+];
+const permissionTeams = [
+  { label: "Workspace Editors", color: "#00bcd4", type: "team" },
+  { label: "Security Team", color: "#4caf50", type: "team" },
+  { label: "IT Operations", color: "#673ab7", type: "team" },
+];
 
 const creatorInitials = computed(() => toInitials(props.settings.creator, "Y"));
-const ownerInitials = computed(() => toInitials(props.settings.ownerTeam, "ST"));
-const normalizedTitle = computed(() => props.settings.title?.trim() || "New Assistant");
+const creatorAvatarStyle = computed(() => ({ backgroundColor: CREATOR_AVATAR_COLOR }));
+const ownerTeamAvatarStyle = computed(() => {
+  const matchingTeam = permissionTeams.find((team) => team.label === props.settings.ownerTeam);
+  return {
+    backgroundColor: matchingTeam?.color || DEFAULT_TEAM_AVATAR_COLOR,
+  };
+});
 
 function toInitials(value, fallback) {
   const words = String(value || "")
@@ -43,50 +107,62 @@ function toInitials(value, fallback) {
     .join("");
 }
 
-function syncTitleSurface(value) {
-  if (!titleRef.value) {
-    return;
-  }
-
-  if (document.activeElement === titleRef.value) {
-    return;
-  }
-
-  titleRef.value.textContent = value;
-}
-
-function normalizeTitleText(value) {
+function formatCategoryLabel(value) {
   return String(value || "")
-    .replace(/\s+/g, " ")
-    .trim();
+    .split("-")
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
 }
 
-function onTitleInput(event) {
-  props.settings.title = normalizeTitleText(event.currentTarget.textContent);
+function selectCategory(category, close) {
+  props.settings.category = category;
+  close();
 }
 
-function onTitleBlur(event) {
-  const nextTitle = normalizeTitleText(event.currentTarget.textContent) || "New Assistant";
-  props.settings.title = nextTitle;
-  event.currentTarget.textContent = nextTitle;
+function ensurePermissionEntries() {
+  if (!Array.isArray(props.settings.permissionEntries)) {
+    props.settings.permissionEntries = [];
+  }
 }
 
-function onTitleKeydown(event) {
-  if (event.key !== "Enter") {
+function updatePermissionEntryLevel(entryId, option, close) {
+  ensurePermissionEntries();
+  const entry = props.settings.permissionEntries.find((permissionEntry) => permissionEntry.id === entryId);
+  if (!entry) {
+    close();
     return;
   }
 
-  event.preventDefault();
-  event.currentTarget.blur();
+  entry.level = option;
+  close();
 }
 
-watch(normalizedTitle, (value) => {
-  syncTitleSurface(value);
-}, { immediate: true });
+function selectPermissionPrincipal(item, close) {
+  ensurePermissionEntries();
+  props.settings.permissionEntries.push({
+    id: `${item.type}-${item.label}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    label: item.label,
+    level: "Read Only",
+    type: item.type,
+  });
+  close();
+}
 
-onMounted(() => {
-  syncTitleSurface(normalizedTitle.value);
-});
+function selectTrigger(option, close) {
+  emit("select-trigger", option);
+  close();
+}
+
+function getPermissionLevelMeta(level) {
+  return PERMISSION_LEVEL_META[level] || PERMISSION_LEVEL_META["Read Only"];
+}
+
+function avatarStyle(color) {
+  return {
+    backgroundColor: color,
+  };
+}
 </script>
 
 <template>
@@ -101,135 +177,337 @@ onMounted(() => {
           </p>
         </div>
       </div>
-      <div class="ms-auto">
+      <button
+        type="button"
+        class="assistant-settings-close-btn btn btn-sm btn-white d-flex align-items-center justify-content-center ms-auto"
+        aria-label="Close assistant settings"
+        @click.stop.prevent="emit('close')"
+      >
         &times;
-      </div>
+      </button>
     </header>
 
-    <section class="assistant-settings-body pt-4 px-2.5 mx-4">
-      <div class="d-inline-flex align-items-center justify-content-start gap-2 bg-secondary-subtle rounded-pill px-2 py-1 mb-4">
-        <div 
-          class="d-inline-flex align-items-center rounded-pill px-2 smallest"
-          :class="settings.status === 'Draft' ? 'bg-titan-white text-dark' : 'bg-success text-white'"
-        >
-          {{ settings.status }}
-        </div>
-        <span class="text-body-tertiary smallest mx-1">&bullet;</span>
-        <div class="text-avatar text-avatar--small bg-schedule text-white fw-semibold rounded-circle flex-shrink-0">
-          {{ creatorInitials }}
-        </div>
-        <span class="text-body-tertiary smallest mx-1">&bullet;</span>
-        <div class="smallest text-body-secondary d-inline-flex align-items-center">
-          <img src="../../assets/updated-at.svg" height="12" width="12" class="me-1">
-          <span>{{ settings.updatedAt }}</span>
-        </div>
-        <span class="text-body-tertiary smallest mx-1">&bullet;</span>
-        <div 
-          class="fw-medium true-small text-black text-capitalize rounded-pill px-2 d-inline-flex"
-          :class="`bg-${settings.category}`"
-        >
-          <div class="category-pill-content d-flex align-items-center">
-            <span>{{ settings.category }}</span>
-            <img src="../../assets/arrow-down-b.svg" height="12" width="12" class="ms-2 opacity-75">
+    <div class="assistant-settings-top d-flex flex-column">
+      <section class="assistant-settings-body pt-4 px-2.5 mx-4">
+        <div class="d-inline-flex align-items-center justify-content-start gap-2 border rounded-pill px-2 py-1 mb-4">
+          <div 
+            class="d-inline-flex align-items-center rounded-pill px-2 smallest"
+            :class="settings.status === 'Draft' ? 'bg-secondary-subtle text-dark' : 'bg-success text-white'"
+          >
+            {{ settings.status }}
           </div>
+          <span class="text-body-tertiary smallest mx-1">&bullet;</span>
+          <div
+            class="text-avatar text-avatar--small text-white fw-semibold rounded-circle flex-shrink-0"
+            :style="creatorAvatarStyle"
+          >
+            {{ creatorInitials }}
+          </div>
+          <span class="text-body-tertiary smallest mx-1">&bullet;</span>
+          <div class="smallest text-body-secondary d-inline-flex align-items-center">
+            <img src="../../assets/updated-at.svg" height="12" width="12" class="me-1">
+            <span>{{ settings.updatedAt }}</span>
+          </div>
+          <span class="text-body-tertiary smallest mx-1">&bullet;</span>
+          <StepOptionsDropdown placement="bottom-start" menu-class="assistant-category-menu">
+            <template #trigger>
+              <div 
+                class="fw-medium true-small text-black text-capitalize rounded-pill px-2 d-inline-flex"
+                :class="`bg-category-${settings.category}`"
+              >
+                <div class="category-pill-content d-flex align-items-center">
+                  <span>{{ formatCategoryLabel(settings.category) }}</span>
+                  <img src="../../assets/arrow-down-b.svg" height="12" width="12" class="ms-2 opacity-75">
+                </div>
+              </div>
+            </template>
+            <template #menu="{ close }">
+              <button
+                v-for="category in categoryOptions"
+                :key="category"
+                type="button"
+                class="dropdown-item d-flex align-items-center justify-content-between gap-3 text-start assistant-category-menu__item"
+                @click="selectCategory(category, close)"
+              >
+                <span class="d-inline-flex align-items-center gap-2">
+                  <span
+                    class="assistant-category-menu__swatch rounded-pill"
+                    :class="`bg-category-${category}`"
+                  />
+                  <span>{{ formatCategoryLabel(category) }}</span>
+                </span>
+                <span
+                  v-if="settings.category === category"
+                  class="assistant-category-menu__selected text-body-secondary"
+                >
+                  Current
+                </span>
+              </button>
+            </template>
+          </StepOptionsDropdown>
         </div>
-      </div>
 
-      <div class="mb-4 me-5">
-        <label class="mb-1" for="assistant_settings_title">
-          Title
-        </label>
-        <input
-          ref="titleRef"
-          id="assistant_settings_title"
-          type="text"
-          class="form-control not-as-small"
-          v-model="settings.title"
-        >
-      </div>
-
-      <div class="mb-4">
-        <label class="mb-1" for="assistant_settings_description">
-          Description
-        </label>
-        <textarea
-          id="assistant_settings_description"
-          v-model="settings.description"
-          class="form-control assistant-settings-textarea not-as-small"
-          rows="3"
-          placeholder="Describe what this assistant should do..."
-        />
-      </div>
-
-      <!-- <div class="mb-4">
-        <div class="text-body-secondary mb-1">Created By</div>
-      </div> -->
-
-      <div class="mb-4">
-        <div class="mb-1">
-          Owned By
+        <div class="mb-4 me-5">
+          <label class="mb-1" for="assistant_settings_title">
+            Title
+          </label>
+          <input
+            id="assistant_settings_title"
+            type="text"
+            class="form-control not-as-small"
+            v-model="settings.title"
+          >
         </div>
-        <div class="d-flex align-items-center justify-content-between gap-3">
-          <div class="d-flex align-items-center gap-2 min-w-0">
-            <div class="text-avatar bg-lookup text-white fw-semibold rounded-circle flex-shrink-0">
-              {{ ownerInitials }}
+
+        <div class="mb-4">
+          <label class="mb-1" for="assistant_settings_description">
+            Description
+          </label>
+          <textarea
+            id="assistant_settings_description"
+            v-model="settings.description"
+            class="form-control assistant-settings-textarea not-as-small"
+            rows="3"
+            placeholder="Describe what this assistant should do..."
+          />
+        </div>
+
+        <div class="mb-4">
+          <div class="mb-1">
+            Owned By
+          </div>
+          <div class="d-flex align-items-center justify-content-between gap-3">
+            <div class="d-flex align-items-center gap-2 min-w-0">
+              <div
+                class="text-avatar assistant-settings-team-avatar text-white fw-semibold rounded-circle flex-shrink-0"
+                :style="ownerTeamAvatarStyle"
+              >
+                <img src="../../assets/nav-teams.svg" width="12" height="12" alt="">
+              </div>
+              <div class="fw-medium text-black text-truncate">{{ settings.ownerTeam }}</div>
             </div>
-            <div class="fw-medium text-black text-truncate">{{ settings.ownerTeam }}</div>
           </div>
         </div>
-      </div>
 
-      <div class="mb-4">
-        <div class="mb-1 d-flex">
-          <span class="me-2">Permissions</span>
-          <button class="btn btn-primary btn-sm rounded-circle d-flex align-items-center justify-content-center p-1">
-            <img src="../../assets/plus-round.svg" height="10" width="10" class="d-block invert-to-white">
-          </button>
+        <div class="mb-4">
+          <div class="mb-1 d-flex">
+            <span class="me-2">Permissions</span>
+            <StepOptionsDropdown placement="bottom-start" menu-class="assistant-permission-principal-menu">
+              <template #trigger>
+                <button
+                  type="button"
+                  class="btn btn-primary btn-sm rounded-circle d-flex align-items-center justify-content-center p-1"
+                  aria-label="Add permission"
+                >
+                  <img src="../../assets/plus-round.svg" height="10" width="10" class="d-block invert-to-white">
+                </button>
+              </template>
+              <template #menu="{ close }">
+                <div class="assistant-permission-principal-menu__section-label smallest text-body-secondary pt-1 pb-2">
+                  Users
+                </div>
+                <button
+                  v-for="user in permissionUsers"
+                  :key="user.label"
+                  type="button"
+                  class="dropdown-item text-start d-flex align-items-center gap-2 assistant-permission-principal-menu__item"
+                  @click="selectPermissionPrincipal(user, close)"
+                >
+                  <span
+                    class="text-avatar text-avatar--small text-white fw-semibold rounded-circle flex-shrink-0 assistant-permission-principal-menu__avatar"
+                    :style="avatarStyle(user.color)"
+                  >
+                    {{ user.initials }}
+                  </span>
+                  <span class="flex-grow-1">{{ user.label }}</span>
+                </button>
+                <hr class="assistant-permission-principal-menu__divider my-2 mx-1 border-top border-body-subtle opacity-100">
+                <div class="assistant-permission-principal-menu__section-label smallest text-body-secondary pt-2 pb-2">
+                  Teams
+                </div>
+                <button
+                  v-for="team in permissionTeams"
+                  :key="team.label"
+                  type="button"
+                  class="dropdown-item text-start d-flex align-items-center gap-2 assistant-permission-principal-menu__item"
+                  @click="selectPermissionPrincipal(team, close)"
+                >
+                  <span
+                    class="assistant-permission-principal-menu__avatar assistant-permission-principal-menu__avatar--team rounded-circle d-inline-flex align-items-center justify-content-center flex-shrink-0"
+                    :style="avatarStyle(team.color)"
+                  >
+                    <img src="../../assets/nav-teams.svg" width="12" height="12" alt="">
+                  </span>
+                  <span class="flex-grow-1">{{ team.label }}</span>
+                </button>
+              </template>
+            </StepOptionsDropdown>
+          </div>
+          <div class="d-flex flex-column gap-2">
+            <div
+              v-for="permissionEntry in (settings.permissionEntries || [])"
+              :key="permissionEntry.id"
+              class="d-flex align-items-center justify-content-between gap-3"
+            >
+              <div class="fw-medium text-black">{{ permissionEntry.label }}</div>
+              <StepOptionsDropdown placement="bottom-end" menu-class="assistant-permissions-menu">
+                <template #trigger>
+                  <span class="smallest text-body-secondary border rounded-pill px-2 py-1 flex-shrink-0 d-inline-flex align-items-center">
+                    <img
+                      v-if="getPermissionLevelMeta(permissionEntry.level).icon"
+                      :src="getPermissionLevelMeta(permissionEntry.level).icon"
+                      :width="getPermissionLevelMeta(permissionEntry.level).width"
+                      :height="getPermissionLevelMeta(permissionEntry.level).height"
+                      class="me-1 flex-shrink-0"
+                      :class="getPermissionLevelMeta(permissionEntry.level).className"
+                      alt=""
+                    >
+                    <span
+                      v-else
+                      class="assistant-permissions-menu__remove-icon me-1 flex-shrink-0 d-inline-flex align-items-center justify-content-center"
+                      aria-hidden="true"
+                    >
+                      {{ getPermissionLevelMeta(permissionEntry.level).glyph }}
+                    </span>
+                    <span>{{ permissionEntry.level }}</span>
+                    <img src="../../assets/arrow-down-b.svg" height="12" width="12" class="ms-1">
+                  </span>
+                </template>
+                <template #menu="{ close }">
+                <button
+                  v-for="option in permissionAccessOptions"
+                  :key="option"
+                  type="button"
+                  class="dropdown-item text-start d-flex align-items-center gap-2 assistant-permissions-menu__item"
+                  @click="updatePermissionEntryLevel(permissionEntry.id, option, close)"
+                >
+                    <img
+                      v-if="getPermissionLevelMeta(option).icon"
+                      :src="getPermissionLevelMeta(option).icon"
+                      :width="getPermissionLevelMeta(option).width"
+                      :height="getPermissionLevelMeta(option).height"
+                      class="flex-shrink-0"
+                      :class="getPermissionLevelMeta(option).className"
+                      alt=""
+                    >
+                    <span
+                      v-else
+                      class="assistant-permissions-menu__remove-icon flex-shrink-0 d-inline-flex align-items-center justify-content-center"
+                      aria-hidden="true"
+                    >
+                      {{ getPermissionLevelMeta(option).glyph }}
+                    </span>
+                    <span>{{ option }}</span>
+                </button>
+              </template>
+            </StepOptionsDropdown>
+          </div>
         </div>
-        <div class="d-flex align-items-center justify-content-between gap-3">
-          <div class="fw-medium text-black">{{ settings.permissions }}</div>
-          <span class="smallest text-body-secondary border rounded-pill px-2 py-1 flex-shrink-0">
-            <span>Read/Write</span>
-            <img src="../../assets/arrow-down-b.svg" height="12" width="12" class="ms-1">
+        </div>
+
+        <div class="mb-0">
+          <div class="mb-1">Trigger</div>
+          <StepOptionsDropdown placement="bottom-start" menu-class="assistant-trigger-menu">
+            <template #trigger>
+              <span
+                class="assistant-settings-trigger-pill header-trigger-pill rounded-sm true-small fw-normal d-inline-flex align-items-center justify-content-center"
+                :class="triggerConfigured ? 'header-trigger-pill--configured text-white' : 'header-trigger-pill--draft bg-secondary-subtle text-secondary'"
+              >
+                <img
+                  v-if="triggerConfigured"
+                  :src="triggerIcon || iconClock"
+                  width="16"
+                  height="16"
+                  class="me-1 invert-to-white header-trigger-pill__icon"
+                  alt=""
+                >
+                <span class="header-trigger-pill__label">{{ triggerLabel }}</span>
+                <img
+                  src="../../assets/arrow-down-b.svg"
+                  width="12"
+                  height="12"
+                  class="ms-2 header-trigger-pill__arrow"
+                  :class="{ 'invert-to-white': triggerConfigured }"
+                  alt=""
+                >
+              </span>
+            </template>
+            <template #menu="{ close }">
+              <button
+                v-for="option in triggerOptions"
+                :key="option.key"
+                type="button"
+                class="dropdown-item text-start d-flex align-items-center assistant-trigger-menu__item"
+                @click="selectTrigger(option, close)"
+              >
+                <img
+                  v-if="option.icon"
+                  :src="option.icon"
+                  width="14"
+                  height="14"
+                  class="me-2 flex-shrink-0"
+                  :class="option.iconClass"
+                  alt=""
+                >
+                <span v-else class="me-2 d-inline-block flex-shrink-0 assistant-trigger-menu__icon-spacer" aria-hidden="true" />
+                <span>{{ option.label }}</span>
+              </button>
+            </template>
+          </StepOptionsDropdown>
+        </div>
+      </section>
+    </div>
+
+    <div class="ivy-says-shell pt-2 bg-light">
+      <div class="ivy-says-sticky text-secondary bg-iceberg-blue p-3 rounded-sm not-as-small mx-4 mb-4">
+        <img src="../../assets/nav-resources-alt.svg" height="16" width="16" class="me-2">
+        <strong>Ivy says:</strong> {{ ivyContent.overview }}
+        <div
+          v-if="ivyContent.issue"
+          class="assistant-settings-ivy-issue d-flex align-items-start mt-2 p-2 rounded-sm bg-warning-subtle"
+        >
+          <img
+            src="../../assets/warning.svg"
+            width="16"
+            height="16"
+            class="assistant-settings-ivy-issue__icon me-2 flex-shrink-0"
+            alt=""
+          >
+          <span>
+            <strong>Potential issue(s):</strong> {{ ivyContent.issue }}
           </span>
         </div>
       </div>
-
-      <!-- <div class="mb-4">
-        <div class="mb-1">
-          Category
-        </div>
-      </div> -->
-
-      <div class="mb-0">
-        <div class="mb-1">Trigger</div>
-        <span
-          class="assistant-settings-trigger-pill header-trigger-pill rounded-sm true-small fw-normal d-inline-flex align-items-center justify-content-center"
-          :class="triggerConfigured ? 'header-trigger-pill--configured text-white' : 'header-trigger-pill--draft bg-secondary-subtle text-secondary'"
-        >
-          <img
-            v-if="triggerConfigured"
-            :src="triggerIcon || iconClock"
-            width="16"
-            height="16"
-            class="me-1 invert-to-white header-trigger-pill__icon"
-            alt=""
-          >
-          <span class="header-trigger-pill__label">{{ triggerLabel }}</span>
-        </span>
-      </div>
-    </section>
+    </div>
   </div>
 </template>
 
 <style lang="scss" scoped>
 .assistant-settings-panel {
   min-height: 0;
+  overflow: hidden;
 }
 
 .assistant-settings-header {
   background-color: white;
   flex: 0 0 auto;
+  position: relative;
+}
+
+.assistant-settings-close-btn {
+  font-size: 1.5rem;
+  height: 2rem;
+  line-height: 1;
+  position: absolute;
+  right: 1rem;
+  top: 1rem;
+  width: 2rem;
+  z-index: 2;
+}
+
+.assistant-settings-top {
+  flex: 1;
+  min-height: 0;
 }
 
 .assistant-settings-body {
@@ -253,6 +531,14 @@ onMounted(() => {
   resize: vertical;
 }
 
+.ivy-says-shell {
+  flex: 0 0 auto;
+}
+
+.assistant-settings-ivy-issue__icon {
+  margin-top: 0.1rem;
+}
+
 .assistant-settings-trigger-pill {
   max-width: 100%;
   min-height: 1.75rem;
@@ -273,6 +559,92 @@ onMounted(() => {
 .category-pill-content {
   mix-blend-mode: darken;
   opacity: 0.65;
+}
+
+.assistant-category-menu__item {
+  background: transparent;
+  border: 0;
+  width: 100%;
+}
+
+.assistant-category-menu__selected {
+  font-size: 0.75rem;
+}
+
+.assistant-category-menu__swatch {
+  display: inline-block;
+  height: 0.875rem;
+  width: 1.5rem;
+}
+
+:deep(.assistant-category-menu) {
+  min-width: 12rem;
+  padding: 0.35rem 0;
+}
+
+.assistant-permissions-menu__item {
+  background: transparent;
+  border: 0;
+  width: 100%;
+}
+
+.assistant-permissions-menu__remove-icon {
+  font-size: 1rem;
+  line-height: 1;
+  width: 14px;
+}
+
+:deep(.assistant-permissions-menu) {
+  min-width: 12rem;
+  padding: 0.35rem 0;
+}
+
+.assistant-permission-principal-menu__item {
+  background: transparent;
+  border: 0;
+  width: 100%;
+}
+
+.assistant-permission-principal-menu__section-label {
+  padding-left: 0.125rem;
+}
+
+.assistant-permission-principal-menu__avatar {
+  height: 1.5rem;
+  width: 1.5rem;
+}
+
+.assistant-settings-team-avatar,
+.assistant-permission-principal-menu__avatar--team {
+  align-items: center;
+  display: inline-flex;
+  justify-content: center;
+}
+
+.assistant-settings-team-avatar img,
+.assistant-permission-principal-menu__avatar--team img {
+  filter: brightness(0) invert(1);
+}
+
+:deep(.assistant-permission-principal-menu) {
+  min-width: 14rem;
+  padding: 0.35rem 0;
+}
+
+.assistant-trigger-menu__item {
+  background: transparent;
+  border: 0;
+  width: 100%;
+}
+
+.assistant-trigger-menu__icon-spacer {
+  height: 14px;
+  width: 14px;
+}
+
+:deep(.assistant-trigger-menu) {
+  min-width: 14rem;
+  padding: 0.65rem;
 }
 
 .form-control {
