@@ -5,12 +5,21 @@
 import interact from "interactjs";
 import { onMounted, onBeforeUnmount, reactive, defineEmits, defineProps, watch, ref, nextTick, computed } from "vue";
 import StepOptionsDropdown from "../shared/StepOptionsDropdown.vue";
-import { createBuilderNodeTemplates, isStepWarningVisible } from "./mockSteps";
+import {
+  createBuilderNodeTemplates,
+  getAddStepMenuGroups,
+  getStartBlockOptions,
+  isStepWarningVisible,
+} from "./mockSteps";
 
-const emit = defineEmits(["toggleSidebar"]);
+const emit = defineEmits(["toggleSidebar", "select-start-block"]);
 
 function toggleSidebar(nodeId) {
   emit("toggleSidebar", nodeId);
+}
+
+function selectStartBlock(mode) {
+  emit("select-start-block", mode);
 }
 
 const props = defineProps({
@@ -18,6 +27,14 @@ const props = defineProps({
     type: Number,
     required: false,
     default: 0,
+  },
+  startBlockMode: {
+    type: String,
+    default: "start",
+  },
+  startTriggerOption: {
+    type: Object,
+    default: null,
   },
 });
 
@@ -34,7 +51,7 @@ const isPanning = ref(false);
 const isRecentering = ref(false);
 const isReorderingNodes = ref(false);
 const commentComposerInput = ref(null);
-const DEFAULT_ZOOM = 0.875;
+const DEFAULT_ZOOM = 1;
 const zoomLevel = ref(DEFAULT_ZOOM);
 const ZOOM_STEP = 0.0625;
 const MIN_ZOOM = 0.5;
@@ -42,6 +59,7 @@ const MAX_ZOOM = 2;
 const RECENTER_TRANSITION_MS = 160;
 const REORDER_TRANSITION_MS = 180;
 const DEFAULT_TERMINAL_SEGMENT_LENGTH = 42;
+const START_LAYOUT_CENTERING_THRESHOLD = 1;
 
 const reorderDrag = reactive({
   active: false,
@@ -98,6 +116,14 @@ const sceneScaleStyle = computed(() => ({
 
 const areAllDetailsCollapsed = computed(() => (
   nodes.length > 0 && nodes.every((node) => node.detailsCollapsed)
+));
+const addStepMenuGroups = computed(() => getAddStepMenuGroups());
+const startBlockOptions = computed(() => getStartBlockOptions());
+const shouldShowFullTerminalAddCard = computed(() => (
+  nodes.length === 1 && Boolean(nodes[0]?.isStartBlock)
+));
+const singleStartTerminalAddControl = computed(() => (
+  shouldShowFullTerminalAddCard.value ? terminalAddControls.value[0] || null : null
 ));
 
 const highlightedConnectionKey = computed(() => {
@@ -167,7 +193,15 @@ function formatStepDetailValue(value) {
 }
 
 function shouldShowStepRowWarning(node, row) {
-  return Boolean(row?.isCode && isStepWarningVisible(node.id, row.dataKey, row.showWarning));
+  return Boolean(row?.isCode && isStepWarningVisible(node.stateKey || node.id, row.dataKey, row.showWarning));
+}
+
+function handleAddStepMenuSelection(item, close) {
+  if (item?.startBlockMode) {
+    selectStartBlock(item.startBlockMode);
+  }
+
+  close();
 }
 
 function handleUndoClick() {
@@ -274,6 +308,7 @@ function recenterCanvas() {
   resetCanvasToBasePoint();
   zoomLevel.value = DEFAULT_ZOOM;
   scheduleConnectionLineUpdate();
+  scheduleSingleStartLayoutCentering();
 }
 
 function setZoom(nextZoom) {
@@ -421,11 +456,6 @@ function openConnectionMenu(sourceId, targetId, clientX, clientY) {
     positionConnectionMenu();
     requestAnimationFrame(positionConnectionMenu);
   });
-}
-
-function openConnectionMenuForLine(event, line) {
-  hoveredConnectionKey.value = line.key;
-  openConnectionMenu(line.sourceId, line.targetId, event.clientX, event.clientY);
 }
 
 function getConnectionForConnector(nodeId, connectorKind) {
@@ -819,6 +849,60 @@ function updateConnectionLines() {
     .filter(Boolean);
 }
 
+function centerSingleStartBlankLayout() {
+  if (!shouldShowFullTerminalAddCard.value) {
+    return;
+  }
+
+  const canvasEl = canvas.value;
+  const startNode = nodes[0];
+  if (!canvasEl || !startNode) {
+    return;
+  }
+
+  const nodeEl = canvasEl.querySelector(`.assistant-step[data-step-id="${String(startNode.id)}"]`);
+  const terminalCardEl = canvasEl.querySelector(".assistant-step-terminal-add--card");
+  if (!(nodeEl instanceof HTMLElement) || !(terminalCardEl instanceof HTMLElement)) {
+    return;
+  }
+
+  const canvasRect = canvasEl.getBoundingClientRect();
+  const nodeRect = nodeEl.getBoundingClientRect();
+  const terminalRect = terminalCardEl.getBoundingClientRect();
+
+  const targetCenterX = canvasRect.left + (canvasRect.width / 2);
+  const currentCenterX = nodeRect.left + (nodeRect.width / 2);
+  const targetCenterY = canvasRect.top + (canvasRect.height / 2);
+  const currentCenterY = (nodeRect.top + terminalRect.bottom) / 2;
+
+  const deltaX = targetCenterX - currentCenterX;
+  const deltaY = targetCenterY - currentCenterY;
+  const scale = zoomLevel.value || 1;
+
+  if (
+    Math.abs(deltaX) < START_LAYOUT_CENTERING_THRESHOLD
+    && Math.abs(deltaY) < START_LAYOUT_CENTERING_THRESHOLD
+  ) {
+    return;
+  }
+
+  startNode.x += deltaX / scale;
+  startNode.y += deltaY / scale;
+  scheduleConnectionLineUpdate();
+}
+
+function scheduleSingleStartLayoutCentering() {
+  if (!shouldShowFullTerminalAddCard.value) {
+    return;
+  }
+
+  requestAnimationFrame(() => {
+    nextTick(() => {
+      centerSingleStartBlankLayout();
+    });
+  });
+}
+
 let lineRaf = 0;
 const scheduleConnectionLineUpdate = () => {
   if (lineRaf) cancelAnimationFrame(lineRaf);
@@ -896,8 +980,6 @@ onMounted(() => {
 
 /* BEGIN MOCK DATA */
 
-const initialNodeTemplates = createBuilderNodeTemplates();
-
 const nodes = reactive([]);
 
 function cloneNodeTemplate(node, options = {}) {
@@ -963,7 +1045,17 @@ function removeAllConnections(nodeId) {
 
 function deleteStep(nodeId) {
   const selectedId = String(nodeId);
-  const index = nodes.findIndex((node) => String(node.id) === selectedId);
+  const node = findNodeById(selectedId);
+  if (!node) return;
+
+  if (node.isStartBlock) {
+    if (props.startBlockMode !== "start") {
+      selectStartBlock("start");
+    }
+    return;
+  }
+
+  const index = nodes.findIndex((currentNode) => String(currentNode.id) === selectedId);
   if (index === -1) return;
 
   nodes.splice(index, 1);
@@ -974,16 +1066,24 @@ function deleteStep(nodeId) {
   nextTick(() => scheduleConnectionLineUpdate());
 }
 
-watch(
-  () => props.currentBuilderStep,
-  (newStep) => {
-    nodes.splice(0, nodes.length);
-    initialNodeTemplates
-      .slice(0, Math.max(0, newStep))
-      .forEach((template) => nodes.push(cloneNodeTemplate(template, { shareData: true, shareComments: true })));
+function rebuildNodes() {
+  const nextTemplates = createBuilderNodeTemplates(props.currentBuilderStep, {
+    startBlockMode: props.startBlockMode,
+    startTriggerOption: props.startTriggerOption,
+  });
 
-    nextTick(() => scheduleConnectionLineUpdate());
-  },
+  nodes.splice(0, nodes.length);
+  nextTemplates.forEach((template) => nodes.push(cloneNodeTemplate(template, { shareData: true, shareComments: true })));
+
+  nextTick(() => {
+    scheduleConnectionLineUpdate();
+    scheduleSingleStartLayoutCentering();
+  });
+}
+
+watch(
+  () => [props.currentBuilderStep, props.startBlockMode, props.startTriggerOption?.key, props.startTriggerOption?.label, props.startTriggerOption?.pillLabel],
+  rebuildNodes,
   { immediate: true },
 );
 
@@ -1146,6 +1246,30 @@ onBeforeUnmount(() => {
 	              <div v-if="!open" class="builder-zoom-tooltip true-small" role="tooltip">Add a step here.</div>
 	            </div>
 	          </template>
+            <template #menu="{ close }">
+              <template v-for="(group, groupIndex) in addStepMenuGroups" :key="group.key">
+                <div v-if="groupIndex > 0" class="dropdown-divider my-2 mx-1 border-top border-body-subtle opacity-100" />
+                <div class="assistant-step-add-menu__label true-small text-muted px-2 pb-1">{{ group.label }}</div>
+                <button
+                  v-for="item in group.items"
+                  :key="item.key"
+                  type="button"
+                  class="dropdown-item d-flex align-items-center text-start"
+                  @click.stop="handleAddStepMenuSelection(item, close)"
+                >
+                  <span class="assistant-step-menu-item__icon me-2 rounded-sm d-inline-flex align-items-center justify-content-center" :class="item.typeMeta.bgClass">
+                    <img
+                      :src="item.typeMeta.icon"
+                      width="12"
+                      height="12"
+                      class="d-block"
+                      :class="{ 'invert-to-white': item.typeMeta.iconInvert }"
+                    >
+                  </span>
+                  <span>{{ item.label }}</span>
+                </button>
+              </template>
+            </template>
 	        </StepOptionsDropdown>
 
         <TransitionGroup name="nodes">
@@ -1255,7 +1379,7 @@ onBeforeUnmount(() => {
 	            }"
 	          >
 	            <div
-	              v-if="node.typeMeta"
+	              v-if="node.typeMeta && !node.isStartBlock"
 	              style="border-radius: 0.25rem;"
 	              class="me-2 p-1"
 	              :class="node.typeMeta.bgClass"
@@ -1268,44 +1392,93 @@ onBeforeUnmount(() => {
 	                :class="{ 'invert-to-white': node.typeMeta.iconInvert }"
 	              >
 	            </div>
-	            <h6 class="mb-0 me-2">
-	              {{  node.title }}
+              <StepOptionsDropdown
+                v-if="node.isStartBlock"
+                class="assistant-step-start-switcher me-2"
+                placement="bottom-start"
+                menu-class="assistant-step-start-switcher-menu"
+                @click.stop
+              >
+                <template #trigger>
+                  <button
+                    type="button"
+                    class="assistant-step-start-switcher__trigger assistant-step-control"
+                    aria-label="Change starting block"
+                  >
+                    <span class="assistant-step-start-switcher__pill true-small fw-medium text-white d-inline-flex align-items-center rounded-pill px-2 py-0" :class="node.typeMeta.bgClass">
+                      <img
+                        :src="node.typeMeta.icon"
+                        width="14"
+                        height="14"
+                        class="d-block me-1"
+                        :class="{ 'invert-to-white': node.typeMeta.iconInvert }"
+                      >
+                      <span>{{ node.typeMeta.label }}</span>
+                      <img src="../../assets/dropdown.svg" width="11" height="11" class="assistant-step-start-switcher__caret ms-1">
+                    </span>
+                  </button>
+                </template>
+                <template #menu="{ close }">
+                  <button
+                    v-for="option in startBlockOptions"
+                    :key="option.key"
+                    type="button"
+                    class="dropdown-item d-flex align-items-center text-start"
+                    @click.stop="selectStartBlock(option.key); close()"
+                  >
+                    <span class="assistant-step-menu-item__icon me-2 rounded-sm d-inline-flex align-items-center justify-content-center" :class="option.typeMeta.bgClass">
+                      <img
+                        :src="option.typeMeta.icon"
+                        width="12"
+                        height="12"
+                        class="d-block"
+                        :class="{ 'invert-to-white': option.typeMeta.iconInvert }"
+                      >
+                    </span>
+                    <span>{{ option.label }}</span>
+                  </button>
+                </template>
+              </StepOptionsDropdown>
+	            <h6 v-if="!node.isStartBlock || node.type !== 'start'" class="mb-0 me-2">
+	              {{ node.title }}
 	            </h6>
-	            <button
-	              type="button"
-	              class="assistant-step-header-toggle assistant-step-control me-2"
-	              aria-label="Toggle step details"
-	              @click.stop="toggleNodeDetails(node.id)"
-	            >
-	              <img
-	                src="../../assets/arrow-down-b.svg"
-	                width="11"
-	                height="11"
-	                class="assistant-step-details-caret"
-	                :class="{ 'assistant-step-details-caret--collapsed': node.detailsCollapsed }"
-	              >
-	            </button>
-	            <StepOptionsDropdown
-	              class="assistant-step-menu ms-auto"
-	              placement="bottom-end"
-	              menu-class="assistant-step-menu-panel"
-	              @click.stop
-	            >
-	              <template #trigger>
-	                <button
-	                  type="button"
-	                  class="assistant-step-menu-trigger assistant-step-control"
-	                  aria-label="Step actions"
-	                >
-	                  <img src="../../assets/ellipses.svg" width="14" height="14" class="assistant-step-menu-trigger__icon">
-	                </button>
-              </template>
-              <template #menu="{ close }">
-                <button type="button" class="dropdown-item" @click.stop="duplicateStep(node.id); close()">Duplicate Step</button>
-                <button type="button" class="dropdown-item" @click.stop="removeAllConnections(node.id); close()">Remove Connections</button>
-                <button type="button" class="dropdown-item" @click.stop="deleteStep(node.id); close()">Delete Step</button>
-	              </template>
-	            </StepOptionsDropdown>
+              <div class="assistant-step-header-actions ms-auto d-flex align-items-center">
+                <button
+                  type="button"
+                  class="assistant-step-header-toggle assistant-step-control me-1"
+                  aria-label="Toggle step details"
+                  @click.stop="toggleNodeDetails(node.id)"
+                >
+                  <img
+                    src="../../assets/arrow-down-b.svg"
+                    width="11"
+                    height="11"
+                    class="assistant-step-details-caret"
+                    :class="{ 'assistant-step-details-caret--collapsed': node.detailsCollapsed }"
+                  >
+                </button>
+                <StepOptionsDropdown
+                  class="assistant-step-menu"
+                  placement="bottom-end"
+                  menu-class="assistant-step-menu-panel"
+                  @click.stop
+                >
+                  <template #trigger>
+                    <button
+                      type="button"
+                      class="assistant-step-menu-trigger assistant-step-control"
+                      aria-label="Step actions"
+                    >
+                      <img src="../../assets/ellipses.svg" width="14" height="14" class="assistant-step-menu-trigger__icon">
+                    </button>
+                  </template>
+                  <template #menu="{ close }">
+                    <button type="button" class="dropdown-item" @click.stop="duplicateStep(node.id); close()">Duplicate Step</button>
+                    <button type="button" class="dropdown-item" @click.stop="removeAllConnections(node.id); close()">Remove Connections</button>
+                    <button type="button" class="dropdown-item" @click.stop="deleteStep(node.id); close()">Delete Step</button>
+                  </template>
+                </StepOptionsDropdown>
+              </div>
 	          </div>
 	          <div class="assistant-step-details">
 	            <div v-show="!node.detailsCollapsed" class="assistant-step-details-content px-2.5 pb-2 not-as-small text-black">
@@ -1368,6 +1541,7 @@ onBeforeUnmount(() => {
         <StepOptionsDropdown
           v-for="terminalAdd in terminalAddControls"
           :key="terminalAdd.key"
+          v-show="!shouldShowFullTerminalAddCard"
           class="assistant-step-terminal-add"
           :style="{ left: `${terminalAdd.x}px`, top: `${terminalAdd.top}px` }"
         >
@@ -1383,6 +1557,67 @@ onBeforeUnmount(() => {
               <div v-if="!open" class="builder-zoom-tooltip true-small" role="tooltip">Add a step here.</div>
             </div>
           </template>
+          <template #menu="{ close }">
+            <template v-for="(group, groupIndex) in addStepMenuGroups" :key="group.key">
+              <div v-if="groupIndex > 0" class="dropdown-divider my-2 mx-1 border-top border-body-subtle opacity-100" />
+              <div class="assistant-step-add-menu__label true-small text-muted px-2 pb-1">{{ group.label }}</div>
+              <button
+                v-for="item in group.items"
+                :key="item.key"
+                type="button"
+                class="dropdown-item d-flex align-items-center text-start"
+                @click.stop="handleAddStepMenuSelection(item, close)"
+              >
+                <span class="assistant-step-menu-item__icon me-2 rounded-sm d-inline-flex align-items-center justify-content-center" :class="item.typeMeta.bgClass">
+                  <img
+                    :src="item.typeMeta.icon"
+                    width="12"
+                    height="12"
+                    class="d-block"
+                    :class="{ 'invert-to-white': item.typeMeta.iconInvert }"
+                  >
+                </span>
+                <span>{{ item.label }}</span>
+              </button>
+            </template>
+          </template>
+        </StepOptionsDropdown>
+
+        <StepOptionsDropdown
+          v-if="singleStartTerminalAddControl"
+          class="assistant-step-terminal-add assistant-step-terminal-add--card"
+          :style="{ left: `${singleStartTerminalAddControl.x}px`, top: `${singleStartTerminalAddControl.top}px` }"
+        >
+          <template #trigger>
+            <div class="assistant-step-add-card border rounded-sm fw-medium bg-white py-2.5 px-3 reduced text-center">
+              <span class="me-1">&plus;</span>
+              Add Step
+            </div>
+          </template>
+          <template #menu="{ close }">
+            <template v-for="(group, groupIndex) in addStepMenuGroups" :key="group.key">
+              <div v-if="groupIndex > 0" class="dropdown-divider my-2 mx-1 border-top border-body-subtle opacity-100" />
+              <div class="assistant-step-add-menu__label true-small text-muted px-2 pb-1">{{ group.label }}</div>
+              <button
+                v-for="item in group.items"
+                :key="item.key"
+                type="button"
+                class="dropdown-item d-flex align-items-center text-start"
+                @click.stop="handleAddStepMenuSelection(item, close)"
+              >
+                <span class="assistant-step-menu-item__icon me-2 rounded-sm d-inline-flex align-items-center justify-content-center" :class="item.typeMeta.bgClass">
+                  <img
+                    :src="item.typeMeta.icon"
+                    width="12"
+                    height="12"
+                    class="d-block"
+                    :class="{ 'invert-to-white': item.typeMeta.iconInvert }"
+                  >
+                </span>
+                <span>{{ item.label }}</span>
+              </button>
+            </template>
+          </template>
         </StepOptionsDropdown>
 
         <StepOptionsDropdown
@@ -1394,6 +1629,30 @@ onBeforeUnmount(() => {
               <span class="me-1">&plus;</span>
               Add Step
             </div>
+          </template>
+          <template #menu="{ close }">
+            <template v-for="(group, groupIndex) in addStepMenuGroups" :key="group.key">
+              <div v-if="groupIndex > 0" class="dropdown-divider my-2 mx-1 border-top border-body-subtle opacity-100" />
+              <div class="assistant-step-add-menu__label true-small text-muted px-2 pb-1">{{ group.label }}</div>
+              <button
+                v-for="item in group.items"
+                :key="item.key"
+                type="button"
+                class="dropdown-item d-flex align-items-center text-start"
+                @click.stop="handleAddStepMenuSelection(item, close)"
+              >
+                <span class="assistant-step-menu-item__icon me-2 rounded-sm d-inline-flex align-items-center justify-content-center" :class="item.typeMeta.bgClass">
+                  <img
+                    :src="item.typeMeta.icon"
+                    width="12"
+                    height="12"
+                    class="d-block"
+                    :class="{ 'invert-to-white': item.typeMeta.iconInvert }"
+                  >
+                </span>
+                <span>{{ item.label }}</span>
+              </button>
+            </template>
           </template>
         </StepOptionsDropdown>
       </div>
@@ -1423,62 +1682,51 @@ onBeforeUnmount(() => {
     </div> -->
 
     <div class="builder-zoom">
-	      <div class="builder-zoom-tooltip-wrap">
-	        <button
-	          type="button"
-	          class="builder-action--zoom-in btn btn-sm bg-white py-1 px-2.5 fw-bold"
-	          aria-label="Zoom in"
-	          @click.stop="zoomIn"
-	        >
-	          &plus;
-	        </button>
-	        <div class="builder-zoom-tooltip true-small" role="tooltip">Zoom In</div>
-	      </div>
-	      <div class="builder-zoom-tooltip-wrap border-top border-bottom">
-	        <button
-	          type="button"
-	          class="builder-action--recenter btn btn-sm bg-white py-2 px-2.5"
-	          aria-label="Reset zoom and position"
-	          @click.stop="recenterCanvas"
-	        >
-	          <img src="../../assets/recenter.svg" width="10" height="10" class="d-block">
-	        </button>
-	        <div class="builder-zoom-tooltip true-small" role="tooltip">Reset zoom and position.</div>
-	      </div>
-	      <div class="builder-zoom-tooltip-wrap">
-	        <button
-	          type="button"
-	          class="builder-action--zoom-out btn btn-sm bg-white py-1 px-2.5 fw-bold"
-	          aria-label="Zoom out"
-	          @click.stop="zoomOut"
-	        >
-	          &minus;
-	        </button>
-	        <div class="builder-zoom-tooltip true-small" role="tooltip">Zoom Out</div>
-	      </div>
-	    </div>
-	    <div class="assistant-step-floating-controls d-flex align-items-center gap-3">
-	      <div class="builder-zoom-tooltip-wrap assistant-step-floating-tooltip-wrap">
-	        <button
-	          type="button"
-	          class="assistant-step-floating-mini-btn assistant-step-control d-flex align-items-center justify-content-center"
-	          aria-label="Undo"
-	          @click.stop="handleUndoClick"
-	        >
-	          <img src="../../assets/undo.svg" width="14" height="14" class="d-block opacity-75">
-	        </button>
-	        <div class="builder-zoom-tooltip true-small" role="tooltip">Undo</div>
-	      </div>
-	      <div class="builder-zoom-tooltip-wrap assistant-step-floating-tooltip-wrap">
-	        <button
-	          type="button"
-	          class="assistant-step-floating-mini-btn assistant-step-control d-flex align-items-center justify-content-center"
-	          aria-label="Toggle comments"
-	          @click.stop="toggleEditorComments"
-	        >
-	          <img v-if="showEditorComments" src="../../assets/eye-closed.svg" width="14" height="14" class="d-block">
-	          <img v-else src="../../assets/eye-open.svg" width="14" height="14" class="d-block">
-	        </button>
+      <div class="builder-zoom-tooltip-wrap">
+        <button
+          type="button"
+          class="builder-action--zoom-in btn btn-sm bg-white py-1 px-2.5 fw-bold"
+          aria-label="Zoom in"
+          @click.stop="zoomIn"
+        >
+          &plus;
+        </button>
+        <div class="builder-zoom-tooltip true-small" role="tooltip">Zoom In</div>
+      </div>
+      <div class="builder-zoom-tooltip-wrap">
+        <button
+          type="button"
+          class="builder-action--zoom-out btn btn-sm bg-white py-1 px-2.5 fw-bold"
+          aria-label="Zoom out"
+          @click.stop="zoomOut"
+        >
+          &minus;
+        </button>
+        <div class="builder-zoom-tooltip true-small" role="tooltip">Zoom Out</div>
+      </div>
+    </div>
+    <div class="assistant-step-floating-controls d-flex align-items-center gap-3">
+      <div class="builder-zoom-tooltip-wrap assistant-step-floating-tooltip-wrap">
+        <button
+          type="button"
+          class="assistant-step-floating-mini-btn assistant-step-control d-flex align-items-center justify-content-center"
+          aria-label="Undo"
+          @click.stop="handleUndoClick"
+        >
+          <img src="../../assets/undo.svg" width="14" height="14" class="d-block opacity-75">
+        </button>
+        <div class="builder-zoom-tooltip true-small" role="tooltip">Undo</div>
+      </div>
+      <div class="builder-zoom-tooltip-wrap assistant-step-floating-tooltip-wrap">
+        <button
+          type="button"
+          class="assistant-step-floating-mini-btn assistant-step-control d-flex align-items-center justify-content-center"
+          aria-label="Toggle comments"
+          @click.stop="toggleEditorComments"
+        >
+          <img v-if="showEditorComments" src="../../assets/eye-closed.svg" width="14" height="14" class="d-block">
+          <img v-else src="../../assets/eye-open.svg" width="14" height="14" class="d-block">
+        </button>
         <div class="builder-zoom-tooltip true-small" role="tooltip">Toggle comments</div>
       </div>
       <div class="builder-zoom-tooltip-wrap assistant-step-floating-tooltip-wrap">
@@ -1489,7 +1737,7 @@ onBeforeUnmount(() => {
           @click.stop="toggleAllNodeDetails"
         >
           <img
-            src="../../assets/arrow-down-b.svg"
+            src="../../assets/dropdown.svg"
             width="14"
             height="14"
             class="d-block assistant-step-floating-mini-btn__icon"
@@ -1507,6 +1755,30 @@ onBeforeUnmount(() => {
             </button>
             <div v-if="!open" class="builder-zoom-tooltip true-small" role="tooltip">Add Step</div>
           </div>
+        </template>
+        <template #menu="{ close }">
+          <template v-for="(group, groupIndex) in addStepMenuGroups" :key="group.key">
+            <div v-if="groupIndex > 0" class="dropdown-divider my-2 mx-1 border-top border-body-subtle opacity-100" />
+            <div class="assistant-step-add-menu__label true-small text-muted px-2 pb-1">{{ group.label }}</div>
+            <button
+              v-for="item in group.items"
+              :key="item.key"
+              type="button"
+              class="dropdown-item d-flex align-items-center text-start"
+              @click.stop="handleAddStepMenuSelection(item, close)"
+            >
+              <span class="assistant-step-menu-item__icon me-2 rounded-sm d-inline-flex align-items-center justify-content-center" :class="item.typeMeta.bgClass">
+                <img
+                  :src="item.typeMeta.icon"
+                  width="12"
+                  height="12"
+                  class="d-block"
+                  :class="{ 'invert-to-white': item.typeMeta.iconInvert }"
+                >
+              </span>
+              <span>{{ item.label }}</span>
+            </button>
+          </template>
         </template>
       </StepOptionsDropdown>
     </div>
@@ -1644,6 +1916,10 @@ onBeforeUnmount(() => {
   z-index: 3;
 }
 
+.assistant-step-terminal-add--card {
+  transform: translate(-50%, 0);
+}
+
 .assistant-step-terminal-add:focus-within,
 .assistant-step-terminal-add:has(.step-options-dropdown--open) {
   z-index: 40;
@@ -1696,6 +1972,27 @@ onBeforeUnmount(() => {
   min-height: 2.5rem;
 }
 
+.assistant-step-start-switcher {
+  min-width: 0;
+}
+
+.assistant-step-start-switcher__trigger {
+  background: transparent;
+  border: 0;
+  line-height: 0;
+  padding: 0;
+}
+
+.assistant-step-start-switcher__pill {
+  line-height: 1.2;
+  min-height: 1.25rem;
+}
+
+.assistant-step-start-switcher__caret {
+  filter: brightness(0) invert(1);
+  opacity: 0.8;
+}
+
 .assistant-step-header--collapsed {
   border-bottom-left-radius: 0.5rem;
   border-bottom-right-radius: 0.5rem;
@@ -1735,6 +2032,19 @@ onBeforeUnmount(() => {
 
 :deep(.assistant-step-menu-panel) {
   min-width: 12.5rem;
+}
+
+:deep(.assistant-step-start-switcher-menu) {
+  min-width: 11rem;
+}
+
+.assistant-step-menu-item__icon {
+  height: 1.25rem;
+  width: 1.25rem;
+}
+
+.assistant-step-add-menu__label {
+  letter-spacing: 0.01em;
 }
 
 .assistant-step-details {

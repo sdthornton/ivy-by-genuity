@@ -10,6 +10,7 @@ import iconSplit from "../../assets/sim-ai/split.svg";
 import iconParallel from "../../assets/sim-ai/parallel.svg";
 import iconLoop from "../../assets/sim-ai/loop.svg";
 import iconAlert from "../../assets/sim-ai/alert.svg";
+import iconPlay from "../../assets/play.svg";
 import sharepointLogo from "../../assets/sharepoint.png";
 
 export const sourceOptions = [
@@ -29,6 +30,12 @@ export const sourceOptions = [
 ];
 
 export const STEP_TYPE_META = {
+  start: {
+    bgClass: "bg-start",
+    icon: iconPlay,
+    iconInvert: true,
+    label: "Start",
+  },
   lookup: {
     bgClass: "bg-lookup",
     icon: iconLookup,
@@ -89,7 +96,6 @@ export const STEP_TYPE_META = {
     iconInvert: true,
     label: "Alert",
   },
-  // Temporary alias while this mock step still uses the older "action" name.
   action: {
     bgClass: "bg-ivy",
     icon: iconAction,
@@ -98,37 +104,22 @@ export const STEP_TYPE_META = {
   },
 };
 
-export function getStepTypeMeta(type) {
-  return STEP_TYPE_META[type] || STEP_TYPE_META.note;
-}
+const START_BLOCK_MODES = {
+  start: "start",
+  schedule: "schedule",
+  trigger: "trigger",
+};
 
-const stepDefinitions = [
-  {
-    id: 1,
-    type: "schedule",
-    title: "Every Morning",
-    sources: [],
-    rows: [
-      { key: "Frequency", dataKey: "frequency" },
-      { key: "Time", dataKey: "time" },
-      { key: "Timezone", dataKey: "timezone" },
-    ],
-    comments: [
-      { author: "You", body: "Keep this at 9:00 am local time.", stamp: "Feb 26, 8:59 AM" },
-    ],
-    ivySays: "This step triggers the assistant each weekday morning at 9:00 am.",
-    builderData: {
-      frequency: "Once Daily",
-      time: "09:00 am",
-      timezone: "CST",
-    },
-    detailsCollapsed: false,
-    connections: [2],
-    x: 0,
-    y: 0,
-  },
+const START_STATE_KEYS = {
+  start: "start",
+  schedule: "schedule",
+  trigger: "trigger",
+};
+
+const BASE_FLOW_STEPS = [
   {
     id: 2,
+    stateKey: "2",
     type: "lookup",
     title: "SP GetAudit Data",
     builderTitle: "Get SP Audit Data",
@@ -154,6 +145,7 @@ const stepDefinitions = [
   },
   {
     id: 3,
+    stateKey: "3",
     type: "code",
     title: "Prune Audit Data",
     sources: [],
@@ -178,6 +170,7 @@ const stepDefinitions = [
   },
   {
     id: 4,
+    stateKey: "4",
     type: "action",
     title: "Email Audit List",
     pill: "Ivy Action",
@@ -203,60 +196,247 @@ const stepDefinitions = [
   },
 ];
 
-function cloneRows(rows) {
+const START_VARIANT_BASE = {
+  start: {
+    stateKey: START_STATE_KEYS.start,
+    type: "start",
+    pill: "Start",
+    comments: [],
+    rows: [
+      { key: "Entry Point", dataKey: "entryPoint" },
+    ],
+    ivySays: "This start block keeps the flow ready to run manually until you swap in a schedule or event trigger.",
+    builderData: {
+      entryPoint: "Manual",
+    },
+  },
+  schedule: {
+    stateKey: START_STATE_KEYS.schedule,
+    type: "schedule",
+    pill: "Schedule",
+    comments: [
+      { author: "You", body: "Keep this at 9:00 am local time.", stamp: "Feb 26, 8:59 AM" },
+    ],
+    rows: [
+      { key: "Frequency", dataKey: "frequency" },
+      { key: "Time", dataKey: "time" },
+      { key: "Timezone", dataKey: "timezone" },
+    ],
+    ivySays: "This step triggers the assistant based on the current schedule selection.",
+    builderData: {
+      frequency: "Weekdays",
+      time: "09:00 am",
+      timezone: "Local",
+    },
+  },
+  trigger: {
+    stateKey: START_STATE_KEYS.trigger,
+    type: "trigger",
+    pill: "Trigger",
+    comments: [],
+    rows: [
+      { key: "Trigger Type", dataKey: "triggerType" },
+      { key: "Event", dataKey: "event" },
+    ],
+    ivySays: "This step starts the assistant whenever the selected event happens.",
+    builderData: {
+      triggerType: "Event-based",
+      event: "When an event occurs",
+    },
+  },
+};
+
+function cloneRows(rows = []) {
   return rows.map((row) => ({ ...row }));
 }
 
-function cloneComments(comments) {
+function cloneComments(comments = []) {
   return comments.map((comment) => ({ ...comment }));
 }
 
-function cloneSources(sources) {
+function cloneSources(sources = []) {
   return sources.map((source) => ({ ...source }));
 }
 
-const sharedStepData = reactive(
-  stepDefinitions.reduce((acc, step) => {
-    acc[step.id] = { ...step.builderData };
-    return acc;
-  }, {}),
-);
-
-const sharedStepComments = reactive(
-  stepDefinitions.reduce((acc, step) => {
-    acc[step.id] = cloneComments(step.comments);
-    return acc;
-  }, {}),
-);
-
-const sharedStepWarnings = reactive(
-  stepDefinitions.reduce((acc, step) => {
-    acc[step.id] = step.rows.reduce((rowAcc, row) => {
-      if (row.dataKey) {
-        rowAcc[row.dataKey] = Boolean(row.showWarning);
-      }
-      return rowAcc;
-    }, {});
-    return acc;
-  }, {}),
-);
-
-export const MOCK_STEP_COUNT = stepDefinitions.length;
-
-export function getSharedStepData(stepId) {
-  return sharedStepData[stepId] || null;
+function createWarningState(rows = []) {
+  return rows.reduce((rowAcc, row) => {
+    if (row.dataKey) {
+      rowAcc[row.dataKey] = Boolean(row.showWarning);
+    }
+    return rowAcc;
+  }, {});
 }
 
-export function getSharedStepComments(stepId) {
-  return sharedStepComments[stepId] || [];
+const sharedStepData = reactive({
+  [START_STATE_KEYS.start]: { ...START_VARIANT_BASE.start.builderData },
+  [START_STATE_KEYS.schedule]: { ...START_VARIANT_BASE.schedule.builderData },
+  [START_STATE_KEYS.trigger]: { ...START_VARIANT_BASE.trigger.builderData },
+  ...BASE_FLOW_STEPS.reduce((acc, step) => {
+    acc[step.stateKey] = { ...step.builderData };
+    return acc;
+  }, {}),
+});
+
+const sharedStepComments = reactive({
+  [START_STATE_KEYS.start]: cloneComments(START_VARIANT_BASE.start.comments),
+  [START_STATE_KEYS.schedule]: cloneComments(START_VARIANT_BASE.schedule.comments),
+  [START_STATE_KEYS.trigger]: cloneComments(START_VARIANT_BASE.trigger.comments),
+  ...BASE_FLOW_STEPS.reduce((acc, step) => {
+    acc[step.stateKey] = cloneComments(step.comments);
+    return acc;
+  }, {}),
+});
+
+const sharedStepWarnings = reactive({
+  [START_STATE_KEYS.start]: createWarningState(START_VARIANT_BASE.start.rows),
+  [START_STATE_KEYS.schedule]: createWarningState(START_VARIANT_BASE.schedule.rows),
+  [START_STATE_KEYS.trigger]: createWarningState(START_VARIANT_BASE.trigger.rows),
+  ...BASE_FLOW_STEPS.reduce((acc, step) => {
+    acc[step.stateKey] = createWarningState(step.rows);
+    return acc;
+  }, {}),
+});
+
+export const MOCK_STEP_COUNT = BASE_FLOW_STEPS.length + 1;
+
+export function getStepTypeMeta(type) {
+  return STEP_TYPE_META[type] || STEP_TYPE_META.note;
 }
 
-export function isStepWarningVisible(stepId, dataKey, fallback = false) {
+function getNormalizedStartBlockMode(startBlockMode) {
+  if (startBlockMode === START_BLOCK_MODES.schedule || startBlockMode === START_BLOCK_MODES.trigger) {
+    return startBlockMode;
+  }
+
+  return START_BLOCK_MODES.start;
+}
+
+function getStartStateKey(startBlockMode) {
+  return START_STATE_KEYS[getNormalizedStartBlockMode(startBlockMode)];
+}
+
+function resolveStepStateKey(stepKey) {
+  return String(stepKey);
+}
+
+function getScheduleLabel(triggerOption) {
+  if (!triggerOption) {
+    return "Schedule";
+  }
+
+  if (triggerOption.key === "weekdays") {
+    return "Every Morning";
+  }
+
+  return triggerOption.label || "Schedule";
+}
+
+function getScheduleFrequency(triggerOption) {
+  switch (triggerOption?.key) {
+    case "every-day":
+      return "Every day";
+    case "every-week":
+      return "Every week";
+    case "every-month":
+      return "Every month";
+    case "custom":
+      return "Custom";
+    case "weekdays":
+    default:
+      return "Weekdays";
+  }
+}
+
+function getScheduleTime(triggerOption) {
+  return triggerOption?.key === "custom" ? "Custom" : "09:00 am";
+}
+
+function getScheduleTimezone(triggerOption) {
+  return triggerOption?.key === "custom" ? "Custom" : "Local";
+}
+
+function getTriggerLabel(triggerOption) {
+  return triggerOption?.label || "When an event occurs";
+}
+
+export function syncStartStepDataFromTrigger(triggerOption) {
+  sharedStepData[START_STATE_KEYS.schedule].frequency = getScheduleFrequency(triggerOption);
+  sharedStepData[START_STATE_KEYS.schedule].time = getScheduleTime(triggerOption);
+  sharedStepData[START_STATE_KEYS.schedule].timezone = getScheduleTimezone(triggerOption);
+  sharedStepData[START_STATE_KEYS.trigger].triggerType = "Event-based";
+  sharedStepData[START_STATE_KEYS.trigger].event = getTriggerLabel(triggerOption);
+}
+
+function createStartStepDefinition(startBlockMode = START_BLOCK_MODES.start, triggerOption = null) {
+  const resolvedMode = getNormalizedStartBlockMode(startBlockMode);
+  const variant = START_VARIANT_BASE[resolvedMode];
+  const stateKey = getStartStateKey(resolvedMode);
+  const typeMeta = getStepTypeMeta(variant.type);
+  const hasFollowingSteps = BASE_FLOW_STEPS.length > 0;
+
+  return {
+    id: 1,
+    stateKey,
+    type: variant.type,
+    typeMeta,
+    isStartBlock: true,
+    startBlockMode: resolvedMode,
+    title: resolvedMode === START_BLOCK_MODES.start
+      ? "Start"
+      : resolvedMode === START_BLOCK_MODES.schedule
+        ? getScheduleLabel(triggerOption)
+        : getTriggerLabel(triggerOption),
+    builderTitle: resolvedMode === START_BLOCK_MODES.start
+      ? "Start"
+      : resolvedMode === START_BLOCK_MODES.schedule
+        ? getScheduleLabel(triggerOption)
+        : "Event Trigger",
+    pill: variant.pill || typeMeta.label,
+    sources: [],
+    rows: cloneRows(variant.rows),
+    comments: getSharedStepComments(stateKey),
+    ivySays: variant.ivySays,
+    data: getSharedStepData(stateKey),
+    detailsCollapsed: false,
+    connections: hasFollowingSteps ? [2] : [],
+    x: 0,
+    y: 0,
+  };
+}
+
+function getResolvedStepDefinitions(options = {}) {
+  const startBlockMode = getNormalizedStartBlockMode(options.startBlockMode);
+  const triggerOption = options.startTriggerOption || null;
+
+  return [
+    createStartStepDefinition(startBlockMode, triggerOption),
+    ...BASE_FLOW_STEPS.map((step) => ({
+      ...step,
+      typeMeta: getStepTypeMeta(step.type),
+      isStartBlock: false,
+      startBlockMode: null,
+      sources: cloneSources(step.sources),
+      rows: cloneRows(step.rows),
+      comments: getSharedStepComments(step.stateKey),
+      data: getSharedStepData(step.stateKey),
+    })),
+  ];
+}
+
+export function getSharedStepData(stepKey) {
+  return sharedStepData[resolveStepStateKey(stepKey)] || null;
+}
+
+export function getSharedStepComments(stepKey) {
+  return sharedStepComments[resolveStepStateKey(stepKey)] || [];
+}
+
+export function isStepWarningVisible(stepKey, dataKey, fallback = false) {
   if (!dataKey) {
     return false;
   }
 
-  const warningState = sharedStepWarnings[stepId];
+  const warningState = sharedStepWarnings[resolveStepStateKey(stepKey)];
   if (warningState && dataKey in warningState) {
     return Boolean(warningState[dataKey]);
   }
@@ -264,59 +444,129 @@ export function isStepWarningVisible(stepId, dataKey, fallback = false) {
   return Boolean(fallback);
 }
 
-export function setStepWarningVisible(stepId, dataKey, visible) {
+export function setStepWarningVisible(stepKey, dataKey, visible) {
   if (!dataKey) {
     return;
   }
 
-  if (!sharedStepWarnings[stepId]) {
-    sharedStepWarnings[stepId] = reactive({});
+  const resolvedKey = resolveStepStateKey(stepKey);
+  if (!sharedStepWarnings[resolvedKey]) {
+    sharedStepWarnings[resolvedKey] = reactive({});
   }
 
-  sharedStepWarnings[stepId][dataKey] = Boolean(visible);
+  sharedStepWarnings[resolvedKey][dataKey] = Boolean(visible);
 }
 
-export function applyStepWarningFix(stepId, dataKey) {
-  const stepData = getSharedStepData(stepId);
+export function applyStepWarningFix(stepKey, dataKey) {
+  const stepData = getSharedStepData(stepKey);
   if (!stepData || dataKey !== "code") {
     return false;
   }
 
   stepData.code = "SELECT [User], [AuditValue] FROM [SP GetAudit] WHERE [User] IS NOT NULL AND [AuditValue] >= DATEADD(day, -1, GETUTCDATE())";
-  setStepWarningVisible(stepId, dataKey, false);
+  setStepWarningVisible(stepKey, dataKey, false);
   return true;
 }
 
-export function getSidebarStep(stepId) {
+export function getSidebarStep(stepId, options = {}) {
   const selectedId = Number(stepId);
-  const step = stepDefinitions.find((definition) => definition.id === selectedId) || stepDefinitions[1];
-  const typeMeta = getStepTypeMeta(step.type);
+  const stepDefinitions = getResolvedStepDefinitions(options);
+  const step = stepDefinitions.find((definition) => definition.id === selectedId) || stepDefinitions[0];
 
   return {
     id: step.id,
-    pill: step.pill || typeMeta.label,
-    typeMeta,
+    stateKey: step.stateKey,
+    pill: step.pill || step.typeMeta.label,
+    typeMeta: step.typeMeta,
+    type: step.type,
     title: step.title,
     sources: cloneSources(step.sources),
     rows: cloneRows(step.rows),
-    data: getSharedStepData(step.id),
-    comments: getSharedStepComments(step.id),
+    data: getSharedStepData(step.stateKey),
+    comments: getSharedStepComments(step.stateKey),
     ivySays: step.ivySays,
+    isStartBlock: Boolean(step.isStartBlock),
+    startBlockMode: step.startBlockMode,
   };
 }
 
-export function createBuilderNodeTemplates(stepCount = stepDefinitions.length) {
-  return stepDefinitions.slice(0, stepCount).map((step) => ({
+export function createBuilderNodeTemplates(stepCount = MOCK_STEP_COUNT, options = {}) {
+  const stepDefinitions = getResolvedStepDefinitions(options);
+  const normalizedCount = stepCount == null
+    ? stepDefinitions.length
+    : Math.max(1, Math.min(stepDefinitions.length, Number(stepCount) || 0));
+
+  return stepDefinitions.slice(0, normalizedCount).map((step) => ({
     id: step.id,
+    stateKey: step.stateKey,
     type: step.type,
-    typeMeta: getStepTypeMeta(step.type),
+    typeMeta: step.typeMeta,
     title: step.builderTitle || step.title,
-    comments: getSharedStepComments(step.id),
+    comments: getSharedStepComments(step.stateKey),
     rows: cloneRows(step.rows),
-    data: getSharedStepData(step.id),
-    detailsCollapsed: step.detailsCollapsed,
-    connections: [...step.connections],
+    data: getSharedStepData(step.stateKey),
+    detailsCollapsed: Boolean(step.detailsCollapsed),
+    connections: [...(step.connections || [])],
+    isStartBlock: Boolean(step.isStartBlock),
+    startBlockMode: step.startBlockMode,
     x: step.x,
     y: step.y,
+  }));
+}
+
+export function getStartBlockOptions() {
+  return [
+    { key: START_BLOCK_MODES.start, label: "Start", type: "start" },
+    { key: START_BLOCK_MODES.schedule, label: "Schedule", type: "schedule" },
+    { key: START_BLOCK_MODES.trigger, label: "Trigger", type: "trigger" },
+  ].map((option) => ({
+    ...option,
+    typeMeta: getStepTypeMeta(option.type),
+  }));
+}
+
+export function getAddStepMenuGroups() {
+  return [
+    {
+      key: "starting-blocks",
+      label: "Starting Blocks",
+      items: [
+        { key: "schedule", label: "Schedule", type: "schedule", startBlockMode: START_BLOCK_MODES.schedule },
+        { key: "trigger", label: "Trigger", type: "trigger", startBlockMode: START_BLOCK_MODES.trigger },
+      ],
+    },
+    {
+      key: "data",
+      label: "Data",
+      items: [
+        { key: "lookup", label: "Data Source(s)", type: "lookup" },
+      ],
+    },
+    {
+      key: "logic",
+      label: "Logic",
+      items: [
+        { key: "split", label: "Conditional Split", type: "split" },
+        { key: "parallel", label: "Parallel Steps", type: "parallel" },
+        { key: "wait", label: "Wait/Delay", type: "wait" },
+        { key: "loop", label: "Loop", type: "loop" },
+      ],
+    },
+    {
+      key: "actions",
+      label: "Actions",
+      items: [
+        { key: "action", label: "Ivy Action", type: "action" },
+        { key: "code", label: "Run Code", type: "code" },
+        { key: "note", label: "Create Note", type: "note" },
+        { key: "alert", label: "Set Alert", type: "alert" },
+      ],
+    },
+  ].map((group) => ({
+    ...group,
+    items: group.items.map((item) => ({
+      ...item,
+      typeMeta: getStepTypeMeta(item.type),
+    })),
   }));
 }

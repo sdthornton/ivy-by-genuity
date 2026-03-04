@@ -9,7 +9,7 @@ import StepInfo  from "./assistants/StepInfo.vue";
 import AssistantBuilder from "./assistants/AssistantBuilder.vue";
 import AssistantSettingsPanel from "./assistants/AssistantSettingsPanel.vue";
 import StepOptionsDropdown from "./shared/StepOptionsDropdown.vue";
-import { createBuilderNodeTemplates, isStepWarningVisible } from "./assistants/mockSteps";
+import { createBuilderNodeTemplates, isStepWarningVisible, syncStartStepDataFromTrigger } from "./assistants/mockSteps";
 import iconClock from "../assets/clock.svg";
 import iconStar from "../assets/star.svg";
 import iconStop from "../assets/stop.svg";
@@ -63,24 +63,37 @@ const assistantTitle = computed({
   },
 });
 
+const EVENT_TRIGGER_OPTION = headerTriggerOptions.find((option) => option.key === "event");
 const hasConfiguredHeaderTrigger = computed(() => (
   Boolean(selectedHeaderTrigger.value && selectedHeaderTrigger.value.key !== NO_TRIGGER_OPTION.key)
 ));
+const startBlockMode = computed(() => {
+  if (!selectedHeaderTrigger.value || selectedHeaderTrigger.value.key === NO_TRIGGER_OPTION.key) {
+    return "start";
+  }
+
+  return selectedHeaderTrigger.value.key === EVENT_TRIGGER_OPTION?.key ? "trigger" : "schedule";
+});
 const headerTriggerLabel = computed(() => selectedHeaderTrigger.value?.pillLabel || "Not Scheulded");
 const settingsIvyContent = computed(() => {
   const description = assistantSettings.description?.trim();
-  const visibleNodes = createBuilderNodeTemplates(buildStep.value);
+  const visibleNodes = createBuilderNodeTemplates(buildStep.value, {
+    startBlockMode: startBlockMode.value,
+    startTriggerOption: selectedHeaderTrigger.value,
+  });
   const warningSteps = visibleNodes
-    .filter((node) => node.rows.some((row) => isStepWarningVisible(node.id, row.dataKey, row.showWarning)))
+    .filter((node) => node.rows.some((row) => isStepWarningVisible(node.stateKey || node.id, row.dataKey, row.showWarning)))
     .map((node) => node.title);
 
   let overview = description;
 
   if (!overview) {
-    if (!visibleNodes.length) {
+    if (buildStep.value <= 0 && startBlockMode.value === "start") {
       overview = "This assistant is still in draft. It does not have a trigger or flow configured yet.";
     } else if (visibleNodes.length === 1) {
-      overview = "This assistant currently has a trigger configured, but the rest of the flow is still being built.";
+      overview = startBlockMode.value === "start"
+        ? "This assistant currently has a basic start block, but the rest of the flow is still being built."
+        : "This assistant currently has a trigger configured, but the rest of the flow is still being built.";
     } else {
       overview = `This assistant currently includes ${visibleNodes.length} configured steps in its flow.`;
     }
@@ -99,11 +112,26 @@ const settingsIvyContent = computed(() => {
 
 const updateSelectedTrigger = (option) => {
   selectedHeaderTrigger.value = option ? { ...option } : null;
+  syncStartStepDataFromTrigger(selectedHeaderTrigger.value);
 };
 
 const selectHeaderTrigger = (option, close) => {
   updateSelectedTrigger(option);
   close();
+};
+
+const selectStartBlock = (mode) => {
+  if (mode === "schedule") {
+    updateSelectedTrigger(DEFAULT_TRIGGER_OPTION);
+    return;
+  }
+
+  if (mode === "trigger") {
+    updateSelectedTrigger(EVENT_TRIGGER_OPTION);
+    return;
+  }
+
+  updateSelectedTrigger(NO_TRIGGER_OPTION);
 };
 
 const openSettingsModal = () => {
@@ -115,7 +143,7 @@ const closeSettingsModal = () => {
 };
 
 const INTRO_MESSAGE = `
-  <p>Hi! I'm here to help you build your assistant. You can still build out your flow on your own, but you can also chat with me and I'll automatically build things out for you to review.</p>
+  <p>Hi. I can help you build this assistant end-to-end. You can keep building directly in the flow, or describe what you want here and I’ll draft the steps for you to review.</p>
 `;
 
 const conversationStages = [
@@ -258,7 +286,7 @@ function applyConversationState(state = {}) {
   }
 
   if ("selectedHeaderTrigger" in state) {
-    selectedHeaderTrigger.value = state.selectedHeaderTrigger ? { ...state.selectedHeaderTrigger } : null;
+    updateSelectedTrigger(state.selectedHeaderTrigger || null);
   }
 }
 
@@ -344,7 +372,7 @@ const onBuilderStepSelect = (nodeId) => {
               >
               <span class="header-trigger-pill__label">{{ headerTriggerLabel }}</span>
               <img
-                src="../assets/arrow-down-b.svg"
+                src="../assets/dropdown.svg"
                 width="12"
                 height="12"
                 class="ms-2 header-trigger-pill__arrow"
@@ -406,15 +434,24 @@ const onBuilderStepSelect = (nodeId) => {
     >
       <AssistantBuilder 
         class="assistant-builder-column col p-4" 
-        :current-builder-step="buildStep" 
+        :current-builder-step="buildStep"
+        :start-block-mode="startBlockMode"
+        :start-trigger-option="selectedHeaderTrigger"
         @toggleSidebar="onBuilderStepSelect"
+        @select-start-block="selectStartBlock"
       />
       <article
         class="assistant-sidebar-column px-0 side-content bg-white"
         :class="{ 'assistant-sidebar-column--open': showSidebar }"
         :aria-hidden="!showSidebar"
       >
-        <StepInfo :selected-step-id="selectedSidebarStepId" @close="showSidebar = false" />
+        <StepInfo
+          :selected-step-id="selectedSidebarStepId"
+          :start-block-mode="startBlockMode"
+          :start-trigger-option="selectedHeaderTrigger"
+          @close="showSidebar = false"
+          @select-start-block="selectStartBlock"
+        />
       </article>
     </div>
   </section>

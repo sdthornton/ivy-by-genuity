@@ -2,28 +2,49 @@
 import { ref, computed } from "vue";
 import StepOptionsDropdown from "../shared/StepOptionsDropdown.vue";
 import EditableDetailValue from "../shared/EditableDetailValue.vue";
-import { sourceOptions, getSidebarStep, getSharedStepData, isStepWarningVisible, setStepWarningVisible, applyStepWarningFix } from "./mockSteps";
+import {
+  sourceOptions,
+  getSidebarStep,
+  getSharedStepData,
+  getStartBlockOptions,
+  isStepWarningVisible,
+  setStepWarningVisible,
+  applyStepWarningFix,
+} from "./mockSteps";
 
 const props = defineProps({
   selectedStepId: {
     type: Number,
     default: 2,
   },
+  startBlockMode: {
+    type: String,
+    default: "start",
+  },
+  startTriggerOption: {
+    type: Object,
+    default: null,
+  },
 });
 
-const emit = defineEmits(["close"]);
+const emit = defineEmits(["close", "select-start-block"]);
 
 const sourceSearch = ref("");
-const activeStep = computed(() => getSidebarStep(props.selectedStepId));
+const startBlockOptions = computed(() => getStartBlockOptions());
+const activeStep = computed(() => getSidebarStep(props.selectedStepId, {
+  startBlockMode: props.startBlockMode,
+  startTriggerOption: props.startTriggerOption,
+}));
 
 const ignoreQueryWarning = () => {
-  setStepWarningVisible(activeStep.value.id, "code", false);
+  setStepWarningVisible(activeStep.value.stateKey || activeStep.value.id, "code", false);
 };
 
 const fixQueryWarning = () => {
-  const stepData = getSharedStepData(activeStep.value.id);
+  const stepKey = activeStep.value.stateKey || activeStep.value.id;
+  const stepData = getSharedStepData(stepKey);
   if (stepData) {
-    applyStepWarningFix(activeStep.value.id, "code");
+    applyStepWarningFix(stepKey, "code");
   }
 };
 </script>
@@ -41,15 +62,48 @@ const fixQueryWarning = () => {
 
     <div class="step2-info-top d-flex flex-column">
       <div class="side-content-scroll d-flex flex-column align-items-start">
-        <StepOptionsDropdown class="step-type-pill-dropdown" placement="bottom-start">
+        <StepOptionsDropdown
+          v-if="activeStep.isStartBlock"
+          class="step-type-pill-dropdown"
+          placement="bottom-start"
+          @click.stop
+        >
           <template #trigger>
             <div class="step-type-pill true-small fw-medium text-white d-inline-flex align-items-center rounded-pill px-2 py-0" :class="activeStep.typeMeta.bgClass">
               <img :src="activeStep.typeMeta.icon" width="16" height="16" class="d-inline-block me-1" :class="{ 'invert-to-white': activeStep.typeMeta.iconInvert }">
               <span>{{ activeStep.pill }}</span>
-              <img src="../../assets/arrow-down-b.svg" width="12" height="12" class="source-pill-caret ms-1">
+              <img src="../../assets/dropdown.svg" width="12" height="12" class="source-pill-caret ms-1">
             </div>
           </template>
+          <template #menu="{ close }">
+            <button
+              v-for="option in startBlockOptions"
+              :key="option.key"
+              type="button"
+              class="dropdown-item d-flex align-items-center text-start"
+              @click.stop="emit('select-start-block', option.key); close()"
+            >
+              <span class="step-type-pill-dropdown__icon me-2 rounded-sm d-inline-flex align-items-center justify-content-center" :class="option.typeMeta.bgClass">
+                <img
+                  :src="option.typeMeta.icon"
+                  width="12"
+                  height="12"
+                  class="d-block"
+                  :class="{ 'invert-to-white': option.typeMeta.iconInvert }"
+                >
+              </span>
+              <span>{{ option.label }}</span>
+            </button>
+          </template>
         </StepOptionsDropdown>
+        <div
+          v-else
+          class="step-type-pill true-small fw-medium text-white d-inline-flex align-items-center rounded-pill px-2 py-0"
+          :class="activeStep.typeMeta.bgClass"
+        >
+          <img :src="activeStep.typeMeta.icon" width="16" height="16" class="d-inline-block me-1" :class="{ 'invert-to-white': activeStep.typeMeta.iconInvert }">
+          <span>{{ activeStep.pill }}</span>
+        </div>
 
         <div class="d-flex align-items-center mt-2">
           <h4 class="fw-bold mb-0 me-3">{{ activeStep.title }}</h4>
@@ -113,7 +167,7 @@ const fixQueryWarning = () => {
               >
                 <td class="query-key-cell">
                   <span class="query-key-label">
-                    <span v-if="row.isCode && isStepWarningVisible(activeStep.id, row.dataKey, row.showWarning)" class="query-warning-wrap">
+                    <span v-if="row.isCode && isStepWarningVisible(activeStep.stateKey || activeStep.id, row.dataKey, row.showWarning)" class="query-warning-wrap">
                       <button
                         type="button"
                         class="query-warning-trigger"
@@ -217,6 +271,11 @@ const fixQueryWarning = () => {
 .step-type-pill {
   position: relative;
   z-index: 2;
+}
+
+.step-type-pill-dropdown__icon {
+  height: 1.25rem;
+  width: 1.25rem;
 }
 
 .source-pill-caret {

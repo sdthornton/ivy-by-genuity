@@ -217,7 +217,7 @@ function avatarStyle(color) {
               >
                 <div class="category-pill-content d-flex align-items-center">
                   <span>{{ formatCategoryLabel(settings.category) }}</span>
-                  <img src="../../assets/arrow-down-b.svg" height="12" width="12" class="ms-2 opacity-75">
+                  <img src="../../assets/dropdown.svg" height="12" width="12" class="ms-2 opacity-75">
                 </div>
               </div>
             </template>
@@ -370,7 +370,7 @@ function avatarStyle(color) {
                       {{ getPermissionLevelMeta(permissionEntry.level).glyph }}
                     </span>
                     <span>{{ permissionEntry.level }}</span>
-                    <img src="../../assets/arrow-down-b.svg" height="12" width="12" class="ms-1">
+                    <img src="../../assets/dropdown.svg" height="12" width="12" class="ms-1">
                   </span>
                 </template>
                 <template #menu="{ close }">
@@ -423,7 +423,7 @@ function avatarStyle(color) {
                 >
                 <span class="header-trigger-pill__label">{{ triggerLabel }}</span>
                 <img
-                  src="../../assets/arrow-down-b.svg"
+                  src="../../assets/dropdown.svg"
                   width="12"
                   height="12"
                   class="ms-2 header-trigger-pill__arrow"

@@ -80,7 +80,7 @@ onBeforeUnmount(() => {
       <div class="company-drawer__info ms-md-2 w-100">
         <div class="d-flex align-items-center">
           <h6 class="company-drawer__name fw-bold not-as-small mb-0 me-2 text-white">The Jedi Enclave</h6>
-          <img src="../assets/arrow-down-b.svg" width="12" height="12" class="opacity-50 invert-to-white">
+          <img src="../assets/dropdown.svg" width="12" height="12" class="opacity-50 invert-to-white">
         </div>
       </div>
     </div>
@@ -97,7 +97,7 @@ onBeforeUnmount(() => {
       <RouterLink to="/prompt-library" class="left-nav-link d-flex">
         <img src="../assets/nav-prompt-library.svg" width="18" height="18" />
         <span class="left-nav-link-text">Prompt Library</span>
-        <!-- <img src="./assets/arrow-down-b.svg" width="12" height="12" class="ms-auto opacity-50"> -->
+        <!-- <img src="./assets/drodpown.svg" width="12" height="12" class="ms-auto opacity-50"> -->
       </RouterLink>
       <!-- <span class="left-nav-sub-links" :ref="setSubLinkRef">
         <a href="#" class="left-nav-sub-link">
