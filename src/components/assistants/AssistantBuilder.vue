@@ -1,15 +1,16 @@
-// src/components/assistants/AssistantBuilder.vue
-
 <script setup>
 
 import interact from "interactjs";
 import { onMounted, onBeforeUnmount, reactive, defineEmits, defineProps, watch, ref, nextTick, computed } from "vue";
 import StepOptionsDropdown from "../shared/StepOptionsDropdown.vue";
+import AddStepMenuContent from "./AddStepMenuContent.vue";
+import BuilderConnectionsLayer from "./BuilderConnectionsLayer.vue";
+import BuilderFloatingControls from "./BuilderFloatingControls.vue";
+import BuilderStepCard from "./BuilderStepCard.vue";
 import {
   createBuilderNodeTemplates,
   getAddStepMenuGroups,
   getStartBlockOptions,
-  isStepWarningVisible,
 } from "./mockSteps";
 
 const emit = defineEmits(["toggleSidebar", "select-start-block"]);
@@ -50,7 +51,6 @@ const panState = reactive({ startX: 0, startY: 0, baseX: 0, baseY: 0 });
 const isPanning = ref(false);
 const isRecentering = ref(false);
 const isReorderingNodes = ref(false);
-const commentComposerInput = ref(null);
 const DEFAULT_ZOOM = 1;
 const zoomLevel = ref(DEFAULT_ZOOM);
 const ZOOM_STEP = 0.0625;
@@ -187,21 +187,10 @@ function toggleEditorComments() {
   }
 }
 
-function formatStepDetailValue(value) {
-  const nextValue = String(value ?? "").trim();
-  return nextValue || "-";
-}
-
-function shouldShowStepRowWarning(node, row) {
-  return Boolean(row?.isCode && isStepWarningVisible(node.stateKey || node.id, row.dataKey, row.showWarning));
-}
-
-function handleAddStepMenuSelection(item, close) {
+function handleAddStepMenuSelection(item) {
   if (item?.startBlockMode) {
     selectStartBlock(item.startBlockMode);
   }
-
-  close();
 }
 
 function handleUndoClick() {
@@ -220,19 +209,11 @@ function formatCommentStamp(date = new Date()) {
 function openCommentComposer(nodeId) {
   commentComposer.nodeId = String(nodeId);
   commentComposer.text = "";
-
-  nextTick(() => {
-    commentComposerInput.value?.focus();
-  });
 }
 
 function closeCommentComposer() {
   commentComposer.nodeId = null;
   commentComposer.text = "";
-}
-
-function updateCommentComposerText(event) {
-  commentComposer.text = event.target.value;
 }
 
 function saveComment(nodeId) {
@@ -266,6 +247,10 @@ function handleCommentComposerKeydown(event, nodeId) {
     event.preventDefault();
     closeCommentComposer();
   }
+}
+
+function handleCommentComposerTextUpdate(value) {
+  commentComposer.text = value;
 }
 
 function syncViewportSize() {
@@ -769,6 +754,34 @@ function startLineReorderDrag(event, line) {
   beginReorderDrag(event, nodeId, connectorKind, connectorEl, line);
 }
 
+function handleConnectionLinePointerDown({ event, line }) {
+  startLineReorderDrag(event, line);
+}
+
+function handleConnectionLinePointerHover({ event, lineKey }) {
+  handleLinePointerHover(event, lineKey);
+}
+
+function handleConnectionLinePointerLeave({ lineKey }) {
+  clearHoveredConnection(lineKey);
+}
+
+function handleCardConnectorPointerDown({ event, nodeId, connectorKind }) {
+  startReorderDrag(event, nodeId, connectorKind);
+}
+
+function handleCardConnectorPointerHover({ event, nodeId, connectorKind }) {
+  handleConnectorPointerHover(event, nodeId, connectorKind);
+}
+
+function handleCardConnectorPointerLeave({ nodeId, connectorKind }) {
+  clearConnectorHover(nodeId, connectorKind);
+}
+
+function handleCardCommentKeydown({ event, nodeId }) {
+  handleCommentComposerKeydown(event, nodeId);
+}
+
 function updateConnectionLines() {
   const canvasEl = canvas.value;
   if (!canvasEl) return;
@@ -1132,85 +1145,23 @@ onBeforeUnmount(() => {
       :style="sceneTranslateStyle"
     >
       <div class="assistant-builder-scene-scale" :style="sceneScaleStyle">
-        <Teleport to="body">
-          <svg
-            v-if="reorderDrag.active && reorderDrag.moved && viewportSize.width && viewportSize.height"
-            class="assistant-step-reorder-overlay"
-            :width="viewportSize.width"
-            :height="viewportSize.height"
-            aria-hidden="true"
-          >
-            <line
-              class="assistant-step-reorder-line"
-              :x1="reorderDrag.sourceX"
-              :y1="reorderDrag.sourceY"
-              :x2="reorderDrag.targetId ? reorderDrag.targetX : reorderDrag.pointerX"
-              :y2="reorderDrag.targetId ? reorderDrag.targetY : reorderDrag.pointerY"
-            />
-          </svg>
-        </Teleport>
-        <Teleport to="body">
-          <div
-            v-if="connectionHintTooltip.open"
-            class="builder-zoom-tooltip true-small assistant-step-hover-tooltip assistant-step-hover-tooltip--visible"
-            :style="{ left: `${connectionHintTooltip.left}px`, top: `${connectionHintTooltip.top}px` }"
-            role="tooltip"
-          >
-            Click to remove. Drag to change.
-          </div>
-        </Teleport>
-        <svg
-          class="assistant-step-connections"
-          :width="canvasSize.width"
-          :height="canvasSize.height"
-          overflow="visible"
-          aria-hidden="true"
-        >
-          <line
-            v-for="line in connectionLines"
-            :key="`highlight-${line.key}`"
-            v-show="highlightedConnectionKey === line.key && hiddenDraggedConnectionKey !== line.key"
-            class="assistant-step-connection-hover-band"
-            :x1="line.x1"
-            :y1="line.y1"
-            :x2="line.x2"
-            :y2="line.y2"
-          />
-          <line
-            v-for="line in connectionLines"
-            :key="`hit-${line.key}`"
-            v-show="hiddenDraggedConnectionKey !== line.key"
-            class="assistant-step-connection-hit-area"
-            :x1="line.x1"
-            :y1="line.y1"
-            :x2="line.x2"
-            :y2="line.y2"
-            @pointerdown.stop.prevent="startLineReorderDrag($event, line)"
-            @pointerover="handleLinePointerHover($event, line.key)"
-            @pointermove="handleLinePointerHover($event, line.key)"
-            @pointerleave="clearHoveredConnection(line.key)"
-          />
-          <line
-            v-for="line in connectionLines"
-            :key="line.key"
-            v-show="hiddenDraggedConnectionKey !== line.key"
-            class="assistant-step-connection-line"
-            :class="{ 'assistant-step-connection-line--active': highlightedConnectionKey === line.key }"
-            :x1="line.x1"
-            :y1="line.y1"
-            :x2="line.x2"
-            :y2="line.y2"
-          />
-          <line
-            v-for="terminalAdd in terminalAddControls"
-            :key="terminalAdd.lineKey"
-            class="assistant-step-connection-line"
-            :x1="terminalAdd.x1"
-            :y1="terminalAdd.y1"
-            :x2="terminalAdd.x2"
-            :y2="terminalAdd.y2"
-          />
-        </svg>
+        <BuilderConnectionsLayer
+          :viewport-size="viewportSize"
+          :reorder-drag="reorderDrag"
+          :connection-hint-tooltip="connectionHintTooltip"
+          :canvas-size="canvasSize"
+          :connection-lines="connectionLines"
+          :terminal-add-controls="terminalAddControls"
+          :highlighted-connection-key="highlightedConnectionKey"
+          :hidden-dragged-connection-key="hiddenDraggedConnectionKey"
+          :add-step-menu-groups="addStepMenuGroups"
+          :should-show-full-terminal-add-card="shouldShowFullTerminalAddCard"
+          :single-start-terminal-add-control="singleStartTerminalAddControl"
+          @line-pointerdown="handleConnectionLinePointerDown"
+          @line-pointerhover="handleConnectionLinePointerHover"
+          @line-pointerleave="handleConnectionLinePointerLeave"
+          @add-step-select="handleAddStepMenuSelection"
+        />
         <Teleport to="body">
           <div
             v-if="connectionMenu.open"
@@ -1227,398 +1178,36 @@ onBeforeUnmount(() => {
             </button>
           </div>
         </Teleport>
-	        <StepOptionsDropdown
-	          v-for="line in connectionLines"
-	          :key="`mid-add-${line.key}`"
-	          v-show="hiddenDraggedConnectionKey !== line.key"
-	          class="assistant-step-inline-add"
-	          :style="{ left: `${line.midX}px`, top: `${line.midY}px` }"
-	        >
-	          <template #trigger="{ open }">
-	            <div class="builder-zoom-tooltip-wrap assistant-step-inline-tooltip-wrap">
-	              <button
-	                type="button"
-	                class="assistant-step-inline-add-btn d-flex align-items-center justify-content-center"
-	                aria-label="Add step between connected nodes"
-	              >
-	                <img src="../../assets/plus-round.svg" width="12" height="12" class="d-block invert-to-white">
-	              </button>
-	              <div v-if="!open" class="builder-zoom-tooltip true-small" role="tooltip">Add a step here.</div>
-	            </div>
-	          </template>
-            <template #menu="{ close }">
-              <template v-for="(group, groupIndex) in addStepMenuGroups" :key="group.key">
-                <div v-if="groupIndex > 0" class="dropdown-divider my-2 mx-1 border-top border-body-subtle opacity-100" />
-                <div class="assistant-step-add-menu__label true-small text-muted px-2 pb-1">{{ group.label }}</div>
-                <button
-                  v-for="item in group.items"
-                  :key="item.key"
-                  type="button"
-                  class="dropdown-item d-flex align-items-center text-start"
-                  @click.stop="handleAddStepMenuSelection(item, close)"
-                >
-                  <span class="assistant-step-menu-item__icon me-2 rounded-sm d-inline-flex align-items-center justify-content-center" :class="item.typeMeta.bgClass">
-                    <img
-                      :src="item.typeMeta.icon"
-                      width="12"
-                      height="12"
-                      class="d-block"
-                      :class="{ 'invert-to-white': item.typeMeta.iconInvert }"
-                    >
-                  </span>
-                  <span>{{ item.label }}</span>
-                </button>
-              </template>
-            </template>
-	        </StepOptionsDropdown>
-
         <TransitionGroup name="nodes">
-          <div
+          <BuilderStepCard
             v-for="(node, nodeIndex) in nodes"
             :key="node.id"
-            class="assistant-step border rounded bg-white"
-            :class="{
-              'assistant-step--has-incoming': hasIncomingConnection(node.id),
-              'assistant-step--reordering': isReorderingNodes,
-              'border-primary': isActiveConnectionDragSource(node.id) || isActiveConnectionDragTarget(node.id),
-            }"
-            draggable
-            :data-step-id="node.id"
-            :style="{ transform: `translate3d(${node.x}px, ${node.y}px, 0)`}"
-            @click="toggleSidebar(node.id)"
-          >
-          <div
-            v-if="showEditorComments"
-            class="assistant-step-comments assistant-step-control"
-            :class="[
-              nodeIndex % 2 === 0 ? 'assistant-step-comments--left' : 'assistant-step-comments--right',
-              { 'assistant-step-comments--composer-open': commentComposer.nodeId === String(node.id) },
-            ]"
-            @click.stop
-          >
-            <div
-              v-for="(comment, commentIndex) in node.comments"
-              :key="`${node.id}-comment-${commentIndex}`"
-              class="assistant-step-comment-item"
-            >
-              <div class="assistant-step-comment-box bg-iceberg-blue border rounded-sm p-2 true-small text-info-emphasis">
-                <div class="assistant-step-comment-box__body">
-                  <span class="assistant-step-comment-box__author fw-semibold">{{ comment.author }}:</span>
-                  <span>{{ comment.body }}</span>
-                </div>
-              </div>
-              <div class="assistant-step-comment-box__meta smallest text-info-emphasis">
-                Step {{ nodeIndex + 1 }}<template v-if="comment.stamp"> &bull; {{ comment.stamp }}</template>
-              </div>
-            </div>
-            <div
-              v-if="commentComposer.nodeId === String(node.id)"
-              class="assistant-step-comment-item assistant-step-comment-item--composer"
-            >
-              <div class="assistant-step-comment-compose bg-white border rounded-sm p-2 assistant-step-control">
-                <textarea
-                  ref="commentComposerInput"
-                  class="assistant-step-comment-compose__input form-control form-control-sm true-small assistant-step-control"
-                  rows="3"
-                  placeholder="Add a comment"
-                  :value="commentComposer.text"
-                  @click.stop
-                  @input="updateCommentComposerText"
-                  @keydown="handleCommentComposerKeydown($event, node.id)"
-                />
-                <div class="d-flex justify-content-end gap-1 mt-2">
-                  <button
-                    type="button"
-                    class="btn btn-sm btn-white border rounded-sm true-small assistant-step-control"
-                    @click.stop="closeCommentComposer"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    class="btn btn-sm bg-dark text-white rounded-sm true-small assistant-step-control"
-                    :disabled="!commentComposer.text.trim()"
-                    @click.stop="saveComment(node.id)"
-                  >
-                    Add
-                  </button>
-                </div>
-              </div>
-            </div>
-            <button
-              v-if="commentComposer.nodeId !== String(node.id)"
-              type="button"
-              class="assistant-step-comment-add assistant-step-control d-flex align-items-center justify-content-center"
-              :class="{ 'assistant-step-comment-add--centered': node.comments?.length }"
-              aria-label="Add comment"
-              @click.stop="openCommentComposer(node.id)"
-            >
-              <img src="../../assets/comment.svg" width="13" height="13" class="d-block opacity-50">
-            </button>
-          </div>
-          <div
-            class="assistant-step-connector assistant-step-connector--top assistant-step-control"
-            :class="{
-              'assistant-step-connector--active-target': reorderDrag.targetId === String(node.id) && reorderDrag.targetKind === 'top',
-              'assistant-step-connector--drag-source': reorderDrag.active && reorderDrag.sourceId === String(node.id) && reorderDrag.sourceKind === 'top',
-            }"
-            :data-step-id="node.id"
-            data-connector-kind="top"
-            role="button"
-            @pointerdown.stop.prevent="startReorderDrag($event, node.id, 'top')"
-            @pointerover="handleConnectorPointerHover($event, node.id, 'top')"
-            @pointermove="handleConnectorPointerHover($event, node.id, 'top')"
-            @pointerleave="clearConnectorHover(node.id, 'top')"
-            @click.stop
+            :node="node"
+            :node-index="nodeIndex"
+            :show-editor-comments="showEditorComments"
+            :is-composer-open="commentComposer.nodeId === String(node.id)"
+            :comment-composer-text="commentComposer.text"
+            :start-block-options="startBlockOptions"
+            :is-reordering-nodes="isReorderingNodes"
+            :has-incoming-connection="hasIncomingConnection(node.id)"
+            :is-active-connection-drag-source="isActiveConnectionDragSource(node.id)"
+            :is-active-connection-drag-target="isActiveConnectionDragTarget(node.id)"
+            @select-step="toggleSidebar"
+            @open-comment-composer="openCommentComposer"
+            @close-comment-composer="closeCommentComposer"
+            @update-comment-text="handleCommentComposerTextUpdate"
+            @save-comment="saveComment"
+            @comment-keydown="handleCardCommentKeydown"
+            @connector-pointerdown="handleCardConnectorPointerDown"
+            @connector-pointerhover="handleCardConnectorPointerHover"
+            @connector-pointerleave="handleCardConnectorPointerLeave"
+            @toggle-node-details="toggleNodeDetails"
+            @duplicate-step="duplicateStep"
+            @remove-connections="removeAllConnections"
+            @delete-step="deleteStep"
+            @select-start-block="selectStartBlock"
           />
-	          <div
-	            class="assistant-step-header px-2.5 py-2.5 d-flex align-items-center justify-content-start"
-	            :class="{
-	              'border-bottom': !node.detailsCollapsed,
-	              'assistant-step-header--collapsed': node.detailsCollapsed,
-	            }"
-	          >
-	            <div
-	              v-if="node.typeMeta && !node.isStartBlock"
-	              style="border-radius: 0.25rem;"
-	              class="me-2 p-1"
-	              :class="node.typeMeta.bgClass"
-	            >
-	              <img
-	                :src="node.typeMeta.icon"
-	                width="16"
-	                height="16"
-	                class="d-block"
-	                :class="{ 'invert-to-white': node.typeMeta.iconInvert }"
-	              >
-	            </div>
-              <StepOptionsDropdown
-                v-if="node.isStartBlock"
-                class="assistant-step-start-switcher me-2"
-                placement="bottom-start"
-                menu-class="assistant-step-start-switcher-menu"
-                @click.stop
-              >
-                <template #trigger>
-                  <button
-                    type="button"
-                    class="assistant-step-start-switcher__trigger assistant-step-control"
-                    aria-label="Change starting block"
-                  >
-                    <span class="assistant-step-start-switcher__pill true-small fw-medium text-white d-inline-flex align-items-center rounded-pill px-2 py-0" :class="node.typeMeta.bgClass">
-                      <img
-                        :src="node.typeMeta.icon"
-                        width="14"
-                        height="14"
-                        class="d-block me-1"
-                        :class="{ 'invert-to-white': node.typeMeta.iconInvert }"
-                      >
-                      <span>{{ node.typeMeta.label }}</span>
-                      <img src="../../assets/dropdown.svg" width="11" height="11" class="assistant-step-start-switcher__caret ms-1">
-                    </span>
-                  </button>
-                </template>
-                <template #menu="{ close }">
-                  <button
-                    v-for="option in startBlockOptions"
-                    :key="option.key"
-                    type="button"
-                    class="dropdown-item d-flex align-items-center text-start"
-                    @click.stop="selectStartBlock(option.key); close()"
-                  >
-                    <span class="assistant-step-menu-item__icon me-2 rounded-sm d-inline-flex align-items-center justify-content-center" :class="option.typeMeta.bgClass">
-                      <img
-                        :src="option.typeMeta.icon"
-                        width="12"
-                        height="12"
-                        class="d-block"
-                        :class="{ 'invert-to-white': option.typeMeta.iconInvert }"
-                      >
-                    </span>
-                    <span>{{ option.label }}</span>
-                  </button>
-                </template>
-              </StepOptionsDropdown>
-	            <h6 v-if="!node.isStartBlock || node.type !== 'start'" class="mb-0 me-2">
-	              {{ node.title }}
-	            </h6>
-              <div class="assistant-step-header-actions ms-auto d-flex align-items-center">
-                <button
-                  type="button"
-                  class="assistant-step-header-toggle assistant-step-control me-1"
-                  aria-label="Toggle step details"
-                  @click.stop="toggleNodeDetails(node.id)"
-                >
-                  <img
-                    src="../../assets/arrow-down-b.svg"
-                    width="11"
-                    height="11"
-                    class="assistant-step-details-caret"
-                    :class="{ 'assistant-step-details-caret--collapsed': node.detailsCollapsed }"
-                  >
-                </button>
-                <StepOptionsDropdown
-                  class="assistant-step-menu"
-                  placement="bottom-end"
-                  menu-class="assistant-step-menu-panel"
-                  @click.stop
-                >
-                  <template #trigger>
-                    <button
-                      type="button"
-                      class="assistant-step-menu-trigger assistant-step-control"
-                      aria-label="Step actions"
-                    >
-                      <img src="../../assets/ellipses.svg" width="14" height="14" class="assistant-step-menu-trigger__icon">
-                    </button>
-                  </template>
-                  <template #menu="{ close }">
-                    <button type="button" class="dropdown-item" @click.stop="duplicateStep(node.id); close()">Duplicate Step</button>
-                    <button type="button" class="dropdown-item" @click.stop="removeAllConnections(node.id); close()">Remove Connections</button>
-                    <button type="button" class="dropdown-item" @click.stop="deleteStep(node.id); close()">Delete Step</button>
-                  </template>
-                </StepOptionsDropdown>
-              </div>
-	          </div>
-	          <div class="assistant-step-details">
-	            <div v-show="!node.detailsCollapsed" class="assistant-step-details-content px-2.5 pb-2 not-as-small text-black">
-	              <table class="w-100 table table-borderless table-sm mb-0">
-                <tbody>
-                  <tr 
-                    v-for="row in node.rows"
-                    :key="row.key"
-                  >
-                    <td class="text-muted text-capitalize assistant-step-detail__key">
-                      <span class="assistant-step-detail__key-label">
-                        <img
-                          v-if="shouldShowStepRowWarning(node, row)"
-                          src="../../assets/warning.svg"
-                          width="12"
-                          height="12"
-                          class="assistant-step-detail__warning"
-                          title="Ivy: It looks like this code won't run as intended."
-                          alt=""
-                        >
-                        <span>{{ row.key }}</span>
-                      </span>
-                    </td>
-                    <td class="text-end assistant-step-detail__val">
-                      <div class="assistant-step-detail__val-text">
-                        {{ formatStepDetailValue(node.data[row.dataKey]) }}
-                      </div>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-              <!-- <div
-                v-for="(value, key) in node.data"
-                :key="key"
-                class="d-flex align-items-center mb-1"
-              >
-                <span class="text-muted me-3 text-capitalize">{{ key }}</span>
-                <span class="ms-auto">{{ value }}</span>
-              </div> -->
-            </div>
-          </div>
-          <div
-            class="assistant-step-connector assistant-step-connector--bottom assistant-step-control"
-            :class="{
-              'assistant-step-connector--active-target': reorderDrag.targetId === String(node.id) && reorderDrag.targetKind === 'bottom',
-              'assistant-step-connector--drag-source': reorderDrag.active && reorderDrag.sourceId === String(node.id) && reorderDrag.sourceKind === 'bottom',
-            }"
-            :data-step-id="node.id"
-            data-connector-kind="bottom"
-            role="button"
-            @pointerdown.stop.prevent="startReorderDrag($event, node.id, 'bottom')"
-            @pointerover="handleConnectorPointerHover($event, node.id, 'bottom')"
-            @pointermove="handleConnectorPointerHover($event, node.id, 'bottom')"
-            @pointerleave="clearConnectorHover(node.id, 'bottom')"
-            @click.stop
-          />
-          </div>
         </TransitionGroup>
-
-        <StepOptionsDropdown
-          v-for="terminalAdd in terminalAddControls"
-          :key="terminalAdd.key"
-          v-show="!shouldShowFullTerminalAddCard"
-          class="assistant-step-terminal-add"
-          :style="{ left: `${terminalAdd.x}px`, top: `${terminalAdd.top}px` }"
-        >
-          <template #trigger="{ open }">
-            <div class="builder-zoom-tooltip-wrap assistant-step-inline-tooltip-wrap">
-              <button
-                type="button"
-                class="assistant-step-inline-add-btn d-flex align-items-center justify-content-center"
-                aria-label="Add step after this node"
-              >
-                <img src="../../assets/plus-round.svg" width="12" height="12" class="d-block invert-to-white">
-              </button>
-              <div v-if="!open" class="builder-zoom-tooltip true-small" role="tooltip">Add a step here.</div>
-            </div>
-          </template>
-          <template #menu="{ close }">
-            <template v-for="(group, groupIndex) in addStepMenuGroups" :key="group.key">
-              <div v-if="groupIndex > 0" class="dropdown-divider my-2 mx-1 border-top border-body-subtle opacity-100" />
-              <div class="assistant-step-add-menu__label true-small text-muted px-2 pb-1">{{ group.label }}</div>
-              <button
-                v-for="item in group.items"
-                :key="item.key"
-                type="button"
-                class="dropdown-item d-flex align-items-center text-start"
-                @click.stop="handleAddStepMenuSelection(item, close)"
-              >
-                <span class="assistant-step-menu-item__icon me-2 rounded-sm d-inline-flex align-items-center justify-content-center" :class="item.typeMeta.bgClass">
-                  <img
-                    :src="item.typeMeta.icon"
-                    width="12"
-                    height="12"
-                    class="d-block"
-                    :class="{ 'invert-to-white': item.typeMeta.iconInvert }"
-                  >
-                </span>
-                <span>{{ item.label }}</span>
-              </button>
-            </template>
-          </template>
-        </StepOptionsDropdown>
-
-        <StepOptionsDropdown
-          v-if="singleStartTerminalAddControl"
-          class="assistant-step-terminal-add assistant-step-terminal-add--card"
-          :style="{ left: `${singleStartTerminalAddControl.x}px`, top: `${singleStartTerminalAddControl.top}px` }"
-        >
-          <template #trigger>
-            <div class="assistant-step-add-card border rounded-sm fw-medium bg-white py-2.5 px-3 reduced text-center">
-              <span class="me-1">&plus;</span>
-              Add Step
-            </div>
-          </template>
-          <template #menu="{ close }">
-            <template v-for="(group, groupIndex) in addStepMenuGroups" :key="group.key">
-              <div v-if="groupIndex > 0" class="dropdown-divider my-2 mx-1 border-top border-body-subtle opacity-100" />
-              <div class="assistant-step-add-menu__label true-small text-muted px-2 pb-1">{{ group.label }}</div>
-              <button
-                v-for="item in group.items"
-                :key="item.key"
-                type="button"
-                class="dropdown-item d-flex align-items-center text-start"
-                @click.stop="handleAddStepMenuSelection(item, close)"
-              >
-                <span class="assistant-step-menu-item__icon me-2 rounded-sm d-inline-flex align-items-center justify-content-center" :class="item.typeMeta.bgClass">
-                  <img
-                    :src="item.typeMeta.icon"
-                    width="12"
-                    height="12"
-                    class="d-block"
-                    :class="{ 'invert-to-white': item.typeMeta.iconInvert }"
-                  >
-                </span>
-                <span>{{ item.label }}</span>
-              </button>
-            </template>
-          </template>
-        </StepOptionsDropdown>
 
         <StepOptionsDropdown
           v-if="!nodes.length"
@@ -1631,157 +1220,27 @@ onBeforeUnmount(() => {
             </div>
           </template>
           <template #menu="{ close }">
-            <template v-for="(group, groupIndex) in addStepMenuGroups" :key="group.key">
-              <div v-if="groupIndex > 0" class="dropdown-divider my-2 mx-1 border-top border-body-subtle opacity-100" />
-              <div class="assistant-step-add-menu__label true-small text-muted px-2 pb-1">{{ group.label }}</div>
-              <button
-                v-for="item in group.items"
-                :key="item.key"
-                type="button"
-                class="dropdown-item d-flex align-items-center text-start"
-                @click.stop="handleAddStepMenuSelection(item, close)"
-              >
-                <span class="assistant-step-menu-item__icon me-2 rounded-sm d-inline-flex align-items-center justify-content-center" :class="item.typeMeta.bgClass">
-                  <img
-                    :src="item.typeMeta.icon"
-                    width="12"
-                    height="12"
-                    class="d-block"
-                    :class="{ 'invert-to-white': item.typeMeta.iconInvert }"
-                  >
-                </span>
-                <span>{{ item.label }}</span>
-              </button>
-            </template>
+            <AddStepMenuContent
+              :groups="addStepMenuGroups"
+              :close-menu="close"
+              @select="handleAddStepMenuSelection"
+            />
           </template>
         </StepOptionsDropdown>
       </div>
     </div>
 
-    <!-- <div class="assistant-step border rounded bg-white" data-step-id="1" draggable>
-      <div class="border-bottom px-2.5 py-2.5 d-flex align-items-center justify-content-start">
-        <div style="background-color: rgb(123, 104, 238); border-radius: 0.25rem;" class="me-2 p-1">
-          <img src="../../assets/sim-ai/calendar.svg" width="16" height="16" class="d-block">
-        </div>
-        <h6 class="fw-bold mb-0">Schedule</h6>
-      </div>
-      <div class="px-2.5 py-2.5 not-as-small text-black">
-        <div class="d-flex align-items-center mb-1">
-          <span class="text-muted me-3">Frequency</span>
-          <span class="ms-auto">Once Daily</span>
-        </div>
-        <div class="d-flex align-items-center mb-1">
-          <span class="text-muted me-3">Time</span>
-          <span class="ms-auto">09:00 am</span>
-        </div>
-        <div class="d-flex align-items-center">
-          <span class="text-muted me-3">Timezone</span>
-          <span class="ms-auto">CST</span>
-        </div>
-      </div>
-    </div> -->
-
-    <div class="builder-zoom">
-      <div class="builder-zoom-tooltip-wrap">
-        <button
-          type="button"
-          class="builder-action--zoom-in btn btn-sm bg-white py-1 px-2.5 fw-bold"
-          aria-label="Zoom in"
-          @click.stop="zoomIn"
-        >
-          &plus;
-        </button>
-        <div class="builder-zoom-tooltip true-small" role="tooltip">Zoom In</div>
-      </div>
-      <div class="builder-zoom-tooltip-wrap">
-        <button
-          type="button"
-          class="builder-action--zoom-out btn btn-sm bg-white py-1 px-2.5 fw-bold"
-          aria-label="Zoom out"
-          @click.stop="zoomOut"
-        >
-          &minus;
-        </button>
-        <div class="builder-zoom-tooltip true-small" role="tooltip">Zoom Out</div>
-      </div>
-    </div>
-    <div class="assistant-step-floating-controls d-flex align-items-center gap-3">
-      <div class="builder-zoom-tooltip-wrap assistant-step-floating-tooltip-wrap">
-        <button
-          type="button"
-          class="assistant-step-floating-mini-btn assistant-step-control d-flex align-items-center justify-content-center"
-          aria-label="Undo"
-          @click.stop="handleUndoClick"
-        >
-          <img src="../../assets/undo.svg" width="14" height="14" class="d-block opacity-75">
-        </button>
-        <div class="builder-zoom-tooltip true-small" role="tooltip">Undo</div>
-      </div>
-      <div class="builder-zoom-tooltip-wrap assistant-step-floating-tooltip-wrap">
-        <button
-          type="button"
-          class="assistant-step-floating-mini-btn assistant-step-control d-flex align-items-center justify-content-center"
-          aria-label="Toggle comments"
-          @click.stop="toggleEditorComments"
-        >
-          <img v-if="showEditorComments" src="../../assets/eye-closed.svg" width="14" height="14" class="d-block">
-          <img v-else src="../../assets/eye-open.svg" width="14" height="14" class="d-block">
-        </button>
-        <div class="builder-zoom-tooltip true-small" role="tooltip">Toggle comments</div>
-      </div>
-      <div class="builder-zoom-tooltip-wrap assistant-step-floating-tooltip-wrap">
-        <button
-          type="button"
-          class="assistant-step-floating-mini-btn assistant-step-control d-flex align-items-center justify-content-center"
-          aria-label="Toggle details"
-          @click.stop="toggleAllNodeDetails"
-        >
-          <img
-            src="../../assets/dropdown.svg"
-            width="14"
-            height="14"
-            class="d-block assistant-step-floating-mini-btn__icon"
-            :class="{ 'assistant-step-floating-mini-btn__icon--collapsed': !areAllDetailsCollapsed }"
-            aria-hidden="true"
-          >
-        </button>
-        <div class="builder-zoom-tooltip true-small" role="tooltip">Toggle details</div>
-      </div>
-      <StepOptionsDropdown class="assistant-step-floating-add" placement="top-end">
-        <template #trigger="{ open }">
-          <div class="builder-zoom-tooltip-wrap assistant-step-floating-tooltip-wrap">
-            <button class="add-builder-node btn btn-dark rounded-circle d-flex align-items-center justify-content-center">
-              <img src="../../assets/plus-round.svg" width="20" height="20" class="d-block invert-to-white">
-            </button>
-            <div v-if="!open" class="builder-zoom-tooltip true-small" role="tooltip">Add Step</div>
-          </div>
-        </template>
-        <template #menu="{ close }">
-          <template v-for="(group, groupIndex) in addStepMenuGroups" :key="group.key">
-            <div v-if="groupIndex > 0" class="dropdown-divider my-2 mx-1 border-top border-body-subtle opacity-100" />
-            <div class="assistant-step-add-menu__label true-small text-muted px-2 pb-1">{{ group.label }}</div>
-            <button
-              v-for="item in group.items"
-              :key="item.key"
-              type="button"
-              class="dropdown-item d-flex align-items-center text-start"
-              @click.stop="handleAddStepMenuSelection(item, close)"
-            >
-              <span class="assistant-step-menu-item__icon me-2 rounded-sm d-inline-flex align-items-center justify-content-center" :class="item.typeMeta.bgClass">
-                <img
-                  :src="item.typeMeta.icon"
-                  width="12"
-                  height="12"
-                  class="d-block"
-                  :class="{ 'invert-to-white': item.typeMeta.iconInvert }"
-                >
-              </span>
-              <span>{{ item.label }}</span>
-            </button>
-          </template>
-        </template>
-      </StepOptionsDropdown>
-    </div>
+    <BuilderFloatingControls
+      :show-editor-comments="showEditorComments"
+      :are-all-details-collapsed="areAllDetailsCollapsed"
+      :add-step-menu-groups="addStepMenuGroups"
+      @zoom-in="zoomIn"
+      @zoom-out="zoomOut"
+      @undo="handleUndoClick"
+      @toggle-editor-comments="toggleEditorComments"
+      @toggle-all-node-details="toggleAllNodeDetails"
+      @add-step-select="handleAddStepMenuSelection"
+    />
   </article>
 </template>
 
@@ -1821,110 +1280,6 @@ onBeforeUnmount(() => {
   transition: transform 0.2s ease-in-out;
 }
 
-.assistant-step-connections {
-  height: 100%;
-  inset: 0;
-  overflow: visible;
-  pointer-events: none;
-  position: absolute;
-  width: 100%;
-  z-index: 1;
-}
-
-.assistant-step-reorder-overlay {
-  inset: 0;
-  overflow: visible;
-  pointer-events: none;
-  position: fixed;
-  z-index: 500;
-}
-
-.assistant-step-reorder-line {
-  fill: none;
-  stroke: var(--bs-dark);
-  stroke-dasharray: 5 6;
-  stroke-linecap: round;
-  stroke-width: 2;
-  opacity: 0.9;
-}
-
-.assistant-step-connection-line {
-  fill: none;
-  stroke: var(--bs-gray-400);
-  stroke-dasharray: 5 6;
-  stroke-linecap: round;
-  stroke-width: 2;
-  animation: assistant-step-connection-flow 1.8s linear infinite;
-  pointer-events: none;
-  transition: stroke 120ms ease-in-out, stroke-width 120ms ease-in-out;
-}
-
-.assistant-step-connection-line--active {
-  stroke: var(--bs-gray-600);
-  stroke-width: 3;
-}
-
-.assistant-step-connection-hover-band {
-  fill: none;
-  pointer-events: none;
-  stroke: rgba(222, 226, 230, 0.95);
-  stroke-linecap: round;
-  stroke-width: 20;
-  opacity: 1;
-  transition: opacity 120ms ease-in-out;
-}
-
-.assistant-step-connection-hit-area {
-  cursor: pointer;
-  fill: none;
-  pointer-events: stroke;
-  stroke: transparent;
-  stroke-width: 18;
-  transition: opacity 120ms ease-in-out;
-}
-
-.assistant-step-inline-add {
-  margin-left: -0.625rem;
-  margin-top: -0.625rem;
-  position: absolute;
-  z-index: 3;
-}
-
-.assistant-step-inline-add:focus-within,
-.assistant-step-inline-add:has(.step-options-dropdown--open) {
-  z-index: 40;
-}
-
-.assistant-step-inline-add-btn {
-  background-color: var(--bs-dark);
-  border: 0;
-  border-radius: 999px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
-  height: 1.25rem;
-  padding: 0;
-  transition: background-color 120ms ease-in-out;
-  width: 1.25rem;
-}
-
-.assistant-step-inline-add-btn:hover {
-  background-color: #3e4756;
-}
-
-.assistant-step-terminal-add {
-  position: absolute;
-  transform: translate(-50%, -50%);
-  z-index: 3;
-}
-
-.assistant-step-terminal-add--card {
-  transform: translate(-50%, 0);
-}
-
-.assistant-step-terminal-add:focus-within,
-.assistant-step-terminal-add:has(.step-options-dropdown--open) {
-  z-index: 40;
-}
-
 .assistant-step-add-card {
   box-shadow: 0 4px 8px -2px rgba(0,0,0,0.1);
   cursor: pointer;
@@ -1936,442 +1291,6 @@ onBeforeUnmount(() => {
   min-width: 11rem;
   position: fixed;
   z-index: 520;
-}
-
-@keyframes assistant-step-connection-flow {
-  to {
-    stroke-dashoffset: -22;
-  }
-}
-
-.assistant-step {
-  box-shadow: 0 4px 8px -2px rgba(0,0,0,0.1);
-  cursor: grab;
-  margin: 0 auto;
-  max-width: 18rem;
-  position: relative;
-  transform: translate3d(0,0,0);
-  user-select: none;
-  will-change: transform;
-  z-index: 2;
-
-  &:active {
-    cursor: grabbing;
-  }
-}
-
-.assistant-step--reordering {
-  transition: transform 0.18s ease-in-out;
-}
-
-.assistant-step-control {
-  cursor: pointer;
-}
-
-.assistant-step-header {
-  min-height: 2.5rem;
-}
-
-.assistant-step-start-switcher {
-  min-width: 0;
-}
-
-.assistant-step-start-switcher__trigger {
-  background: transparent;
-  border: 0;
-  line-height: 0;
-  padding: 0;
-}
-
-.assistant-step-start-switcher__pill {
-  line-height: 1.2;
-  min-height: 1.25rem;
-}
-
-.assistant-step-start-switcher__caret {
-  filter: brightness(0) invert(1);
-  opacity: 0.8;
-}
-
-.assistant-step-header--collapsed {
-  border-bottom-left-radius: 0.5rem;
-  border-bottom-right-radius: 0.5rem;
-}
-
-.assistant-step-header-toggle {
-  align-items: center;
-  background: transparent;
-  border: 0;
-  border-radius: 0.25rem;
-  display: inline-flex;
-  justify-content: center;
-  line-height: 0;
-  padding: 0.125rem;
-}
-
-.assistant-step-menu {
-  position: relative;
-}
-
-.assistant-step-menu-trigger {
-  align-items: center;
-  background: transparent;
-  border: 0;
-  border-radius: 0.25rem;
-  display: inline-flex;
-  justify-content: center;
-  line-height: 0;
-  padding: 0.125rem;
-}
-
-.assistant-step-menu-trigger__icon {
-  display: block;
-  opacity: 0.55;
-  transform: rotate(90deg);
-}
-
-:deep(.assistant-step-menu-panel) {
-  min-width: 12.5rem;
-}
-
-:deep(.assistant-step-start-switcher-menu) {
-  min-width: 11rem;
-}
-
-.assistant-step-menu-item__icon {
-  height: 1.25rem;
-  width: 1.25rem;
-}
-
-.assistant-step-add-menu__label {
-  letter-spacing: 0.01em;
-}
-
-.assistant-step-details {
-  border-bottom-left-radius: 0.5rem;
-  border-bottom-right-radius: 0.5rem;
-  overflow: hidden;
-}
-
-.assistant-step-details-content {
-  background-color: transparent;
-}
-
-.assistant-step-details-caret {
-  opacity: 0.55;
-  transition: transform 120ms ease-in-out;
-}
-
-.assistant-step-details-caret--collapsed {
-  transform: rotate(-90deg);
-}
-
-.assistant-step-connector {
-  background-color: var(--bs-dark);
-  border-radius: 0.3rem;
-  cursor: grab;
-  height: 0.5rem;
-  left: 50%;
-  pointer-events: auto;
-  position: absolute;
-  transform: translateX(-50%);
-  transition: opacity 120ms ease-in-out, box-shadow 120ms ease-in-out, background-color 120ms ease-in-out;
-  width: 1rem;
-}
-
-.assistant-step-connector--top {
-  opacity: 0;
-  pointer-events: none;
-  top: 0;
-  transform: translate(-50%, -50%);
-}
-
-.assistant-step-connector--bottom {
-  bottom: -0.28rem;
-  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.28);
-}
-
-.assistant-step:hover .assistant-step-connector--top,
-.assistant-step--has-incoming .assistant-step-connector--top,
-.assistant-step-connector--top.assistant-step-connector--active-target,
-.assistant-step-connector--top.assistant-step-connector--drag-source {
-  opacity: 1;
-  pointer-events: auto;
-}
-
-.assistant-step-connector--active-target,
-.assistant-step-connector--drag-source {
-  background-color: #3e4756;
-  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.24);
-}
-
-.assistant-step-connector--drag-source {
-  cursor: grabbing;
-}
-
-table {
-  table-layout: auto;
-  width: 100%;
-}
-
-.assistant-step-detail__key {
-  overflow-wrap: normal;
-  white-space: nowrap;
-  word-break: normal;
-}
-
-.assistant-step-detail__key-label {
-  align-items: center;
-  display: inline-flex;
-  gap: 0.25rem;
-}
-
-.assistant-step-detail__warning {
-  display: block;
-  flex: 0 0 auto;
-}
-
-.assistant-step-detail__val {
-  overflow-wrap: break-word;
-  vertical-align: top;
-  white-space: normal;
-  word-break: normal;
-}
-
-.assistant-step-detail__val-text {
-  display: block;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
-  display: -webkit-box;
-  line-clamp: 3;
-  line-height: 1.35;
-  max-height: calc(1.35em * 3);
-  max-width: 100%;
-  min-width: 0;
-  overflow: hidden;
-  overflow-wrap: break-word;
-  text-align: right;
-  text-overflow: ellipsis;
-  white-space: normal;
-  word-break: normal;
-}
-
-.assistant-step-comments {
-  box-sizing: content-box;
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  min-height: 1.25rem;
-  max-width: 11rem;
-  position: absolute;
-  top: 0.5rem;
-  width: 11rem;
-  z-index: 3;
-}
-
-.assistant-step-comments--left {
-  align-items: flex-end;
-  padding-right: 1.25rem;
-  right: 100%;
-}
-
-.assistant-step-comments--right {
-  align-items: flex-start;
-  left: 100%;
-  padding-left: 1.25rem;
-}
-
-.assistant-step-comment-item {
-  position: relative;
-  width: 100%;
-}
-
-.assistant-step-comment-box {
-  pointer-events: auto;
-}
-
-.assistant-step-comment-compose {
-  pointer-events: auto;
-}
-
-.assistant-step-comment-compose__input {
-  resize: none;
-}
-
-.assistant-step-comment-box__author {
-  margin-right: 0.2rem;
-}
-
-.assistant-step-comment-box__body {
-  line-height: 1.35;
-}
-
-.assistant-step-comment-box__meta {
-  opacity: 0;
-  pointer-events: none;
-  position: absolute;
-  top: 50%;
-  transition: opacity 120ms ease-in-out;
-  transform: translateY(-50%);
-  white-space: nowrap;
-}
-
-.assistant-step-comment-item:hover .assistant-step-comment-box__meta {
-  opacity: 0.5;
-}
-
-.assistant-step-comments--left .assistant-step-comment-box__meta {
-  right: calc(100% + 0.45rem);
-  text-align: right;
-}
-
-.assistant-step-comments--right .assistant-step-comment-box__meta {
-  left: calc(100% + 0.45rem);
-  text-align: left;
-}
-
-.assistant-step-comment-add {
-  background-color: #fff;
-  border: 1px solid var(--bs-gray-300);
-  border-radius: 999px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
-  height: 1.5rem;
-  opacity: 0;
-  padding: 0;
-  pointer-events: none;
-  transition: opacity 120ms ease-in-out, background-color 120ms ease-in-out;
-  width: 1.5rem;
-}
-
-.assistant-step-comment-add:hover {
-  background-color: var(--bs-light);
-}
-
-.assistant-step-comment-add--centered {
-  align-self: center;
-}
-
-.assistant-step:hover .assistant-step-comment-add,
-.assistant-step-comments:hover .assistant-step-comment-add,
-.assistant-step-comments--composer-open .assistant-step-comment-add,
-.assistant-step-comment-add--visible {
-  opacity: 1;
-  pointer-events: auto;
-}
-
-.builder-zoom {
-  box-shadow: 0 2px 2px 0 rgba(0,0,0,0.14), 0 3px 1px -2px rgba(0,0,0,0.12), 0 1px 5px 0 rgba(0,0,0,0.20);
-  border-radius: 0.5rem;
-  display: flex;
-  flex-direction: column;
-  overflow: visible;
-  position: absolute;
-  right: 2.25rem;
-  top: 1.5rem;
-}
-
-.builder-zoom-tooltip-wrap {
-  position: relative;
-}
-
-.builder-zoom-tooltip {
-  background-color: #1b2434;
-  border-radius: 0.35rem;
-  color: #fff;
-  line-height: 1.3;
-  opacity: 0;
-  padding: 0.35rem 0.5rem;
-  pointer-events: none;
-  position: absolute;
-  right: calc(100% + 0.5rem);
-  top: 50%;
-  transform: translateY(-50%);
-  white-space: nowrap;
-  z-index: 22;
-}
-
-.assistant-step-hover-tooltip {
-  left: 0;
-  position: fixed;
-  right: auto;
-  top: 0;
-  transform: none;
-  white-space: nowrap;
-  z-index: 540;
-}
-
-.assistant-step-hover-tooltip--visible {
-  opacity: 1;
-}
-
-.builder-zoom-tooltip-wrap:hover .builder-zoom-tooltip {
-  opacity: 1;
-  pointer-events: auto;
-}
-
-.assistant-step-floating-tooltip-wrap .builder-zoom-tooltip {
-  bottom: calc(100% + 0.5rem);
-  left: 50%;
-  right: auto;
-  top: auto;
-  transform: translateX(-50%);
-}
-
-.assistant-step-inline-tooltip-wrap .builder-zoom-tooltip {
-  bottom: auto;
-  left: calc(100% + 0.5rem);
-  right: auto;
-  top: 50%;
-  transform: translateY(-50%);
-}
-
-.builder-action--zoom-in,
-.builder-action--recenter,
-.builder-action--zoom-out {
-  border-radius: 0;
-  font-size: 1.125rem;
-}
-
-.builder-action--zoom-in {
-  border-top-left-radius: 0.5rem;
-  border-top-right-radius: 0.5rem;
-}
-
-.builder-action--zoom-out {
-  border-bottom-left-radius: 0.5rem;
-  border-bottom-right-radius: 0.5rem;
-}
-
-.assistant-step-floating-controls {
-  bottom: 1.5rem;
-  position: absolute;
-  right: 1.5rem;
-}
-
-.assistant-step-floating-mini-btn {
-  background-color: #fff;
-  border: 0;
-  border-radius: 999px;
-  box-shadow: 0 2px 2px 0 rgba(0,0,0,0.14), 0 3px 1px -2px rgba(0,0,0,0.12), 0 1px 5px 0 rgba(0,0,0,0.20);
-  height: 2.7rem;
-  padding: 0;
-  transition: opacity 120ms ease-in-out;
-  width: 2.7rem;
-}
-
-.assistant-step-floating-mini-btn__icon {
-  transition: transform 120ms ease-in-out;
-}
-
-.assistant-step-floating-mini-btn__icon--collapsed {
-  transform: rotate(180deg);
-}
-
-.add-builder-node {
-  box-shadow: 0 2px 2px 0 rgba(0,0,0,0.14), 0 3px 1px -2px rgba(0,0,0,0.12), 0 1px 5px 0 rgba(0,0,0,0.20);
-  height: 2.7rem;
-  padding: 0;
-  width: 2.7rem;
 }
 
 .nodes-enter-active,

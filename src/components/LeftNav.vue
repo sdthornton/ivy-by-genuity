@@ -1,5 +1,3 @@
-// src/components/LeftNav.vue
-
 <script setup>
 
 import { onBeforeMount, onMounted, onBeforeUnmount, ref, watch } from 'vue';

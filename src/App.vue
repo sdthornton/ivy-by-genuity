@@ -1,5 +1,3 @@
-// src/App.vue
-
 <script setup>
 import LeftNav from "./components/LeftNav.vue";
 </script>

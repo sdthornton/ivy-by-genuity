@@ -5,7 +5,6 @@ import EditableDetailValue from "../shared/EditableDetailValue.vue";
 import {
   sourceOptions,
   getSidebarStep,
-  getSharedStepData,
   getStartBlockOptions,
   isStepWarningVisible,
   setStepWarningVisible,
@@ -42,10 +41,7 @@ const ignoreQueryWarning = () => {
 
 const fixQueryWarning = () => {
   const stepKey = activeStep.value.stateKey || activeStep.value.id;
-  const stepData = getSharedStepData(stepKey);
-  if (stepData) {
-    applyStepWarningFix(stepKey, "code");
-  }
+  applyStepWarningFix(stepKey, "code");
 };
 </script>
 
@@ -64,7 +60,6 @@ const fixQueryWarning = () => {
       <div class="side-content-scroll d-flex flex-column align-items-start">
         <StepOptionsDropdown
           v-if="activeStep.isStartBlock"
-          class="step-type-pill-dropdown"
           placement="bottom-start"
           @click.stop
         >
@@ -121,7 +116,6 @@ const fixQueryWarning = () => {
               <img :src="source.icon" height="20" width="20">
             </div>
             <StepOptionsDropdown
-              class="source-picker-wrap"
               placement="bottom-end"
               menu-class="source-picker-menu"
             >
@@ -281,10 +275,6 @@ const fixQueryWarning = () => {
 .source-pill-caret {
   filter: brightness(0) invert(1);
   opacity: 0.8;
-}
-
-.source-picker-wrap {
-  position: relative;
 }
 
 .step2-info-details-table td {

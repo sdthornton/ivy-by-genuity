@@ -1,5 +1,3 @@
-// src/utils/typewriter.js
-
 const sleep = (ms, signal) =>
   new Promise((resolve, reject) => {
     const t = setTimeout(resolve, ms);

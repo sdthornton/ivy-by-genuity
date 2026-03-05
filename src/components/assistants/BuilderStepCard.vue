@@ -1,0 +1,714 @@
+<script setup>
+import { nextTick, ref, watch } from "vue";
+import StepOptionsDropdown from "../shared/StepOptionsDropdown.vue";
+import { isStepWarningVisible } from "./mockSteps";
+
+const props = defineProps({
+  node: {
+    type: Object,
+    required: true,
+  },
+  nodeIndex: {
+    type: Number,
+    required: true,
+  },
+  showEditorComments: {
+    type: Boolean,
+    default: true,
+  },
+  isComposerOpen: {
+    type: Boolean,
+    default: false,
+  },
+  commentComposerText: {
+    type: String,
+    default: "",
+  },
+  startBlockOptions: {
+    type: Array,
+    default: () => [],
+  },
+  isReorderingNodes: {
+    type: Boolean,
+    default: false,
+  },
+  hasIncomingConnection: {
+    type: Boolean,
+    default: false,
+  },
+  isActiveConnectionDragSource: {
+    type: Boolean,
+    default: false,
+  },
+  isActiveConnectionDragTarget: {
+    type: Boolean,
+    default: false,
+  },
+});
+
+const emit = defineEmits([
+  "select-step",
+  "open-comment-composer",
+  "close-comment-composer",
+  "update-comment-text",
+  "save-comment",
+  "comment-keydown",
+  "connector-pointerdown",
+  "connector-pointerhover",
+  "connector-pointerleave",
+  "toggle-node-details",
+  "duplicate-step",
+  "remove-connections",
+  "delete-step",
+  "select-start-block",
+]);
+
+const commentComposerInput = ref(null);
+
+watch(
+  () => props.isComposerOpen,
+  (isOpen) => {
+    if (!isOpen) {
+      return;
+    }
+
+    nextTick(() => {
+      commentComposerInput.value?.focus();
+    });
+  },
+);
+
+function formatStepDetailValue(value) {
+  const nextValue = String(value ?? "").trim();
+  return nextValue || "-";
+}
+
+function shouldShowStepRowWarning(row) {
+  return Boolean(
+    row?.isCode
+      && isStepWarningVisible(
+        props.node.stateKey || props.node.id,
+        row.dataKey,
+        row.showWarning,
+      ),
+  );
+}
+
+function handleConnectorPointerDown(event, connectorKind) {
+  emit("connector-pointerdown", {
+    event,
+    nodeId: props.node.id,
+    connectorKind,
+  });
+}
+
+function handleConnectorPointerHover(event, connectorKind) {
+  emit("connector-pointerhover", {
+    event,
+    nodeId: props.node.id,
+    connectorKind,
+  });
+}
+
+function handleConnectorPointerLeave(connectorKind) {
+  emit("connector-pointerleave", {
+    nodeId: props.node.id,
+    connectorKind,
+  });
+}
+
+function handleCommentInput(event) {
+  emit("update-comment-text", event.target.value);
+}
+
+function handleCommentKeydown(event) {
+  emit("comment-keydown", {
+    event,
+    nodeId: props.node.id,
+  });
+}
+
+function handleStartBlockSelect(mode, close) {
+  emit("select-start-block", mode);
+  close();
+}
+</script>
+
+<template>
+  <div
+    class="assistant-step border rounded bg-white"
+    :class="{
+      'assistant-step--has-incoming': hasIncomingConnection,
+      'assistant-step--reordering': isReorderingNodes,
+      'border-primary': isActiveConnectionDragSource || isActiveConnectionDragTarget,
+    }"
+    draggable
+    :data-step-id="node.id"
+    :style="{ transform: `translate3d(${node.x}px, ${node.y}px, 0)` }"
+    @click="emit('select-step', node.id)"
+  >
+    <div
+      v-if="showEditorComments"
+      class="assistant-step-comments assistant-step-control"
+      :class="[
+        nodeIndex % 2 === 0 ? 'assistant-step-comments--left' : 'assistant-step-comments--right',
+        { 'assistant-step-comments--composer-open': isComposerOpen },
+      ]"
+      @click.stop
+    >
+      <div
+        v-for="(comment, commentIndex) in node.comments"
+        :key="`${node.id}-comment-${commentIndex}`"
+        class="assistant-step-comment-item"
+      >
+        <div class="assistant-step-comment-box bg-iceberg-blue border rounded-sm p-2 true-small text-info-emphasis">
+          <div class="assistant-step-comment-box__body">
+            <span class="assistant-step-comment-box__author fw-semibold">{{ comment.author }}:</span>
+            <span>{{ comment.body }}</span>
+          </div>
+        </div>
+        <div class="assistant-step-comment-box__meta smallest text-info-emphasis">
+          Step {{ nodeIndex + 1 }}<template v-if="comment.stamp"> &bull; {{ comment.stamp }}</template>
+        </div>
+      </div>
+
+      <div
+        v-if="isComposerOpen"
+        class="assistant-step-comment-item assistant-step-comment-item--composer"
+      >
+        <div class="assistant-step-comment-compose bg-white border rounded-sm p-2 assistant-step-control">
+          <textarea
+            ref="commentComposerInput"
+            class="assistant-step-comment-compose__input form-control form-control-sm true-small assistant-step-control"
+            rows="3"
+            placeholder="Add a comment"
+            :value="commentComposerText"
+            @click.stop
+            @input="handleCommentInput"
+            @keydown="handleCommentKeydown"
+          />
+          <div class="d-flex justify-content-end gap-1 mt-2">
+            <button
+              type="button"
+              class="btn btn-sm btn-white border rounded-sm true-small assistant-step-control"
+              @click.stop="emit('close-comment-composer')"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              class="btn btn-sm bg-dark text-white rounded-sm true-small assistant-step-control"
+              :disabled="!commentComposerText.trim()"
+              @click.stop="emit('save-comment', node.id)"
+            >
+              Add
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <button
+        v-if="!isComposerOpen"
+        type="button"
+        class="assistant-step-comment-add assistant-step-control d-flex align-items-center justify-content-center"
+        :class="{ 'assistant-step-comment-add--centered': node.comments?.length }"
+        aria-label="Add comment"
+        @click.stop="emit('open-comment-composer', node.id)"
+      >
+        <img src="../../assets/comment.svg" width="13" height="13" class="d-block opacity-50">
+      </button>
+    </div>
+
+    <div
+      class="assistant-step-connector assistant-step-connector--top assistant-step-control"
+      :class="{
+        'assistant-step-connector--active-target': isActiveConnectionDragTarget,
+        'assistant-step-connector--drag-source': isActiveConnectionDragSource,
+      }"
+      :data-step-id="node.id"
+      data-connector-kind="top"
+      role="button"
+      @pointerdown.stop.prevent="handleConnectorPointerDown($event, 'top')"
+      @pointerover="handleConnectorPointerHover($event, 'top')"
+      @pointermove="handleConnectorPointerHover($event, 'top')"
+      @pointerleave="handleConnectorPointerLeave('top')"
+      @click.stop
+    />
+
+    <div
+      class="assistant-step-header px-2.5 py-2.5 d-flex align-items-center justify-content-start"
+      :class="{
+        'border-bottom': !node.detailsCollapsed,
+        'assistant-step-header--collapsed': node.detailsCollapsed,
+      }"
+    >
+      <div
+        v-if="node.typeMeta && !node.isStartBlock"
+        style="border-radius: 0.25rem;"
+        class="me-2 p-1"
+        :class="node.typeMeta.bgClass"
+      >
+        <img
+          :src="node.typeMeta.icon"
+          width="16"
+          height="16"
+          class="d-block"
+          :class="{ 'invert-to-white': node.typeMeta.iconInvert }"
+        >
+      </div>
+
+      <StepOptionsDropdown
+        v-if="node.isStartBlock"
+        class="assistant-step-start-switcher me-2"
+        placement="bottom-start"
+        menu-class="assistant-step-start-switcher-menu"
+        @click.stop
+      >
+        <template #trigger>
+          <button
+            type="button"
+            class="assistant-step-start-switcher__trigger assistant-step-control"
+            aria-label="Change starting block"
+          >
+            <span class="assistant-step-start-switcher__pill true-small fw-medium text-white d-inline-flex align-items-center rounded-pill px-2 py-0" :class="node.typeMeta.bgClass">
+              <img
+                :src="node.typeMeta.icon"
+                width="14"
+                height="14"
+                class="d-block me-1"
+                :class="{ 'invert-to-white': node.typeMeta.iconInvert }"
+              >
+              <span>{{ node.typeMeta.label }}</span>
+              <img src="../../assets/dropdown.svg" width="11" height="11" class="assistant-step-start-switcher__caret ms-1">
+            </span>
+          </button>
+        </template>
+        <template #menu="{ close }">
+          <button
+            v-for="option in startBlockOptions"
+            :key="option.key"
+            type="button"
+            class="dropdown-item d-flex align-items-center text-start"
+            @click.stop="handleStartBlockSelect(option.key, close)"
+          >
+            <span class="assistant-step-menu-item__icon me-2 rounded-sm d-inline-flex align-items-center justify-content-center" :class="option.typeMeta.bgClass">
+              <img
+                :src="option.typeMeta.icon"
+                width="12"
+                height="12"
+                class="d-block"
+                :class="{ 'invert-to-white': option.typeMeta.iconInvert }"
+              >
+            </span>
+            <span>{{ option.label }}</span>
+          </button>
+        </template>
+      </StepOptionsDropdown>
+
+      <h6 v-if="!node.isStartBlock || node.type !== 'start'" class="mb-0 me-2">
+        {{ node.title }}
+      </h6>
+
+      <div class="assistant-step-header-actions ms-auto d-flex align-items-center">
+        <button
+          type="button"
+          class="assistant-step-header-toggle assistant-step-control me-1"
+          aria-label="Toggle step details"
+          @click.stop="emit('toggle-node-details', node.id)"
+        >
+          <img
+            src="../../assets/arrow-down-b.svg"
+            width="11"
+            height="11"
+            class="assistant-step-details-caret"
+            :class="{ 'assistant-step-details-caret--collapsed': node.detailsCollapsed }"
+          >
+        </button>
+
+        <StepOptionsDropdown
+          class="assistant-step-menu"
+          placement="bottom-end"
+          menu-class="assistant-step-menu-panel"
+          @click.stop
+        >
+          <template #trigger>
+            <button
+              type="button"
+              class="assistant-step-menu-trigger assistant-step-control"
+              aria-label="Step actions"
+            >
+              <img src="../../assets/ellipses.svg" width="14" height="14" class="assistant-step-menu-trigger__icon">
+            </button>
+          </template>
+          <template #menu="{ close }">
+            <button type="button" class="dropdown-item" @click.stop="emit('duplicate-step', node.id); close()">Duplicate Step</button>
+            <button type="button" class="dropdown-item" @click.stop="emit('remove-connections', node.id); close()">Remove Connections</button>
+            <button type="button" class="dropdown-item" @click.stop="emit('delete-step', node.id); close()">Delete Step</button>
+          </template>
+        </StepOptionsDropdown>
+      </div>
+    </div>
+
+    <div class="assistant-step-details">
+      <div v-show="!node.detailsCollapsed" class="assistant-step-details-content px-2.5 pb-2 not-as-small text-black">
+        <table class="w-100 table table-borderless table-sm mb-0">
+          <tbody>
+            <tr
+              v-for="row in node.rows"
+              :key="row.key"
+            >
+              <td class="text-muted text-capitalize assistant-step-detail__key">
+                <span class="assistant-step-detail__key-label">
+                  <img
+                    v-if="shouldShowStepRowWarning(row)"
+                    src="../../assets/warning.svg"
+                    width="12"
+                    height="12"
+                    class="assistant-step-detail__warning"
+                    title="Ivy: It looks like this code won't run as intended."
+                    alt=""
+                  >
+                  <span>{{ row.key }}</span>
+                </span>
+              </td>
+              <td class="text-end assistant-step-detail__val">
+                <div class="assistant-step-detail__val-text">
+                  {{ formatStepDetailValue(node.data[row.dataKey]) }}
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div
+      class="assistant-step-connector assistant-step-connector--bottom assistant-step-control"
+      :class="{
+        'assistant-step-connector--active-target': isActiveConnectionDragTarget,
+        'assistant-step-connector--drag-source': isActiveConnectionDragSource,
+      }"
+      :data-step-id="node.id"
+      data-connector-kind="bottom"
+      role="button"
+      @pointerdown.stop.prevent="handleConnectorPointerDown($event, 'bottom')"
+      @pointerover="handleConnectorPointerHover($event, 'bottom')"
+      @pointermove="handleConnectorPointerHover($event, 'bottom')"
+      @pointerleave="handleConnectorPointerLeave('bottom')"
+      @click.stop
+    />
+  </div>
+</template>
+
+<style lang="scss" scoped>
+.assistant-step {
+  box-shadow: 0 4px 8px -2px rgba(0,0,0,0.1);
+  cursor: grab;
+  margin: 0 auto;
+  max-width: 18rem;
+  position: relative;
+  transform: translate3d(0,0,0);
+  user-select: none;
+  will-change: transform;
+  z-index: 2;
+
+  &:active {
+    cursor: grabbing;
+  }
+}
+
+.assistant-step--reordering {
+  transition: transform 0.18s ease-in-out;
+}
+
+.assistant-step-control {
+  cursor: pointer;
+}
+
+.assistant-step-header {
+  min-height: 2.5rem;
+}
+
+.assistant-step-start-switcher {
+  min-width: 0;
+}
+
+.assistant-step-start-switcher__trigger {
+  background: transparent;
+  border: 0;
+  line-height: 0;
+  padding: 0;
+}
+
+.assistant-step-start-switcher__pill {
+  line-height: 1.2;
+  min-height: 1.25rem;
+}
+
+.assistant-step-start-switcher__caret {
+  filter: brightness(0) invert(1);
+  opacity: 0.8;
+}
+
+.assistant-step-header--collapsed {
+  border-bottom-left-radius: 0.5rem;
+  border-bottom-right-radius: 0.5rem;
+}
+
+.assistant-step-header-toggle {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: 0.25rem;
+  display: inline-flex;
+  justify-content: center;
+  line-height: 0;
+  padding: 0.125rem;
+}
+
+.assistant-step-menu {
+  position: relative;
+}
+
+.assistant-step-menu-trigger {
+  align-items: center;
+  background: transparent;
+  border: 0;
+  border-radius: 0.25rem;
+  display: inline-flex;
+  justify-content: center;
+  line-height: 0;
+  padding: 0.125rem;
+}
+
+.assistant-step-menu-trigger__icon {
+  display: block;
+  opacity: 0.55;
+  transform: rotate(90deg);
+}
+
+:deep(.assistant-step-menu-panel) {
+  min-width: 12.5rem;
+}
+
+:deep(.assistant-step-start-switcher-menu) {
+  min-width: 11rem;
+}
+
+.assistant-step-menu-item__icon {
+  height: 1.25rem;
+  width: 1.25rem;
+}
+
+.assistant-step-details {
+  border-bottom-left-radius: 0.5rem;
+  border-bottom-right-radius: 0.5rem;
+  overflow: hidden;
+}
+
+.assistant-step-details-content {
+  background-color: transparent;
+}
+
+.assistant-step-details-caret {
+  opacity: 0.55;
+  transition: transform 120ms ease-in-out;
+}
+
+.assistant-step-details-caret--collapsed {
+  transform: rotate(-90deg);
+}
+
+.assistant-step-connector {
+  background-color: var(--bs-dark);
+  border-radius: 0.3rem;
+  cursor: grab;
+  height: 0.5rem;
+  left: 50%;
+  pointer-events: auto;
+  position: absolute;
+  transform: translateX(-50%);
+  transition: opacity 120ms ease-in-out, box-shadow 120ms ease-in-out, background-color 120ms ease-in-out;
+  width: 1rem;
+}
+
+.assistant-step-connector--top {
+  opacity: 0;
+  pointer-events: none;
+  top: 0;
+  transform: translate(-50%, -50%);
+}
+
+.assistant-step-connector--bottom {
+  bottom: -0.28rem;
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.28);
+}
+
+.assistant-step:hover .assistant-step-connector--top,
+.assistant-step--has-incoming .assistant-step-connector--top,
+.assistant-step-connector--top.assistant-step-connector--active-target,
+.assistant-step-connector--top.assistant-step-connector--drag-source {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.assistant-step-connector--active-target,
+.assistant-step-connector--drag-source {
+  background-color: #3e4756;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.24);
+}
+
+.assistant-step-connector--drag-source {
+  cursor: grabbing;
+}
+
+table {
+  table-layout: auto;
+  width: 100%;
+}
+
+.assistant-step-detail__key {
+  overflow-wrap: normal;
+  white-space: nowrap;
+  word-break: normal;
+}
+
+.assistant-step-detail__key-label {
+  align-items: center;
+  display: inline-flex;
+  gap: 0.25rem;
+}
+
+.assistant-step-detail__warning {
+  display: block;
+  flex: 0 0 auto;
+}
+
+.assistant-step-detail__val {
+  overflow-wrap: break-word;
+  vertical-align: top;
+  white-space: normal;
+  word-break: normal;
+}
+
+.assistant-step-detail__val-text {
+  display: block;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  display: -webkit-box;
+  line-clamp: 3;
+  line-height: 1.35;
+  max-height: calc(1.35em * 3);
+  max-width: 100%;
+  min-width: 0;
+  overflow: hidden;
+  overflow-wrap: break-word;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: normal;
+  word-break: normal;
+}
+
+.assistant-step-comments {
+  box-sizing: content-box;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-height: 1.25rem;
+  max-width: 11rem;
+  position: absolute;
+  top: 0.5rem;
+  width: 11rem;
+  z-index: 3;
+}
+
+.assistant-step-comments--left {
+  align-items: flex-end;
+  padding-right: 1.25rem;
+  right: 100%;
+}
+
+.assistant-step-comments--right {
+  align-items: flex-start;
+  left: 100%;
+  padding-left: 1.25rem;
+}
+
+.assistant-step-comment-item {
+  position: relative;
+  width: 100%;
+}
+
+.assistant-step-comment-box {
+  pointer-events: auto;
+}
+
+.assistant-step-comment-compose {
+  pointer-events: auto;
+}
+
+.assistant-step-comment-compose__input {
+  resize: none;
+}
+
+.assistant-step-comment-box__author {
+  margin-right: 0.2rem;
+}
+
+.assistant-step-comment-box__body {
+  line-height: 1.35;
+}
+
+.assistant-step-comment-box__meta {
+  opacity: 0;
+  pointer-events: none;
+  position: absolute;
+  top: 50%;
+  transition: opacity 120ms ease-in-out;
+  transform: translateY(-50%);
+  white-space: nowrap;
+}
+
+.assistant-step-comment-item:hover .assistant-step-comment-box__meta {
+  opacity: 0.5;
+}
+
+.assistant-step-comments--left .assistant-step-comment-box__meta {
+  right: calc(100% + 0.45rem);
+  text-align: right;
+}
+
+.assistant-step-comments--right .assistant-step-comment-box__meta {
+  left: calc(100% + 0.45rem);
+  text-align: left;
+}
+
+.assistant-step-comment-add {
+  background-color: #fff;
+  border: 1px solid var(--bs-gray-300);
+  border-radius: 999px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+  height: 1.5rem;
+  opacity: 0;
+  padding: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease-in-out, background-color 120ms ease-in-out;
+  width: 1.5rem;
+}
+
+.assistant-step-comment-add:hover {
+  background-color: var(--bs-light);
+}
+
+.assistant-step-comment-add--centered {
+  align-self: center;
+}
+
+.assistant-step:hover .assistant-step-comment-add,
+.assistant-step-comments:hover .assistant-step-comment-add,
+.assistant-step-comments--composer-open .assistant-step-comment-add,
+.assistant-step-comment-add--visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+</style>

@@ -1,5 +1,3 @@
-// src/components/Assistants.vue
-
 <script setup>
 
 import typewriter from "../utils/typewriter";
@@ -311,13 +309,13 @@ async function advanceConversation() {
 async function initializeConversation() {
   await nextTick();
   await appendIvyMessage(INTRO_MESSAGE);
-};
+}
 
 onMounted(async () => {
   await initializeConversation();
 });
 
-onBeforeUnmount(() => { 
+onBeforeUnmount(() => {
   activeTypewriterController?.abort();
 });
 
@@ -332,7 +330,6 @@ const onBuilderStepSelect = (nodeId) => {
   <section class="left-content d-flex flex-column">
     <div class="small-chat-header border-bottom pe-4 mb-4">
       <h5 class="mb-0 mr-2 d-flex align-items-center fw-normal lead">
-        <!-- <img src="../assets/nav-chat.svg" class="me-2 opacity-50" width="16" height="16"> -->
         <span class="me-2">Ivy Builder:</span>
         <span class="fw-semibold me-2">{{ assistantTitle }}</span> 
       </h5>
@@ -428,10 +425,7 @@ const onBuilderStepSelect = (nodeId) => {
       </div>
     </ContentHeader>
       
-    <div
-      class="assistant-main-row row mx-0 flex-grow-1"
-      :class="{ 'assistant-main-row--sidebar-open': showSidebar }"
-    >
+    <div class="assistant-main-row row mx-0 flex-grow-1">
       <AssistantBuilder 
         class="assistant-builder-column col p-4" 
         :current-builder-step="buildStep"
@@ -521,11 +515,6 @@ const onBuilderStepSelect = (nodeId) => {
 }
 
 .main-content {
-  // box-shadow: 
-  //   0px 0.5px 0.6px hsl(0deg 0% 0% / 0.11),
-  //   0px 1.6px 1.8px -0.8px hsl(0deg 0% 0% / 0.11),
-  //   0px 3.9px 4.4px -1.7px hsl(0deg 0% 0% / 0.11),
-  //   0.1px 9.5px 10.7px -2.5px hsl(0deg 0% 0% / 0.11);
   flex: 1;
   min-width: 0;
   z-index: 1;
@@ -574,7 +563,6 @@ const onBuilderStepSelect = (nodeId) => {
   display: none;
 }
 
-.right-content,
 .side-content {
   box-shadow: 0 0 18px -4px rgba(0,0,0,0.15);
   width: 22rem;

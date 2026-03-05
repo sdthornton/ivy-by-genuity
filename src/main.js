@@ -1,6 +1,5 @@
-// src/main.js
-
 import { createApp } from 'vue'
+import 'floating-vue/dist/style.css'
 import './style.css'
 
 import { createWebHistory, createRouter } from 'vue-router';
