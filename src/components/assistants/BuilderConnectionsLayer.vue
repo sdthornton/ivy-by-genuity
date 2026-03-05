@@ -11,10 +11,6 @@ const props = defineProps({
     type: Object,
     required: true,
   },
-  connectionHintTooltip: {
-    type: Object,
-    required: true,
-  },
   canvasSize: {
     type: Object,
     required: true,
@@ -92,17 +88,6 @@ function handleAddStepSelection(item) {
     </svg>
   </Teleport>
 
-  <Teleport to="body">
-    <div
-      v-if="connectionHintTooltip.open"
-      class="builder-connection-tooltip true-small"
-      :style="{ left: `${connectionHintTooltip.left}px`, top: `${connectionHintTooltip.top}px` }"
-      role="tooltip"
-    >
-      Click to remove. Drag to change.
-    </div>
-  </Teleport>
-
   <svg
     class="assistant-step-connections"
     :width="canvasSize.width"
@@ -129,6 +114,7 @@ function handleAddStepSelection(item) {
       :y1="line.y1"
       :x2="line.x2"
       :y2="line.y2"
+      v-tooltip="{ content: 'Click to remove. Drag to change.', placement: 'right' }"
       @pointerdown.stop.prevent="handleLinePointerDown($event, line)"
       @pointerover="handleLinePointerHover($event, line.key)"
       @pointermove="handleLinePointerHover($event, line.key)"
@@ -164,16 +150,14 @@ function handleAddStepSelection(item) {
     :style="{ left: `${line.midX}px`, top: `${line.midY}px` }"
   >
     <template #trigger="{ open }">
-      <div class="builder-zoom-tooltip-wrap assistant-step-inline-tooltip-wrap">
-        <button
-          type="button"
-          class="assistant-step-inline-add-btn d-flex align-items-center justify-content-center"
-          aria-label="Add step between connected nodes"
-        >
-          <img src="../../assets/plus-round.svg" width="12" height="12" class="d-block invert-to-white">
-        </button>
-        <div v-if="!open" class="builder-zoom-tooltip true-small" role="tooltip">Add a step here.</div>
-      </div>
+      <button
+        v-tooltip="{ content: 'Add a step here.', placement: 'right', disabled: open }"
+        type="button"
+        class="assistant-step-inline-add-btn d-flex align-items-center justify-content-center"
+        aria-label="Add step between connected nodes"
+      >
+        <img src="../../assets/plus-round.svg" width="12" height="12" class="d-block invert-to-white">
+      </button>
     </template>
     <template #menu="{ close }">
       <AddStepMenuContent
@@ -192,16 +176,14 @@ function handleAddStepSelection(item) {
     :style="{ left: `${terminalAdd.x}px`, top: `${terminalAdd.top}px` }"
   >
     <template #trigger="{ open }">
-      <div class="builder-zoom-tooltip-wrap assistant-step-inline-tooltip-wrap">
-        <button
-          type="button"
-          class="assistant-step-inline-add-btn d-flex align-items-center justify-content-center"
-          aria-label="Add step after this node"
-        >
-          <img src="../../assets/plus-round.svg" width="12" height="12" class="d-block invert-to-white">
-        </button>
-        <div v-if="!open" class="builder-zoom-tooltip true-small" role="tooltip">Add a step here.</div>
-      </div>
+      <button
+        v-tooltip="{ content: 'Add a step here.', placement: 'right', disabled: open }"
+        type="button"
+        class="assistant-step-inline-add-btn d-flex align-items-center justify-content-center"
+        aria-label="Add step after this node"
+      >
+        <img src="../../assets/plus-round.svg" width="12" height="12" class="d-block invert-to-white">
+      </button>
     </template>
     <template #menu="{ close }">
       <AddStepMenuContent
@@ -342,52 +324,6 @@ function handleAddStepSelection(item) {
   box-shadow: 0 4px 8px -2px rgba(0,0,0,0.1);
   cursor: pointer;
   white-space: nowrap;
-}
-
-.builder-connection-tooltip {
-  background-color: #1b2434;
-  border-radius: 0.35rem;
-  color: #fff;
-  line-height: 1.3;
-  opacity: 1;
-  padding: 0.35rem 0.5rem;
-  pointer-events: none;
-  position: fixed;
-  white-space: nowrap;
-  z-index: 540;
-}
-
-.builder-zoom-tooltip-wrap {
-  position: relative;
-}
-
-.builder-zoom-tooltip {
-  background-color: #1b2434;
-  border-radius: 0.35rem;
-  color: #fff;
-  line-height: 1.3;
-  opacity: 0;
-  padding: 0.35rem 0.5rem;
-  pointer-events: none;
-  position: absolute;
-  right: calc(100% + 0.5rem);
-  top: 50%;
-  transform: translateY(-50%);
-  white-space: nowrap;
-  z-index: 22;
-}
-
-.builder-zoom-tooltip-wrap:hover .builder-zoom-tooltip {
-  opacity: 1;
-  pointer-events: auto;
-}
-
-.assistant-step-inline-tooltip-wrap .builder-zoom-tooltip {
-  bottom: auto;
-  left: calc(100% + 0.5rem);
-  right: auto;
-  top: 50%;
-  transform: translateY(-50%);
 }
 
 @keyframes assistant-step-connection-flow {

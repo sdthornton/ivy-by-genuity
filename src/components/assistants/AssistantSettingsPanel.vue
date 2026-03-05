@@ -18,6 +18,10 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  triggerVariant: {
+    type: String,
+    default: "",
+  },
   triggerIcon: {
     type: String,
     default: iconClock,
@@ -84,11 +88,77 @@ const permissionTeams = [
 
 const creatorInitials = computed(() => toInitials(props.settings.creator, "Y"));
 const creatorAvatarStyle = computed(() => ({ backgroundColor: CREATOR_AVATAR_COLOR }));
+const creatorTooltip = computed(() => {
+  const creator = props.settings.creator || "Unknown";
+  const createdAt = props.settings.createdAt || props.settings.updatedAt || "an unknown time";
+  return `Created by ${creator} on ${createdAt}.`;
+});
+const lastUpdatedTooltip = computed(() => {
+  const updatedAt = props.settings.updatedAtLong || props.settings.updatedAt || "an unknown time";
+  return `Last updated on ${updatedAt}.`;
+});
+const triggerPillClass = computed(() => {
+  if (!props.triggerConfigured) {
+    return "header-trigger-pill--draft bg-secondary-subtle text-secondary";
+  }
+
+  if (props.triggerVariant === "event") {
+    return "bg-trigger text-white";
+  }
+
+  return "header-trigger-pill--configured text-white";
+});
 const ownerTeamAvatarStyle = computed(() => {
   const matchingTeam = permissionTeams.find((team) => team.label === props.settings.ownerTeam);
   return {
     backgroundColor: matchingTeam?.color || DEFAULT_TEAM_AVATAR_COLOR,
   };
+});
+const activityLogEntries = computed(() => {
+  const log = props.settings.log || {};
+  const runs = Array.isArray(log.runs) ? log.runs : [];
+  const runEntries = runs.map((run, index) => {
+    const normalizedStatus = normalizeRunStatus(run.status);
+    return {
+      id: `run-${index}-${run.at || "unknown"}`,
+      at: run.at || "Unknown",
+      activity: "Ran",
+      status: normalizedStatus,
+      details: run.note || "-",
+    };
+  });
+
+  const editedAt = log.editedAt || props.settings.updatedAt || "Unknown";
+  const editedBy = log.editedBy || log.savedBy || props.settings.creator || "Unknown";
+  const savedAt = log.savedAt || props.settings.updatedAt || "Unknown";
+  const savedBy = log.savedBy || props.settings.creator || "Unknown";
+  const createdAt = props.settings.createdAt || "Unknown";
+  const createdBy = props.settings.creator || "Unknown";
+
+  return [
+    ...runEntries,
+    {
+      id: "edited",
+      at: editedAt,
+      activity: "Edited",
+      status: "info",
+      details: `Edited by ${editedBy}`,
+    },
+    {
+      id: "saved",
+      at: savedAt,
+      activity: "Saved",
+      status: "info",
+      details: `Saved by ${savedBy}`,
+    },
+    {
+      id: "created",
+      at: createdAt,
+      activity: "Created",
+      status: "info",
+      details: `Created by ${createdBy}`,
+    },
+  ];
 });
 
 function toInitials(value, fallback) {
@@ -163,6 +233,40 @@ function avatarStyle(color) {
     backgroundColor: color,
   };
 }
+
+function normalizeRunStatus(status) {
+  const normalized = String(status || "").toLowerCase();
+  if (normalized === "error" || normalized === "failed" || normalized === "failure") {
+    return "error";
+  }
+  if (normalized === "success" || normalized === "ok") {
+    return "success";
+  }
+
+  return "info";
+}
+
+function getLogStatusLabel(status) {
+  if (status === "success") {
+    return "Success";
+  }
+  if (status === "error") {
+    return "Error";
+  }
+
+  return "Info";
+}
+
+function getLogStatusClass(status) {
+  if (status === "success") {
+    return "bg-success-subtle text-success-emphasis";
+  }
+  if (status === "error") {
+    return "bg-danger-subtle text-danger-emphasis";
+  }
+
+  return "bg-secondary-subtle text-secondary";
+}
 </script>
 
 <template>
@@ -198,13 +302,17 @@ function avatarStyle(color) {
           </div>
           <span class="text-body-tertiary smallest mx-1">&bullet;</span>
           <div
+            v-tooltip="{ content: creatorTooltip, placement: 'top' }"
             class="text-avatar text-avatar--small text-white fw-semibold rounded-circle flex-shrink-0"
             :style="creatorAvatarStyle"
           >
             {{ creatorInitials }}
           </div>
           <span class="text-body-tertiary smallest mx-1">&bullet;</span>
-          <div class="smallest text-body-secondary d-inline-flex align-items-center">
+          <div
+            v-tooltip="{ content: lastUpdatedTooltip, placement: 'top' }"
+            class="smallest text-body-secondary d-inline-flex align-items-center"
+          >
             <img src="../../assets/updated-at.svg" height="12" width="12" class="me-1">
             <span>{{ settings.updatedAt }}</span>
           </div>
@@ -411,7 +519,7 @@ function avatarStyle(color) {
             <template #trigger>
               <span
                 class="assistant-settings-trigger-pill header-trigger-pill rounded-sm true-small fw-normal d-inline-flex align-items-center justify-content-center"
-                :class="triggerConfigured ? 'header-trigger-pill--configured text-white' : 'header-trigger-pill--draft bg-secondary-subtle text-secondary'"
+                :class="triggerPillClass"
               >
                 <img
                   v-if="triggerConfigured"
@@ -454,6 +562,37 @@ function avatarStyle(color) {
               </button>
             </template>
           </StepOptionsDropdown>
+        </div>
+
+        <div class="mt-4">
+          <div class="mb-2">Activity Log</div>
+          <div class="rounded-sm overflow-hidden mb-4">
+            <table class="table table-striped not-as-small mb-0 assistant-settings-log-table">
+              <thead>
+                <tr class="bg-secondary-subtle">
+                  <th scope="col">When</th>
+                  <th scope="col">Activity</th>
+                  <th scope="col">Status</th>
+                  <th scope="col">Details</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="entry in activityLogEntries"
+                  :key="entry.id"
+                >
+                  <td>{{ entry.at }}</td>
+                  <td>{{ entry.activity }}</td>
+                  <td>
+                    <span class="assistant-settings-log-status smallest rounded-pill px-2 py-1 d-inline-flex align-items-center" :class="getLogStatusClass(entry.status)">
+                      {{ getLogStatusLabel(entry.status) }}
+                    </span>
+                  </td>
+                  <td>{{ entry.details }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </section>
     </div>
@@ -635,6 +774,33 @@ function avatarStyle(color) {
   background: transparent;
   border: 0;
   width: 100%;
+}
+
+.assistant-settings-log-table {
+  --bs-table-bg: transparent;
+  --bs-table-striped-bg: rgba(0, 0, 0, 0.015);
+}
+
+.assistant-settings-log-table th,
+.assistant-settings-log-table td {
+  vertical-align: middle;
+}
+
+.assistant-settings-log-table th {
+  color: var(--bs-secondary-color);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+}
+
+.assistant-settings-log-table td {
+  color: var(--bs-gray-700);
+}
+
+.assistant-settings-log-status {
+  font-weight: 600;
+  line-height: 1;
 }
 
 .assistant-trigger-menu__icon-spacer {

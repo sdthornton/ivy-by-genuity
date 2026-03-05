@@ -220,6 +220,7 @@ function handleStartBlockSelect(mode, close) {
     </div>
 
     <div
+      v-tooltip="{ content: 'Click to remove. Drag to change.', placement: 'right' }"
       class="assistant-step-connector assistant-step-connector--top assistant-step-control"
       :class="{
         'assistant-step-connector--active-target': isActiveConnectionDragTarget,
@@ -284,6 +285,7 @@ function handleStartBlockSelect(mode, close) {
           </button>
         </template>
         <template #menu="{ close }">
+          <div class="assistant-step-add-menu__label true-small text-muted px-2 pb-1">Starting Blocks</div>
           <button
             v-for="option in startBlockOptions"
             :key="option.key"
@@ -361,11 +363,11 @@ function handleStartBlockSelect(mode, close) {
                 <span class="assistant-step-detail__key-label">
                   <img
                     v-if="shouldShowStepRowWarning(row)"
+                    v-tooltip="{ content: `Ivy: It looks like this ${row.key.toLowerCase()} won't run as intended.`, placement: 'right' }"
                     src="../../assets/warning.svg"
                     width="12"
                     height="12"
                     class="assistant-step-detail__warning"
-                    title="Ivy: It looks like this code won't run as intended."
                     alt=""
                   >
                   <span>{{ row.key }}</span>
@@ -383,6 +385,7 @@ function handleStartBlockSelect(mode, close) {
     </div>
 
     <div
+      v-tooltip="{ content: 'Click to remove. Drag to change.', placement: 'right' }"
       class="assistant-step-connector assistant-step-connector--bottom assistant-step-control"
       :class="{
         'assistant-step-connector--active-target': isActiveConnectionDragTarget,
@@ -498,6 +501,10 @@ function handleStartBlockSelect(mode, close) {
 .assistant-step-menu-item__icon {
   height: 1.25rem;
   width: 1.25rem;
+}
+
+.assistant-step-add-menu__label {
+  letter-spacing: 0.01em;
 }
 
 .assistant-step-details {

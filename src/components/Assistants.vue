@@ -34,7 +34,20 @@ const assistantSettings = reactive({
   ],
   status: "Draft",
   category: "security",
+  createdAt: "Mar 1, 9:00am",
   updatedAt: "Mar 3, 9:00am",
+  updatedAtLong: "March 3, 2026 at 9:00 AM PT",
+  log: {
+    runs: [
+      { at: "Mar 5, 9:00am", status: "Success", note: "Completed in 27s." },
+      { at: "Mar 4, 9:00am", status: "Error", note: "SharePoint request timed out." },
+      { at: "Mar 3, 9:00am", status: "Success", note: "Completed in 30s." },
+    ],
+    editedAt: "Mar 5, 8:47am",
+    editedBy: "You",
+    savedAt: "Mar 5, 8:50am",
+    savedBy: "You",
+  },
 });
 const conversationContent = ref(null);
 const conversationScroller = ref(null);
@@ -73,6 +86,17 @@ const startBlockMode = computed(() => {
   return selectedHeaderTrigger.value.key === EVENT_TRIGGER_OPTION?.key ? "trigger" : "schedule";
 });
 const headerTriggerLabel = computed(() => selectedHeaderTrigger.value?.pillLabel || "Not Scheulded");
+const headerTriggerPillClass = computed(() => {
+  if (!hasConfiguredHeaderTrigger.value) {
+    return "header-trigger-pill--draft bg-secondary-subtle text-secondary";
+  }
+
+  if (selectedHeaderTrigger.value?.key === EVENT_TRIGGER_OPTION?.key) {
+    return "bg-trigger text-white";
+  }
+
+  return "header-trigger-pill--configured text-white";
+});
 const settingsIvyContent = computed(() => {
   const description = assistantSettings.description?.trim();
   const visibleNodes = createBuilderNodeTemplates(buildStep.value, {
@@ -358,7 +382,7 @@ const onBuilderStepSelect = (nodeId) => {
           <template #trigger>
             <span
               class="header-trigger-pill rounded-sm true-small fw-normal d-inline-flex align-items-center justify-content-center"
-              :class="hasConfiguredHeaderTrigger ? 'header-trigger-pill--configured text-white' : 'header-trigger-pill--draft bg-secondary-subtle text-secondary'"
+              :class="headerTriggerPillClass"
             >
               <img
                 v-if="hasConfiguredHeaderTrigger"
@@ -408,7 +432,7 @@ const onBuilderStepSelect = (nodeId) => {
           <img src="../assets/play.svg" height="14" width="14" class="assistant-header-action-icon me-2 opacity-75">
           <span class="assistant-header-action-label assistant-header-action-label--run">Run</span>
         </button>
-        <button class="assistant-header-action-btn assistant-header-action-btn--save btn btn-sm true-small btn-primary rounded-sm px-2.5 fw-medium d-inline-flex align-items-center me-2">
+        <button class="assistant-header-action-btn assistant-header-action-btn--save btn btn-sm reduced btn-primary rounded-sm px-2.5 fw-medium d-inline-flex align-items-center me-2">
           <img src="../assets/checkmark.svg" height="14" width="14" class="me-2 opacity-75 invert-to-white">
           <span class="assistant-header-save-label assistant-header-save-label--long">Save Assistant</span>
           <span class="assistant-header-save-label assistant-header-save-label--short">Save</span>
@@ -471,6 +495,7 @@ const onBuilderStepSelect = (nodeId) => {
           :settings="assistantSettings"
           :trigger-label="headerTriggerLabel"
           :trigger-configured="hasConfiguredHeaderTrigger"
+          :trigger-variant="selectedHeaderTrigger?.key || ''"
           :trigger-icon="selectedHeaderTrigger?.icon || iconClock"
           :trigger-options="headerTriggerOptions"
           :ivy-content="settingsIvyContent"

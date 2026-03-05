@@ -1,7 +1,7 @@
 <script setup>
 
 import interact from "interactjs";
-import { onMounted, onBeforeUnmount, reactive, defineEmits, defineProps, watch, ref, nextTick, computed } from "vue";
+import { onMounted, onBeforeUnmount, reactive, watch, ref, nextTick, computed } from "vue";
 import StepOptionsDropdown from "../shared/StepOptionsDropdown.vue";
 import AddStepMenuContent from "./AddStepMenuContent.vue";
 import BuilderConnectionsLayer from "./BuilderConnectionsLayer.vue";
@@ -92,15 +92,9 @@ const connectionMenu = reactive({
 });
 
 const connectionMenuEl = ref(null);
-const connectionHintTooltip = reactive({
-  open: false,
-  left: 0,
-  top: 0,
-});
 const REORDER_DRAG_THRESHOLD = 8;
 const CONNECTION_MENU_OFFSET = 10;
 const CONNECTION_MENU_PADDING = 8;
-const CONNECTION_TOOLTIP_OFFSET = 12;
 
 const canvasPanStyle = computed(() => ({
   backgroundPosition: `${panOffset.x + 2}px ${panOffset.y + 4}px`,
@@ -380,28 +374,6 @@ function closeConnectionMenu() {
   connectionMenu.sourceId = null;
   connectionMenu.targetId = null;
   hoveredConnectionKey.value = null;
-  hideConnectionHintTooltip();
-}
-
-function showConnectionHintTooltip(clientX, clientY) {
-  const tooltipWidth = 170;
-  const tooltipHeight = 28;
-  const left = Math.min(
-    window.innerWidth - CONNECTION_MENU_PADDING - tooltipWidth,
-    Math.max(CONNECTION_MENU_PADDING, clientX + CONNECTION_TOOLTIP_OFFSET),
-  );
-  const top = Math.min(
-    window.innerHeight - CONNECTION_MENU_PADDING - tooltipHeight,
-    Math.max(CONNECTION_MENU_PADDING, clientY - (tooltipHeight / 2)),
-  );
-
-  connectionHintTooltip.open = true;
-  connectionHintTooltip.left = left;
-  connectionHintTooltip.top = top;
-}
-
-function hideConnectionHintTooltip() {
-  connectionHintTooltip.open = false;
 }
 
 function positionConnectionMenu() {
@@ -428,7 +400,6 @@ function openConnectionMenu(sourceId, targetId, clientX, clientY) {
     return;
   }
 
-  hideConnectionHintTooltip();
   connectionMenu.open = true;
   connectionMenu.sourceId = String(sourceId);
   connectionMenu.targetId = String(targetId);
@@ -479,29 +450,24 @@ function clearHoveredConnection(lineKey) {
   if (hoveredConnectionKey.value === lineKey) {
     hoveredConnectionKey.value = null;
   }
-  hideConnectionHintTooltip();
 }
 
-function handleLinePointerHover(event, lineKey) {
+function handleLinePointerHover(_, lineKey) {
   setHoveredConnection(lineKey);
-  showConnectionHintTooltip(event.clientX, event.clientY);
 }
 
-function handleConnectorPointerHover(event, nodeId, connectorKind) {
+function handleConnectorPointerHover(_, nodeId, connectorKind) {
   const connection = getConnectionForConnector(nodeId, connectorKind);
   if (!connection) {
-    hideConnectionHintTooltip();
     return;
   }
 
   hoveredConnectionKey.value = `${connection.sourceId}-${connection.targetId}`;
-  showConnectionHintTooltip(event.clientX, event.clientY);
 }
 
 function clearConnectorHover(nodeId, connectorKind) {
   const connection = getConnectionForConnector(nodeId, connectorKind);
   if (!connection) {
-    hideConnectionHintTooltip();
     return;
   }
 
@@ -509,7 +475,6 @@ function clearConnectorHover(nodeId, connectorKind) {
 }
 
 function handleDocumentPointerDown(event) {
-  hideConnectionHintTooltip();
   if (!connectionMenu.open) {
     return;
   }
@@ -700,7 +665,6 @@ function beginReorderDrag(event, nodeId, connectorKind, connectorEl, originLine 
   }
 
   const sourceCenter = getConnectorCenter(connectorEl);
-  hideConnectionHintTooltip();
   closeConnectionMenu();
   reorderDrag.active = true;
   reorderDrag.moved = false;
@@ -880,13 +844,12 @@ function centerSingleStartBlankLayout() {
   }
 
   const canvasRect = canvasEl.getBoundingClientRect();
-  const nodeRect = nodeEl.getBoundingClientRect();
   const terminalRect = terminalCardEl.getBoundingClientRect();
 
   const targetCenterX = canvasRect.left + (canvasRect.width / 2);
-  const currentCenterX = nodeRect.left + (nodeRect.width / 2);
   const targetCenterY = canvasRect.top + (canvasRect.height / 2);
-  const currentCenterY = (nodeRect.top + terminalRect.bottom) / 2;
+  const currentCenterX = terminalRect.left + (terminalRect.width / 2);
+  const currentCenterY = terminalRect.top + (terminalRect.height / 2);
 
   const deltaX = targetCenterX - currentCenterX;
   const deltaY = targetCenterY - currentCenterY;
@@ -945,7 +908,6 @@ onMounted(() => {
     ignoreFrom: ".assistant-step-control, .assistant-step-connector",
     listeners: {
       start() {
-        hideConnectionHintTooltip();
         closeConnectionMenu();
       },
       move(event) {
@@ -1148,7 +1110,6 @@ onBeforeUnmount(() => {
         <BuilderConnectionsLayer
           :viewport-size="viewportSize"
           :reorder-drag="reorderDrag"
-          :connection-hint-tooltip="connectionHintTooltip"
           :canvas-size="canvasSize"
           :connection-lines="connectionLines"
           :terminal-add-controls="terminalAddControls"

@@ -71,6 +71,7 @@ const fixQueryWarning = () => {
             </div>
           </template>
           <template #menu="{ close }">
+            <div class="assistant-step-add-menu__label true-small text-muted px-2 pb-1">Starting Blocks</div>
             <button
               v-for="option in startBlockOptions"
               :key="option.key"
@@ -161,7 +162,13 @@ const fixQueryWarning = () => {
               >
                 <td class="query-key-cell">
                   <span class="query-key-label">
-                    <span v-if="row.isCode && isStepWarningVisible(activeStep.stateKey || activeStep.id, row.dataKey, row.showWarning)" class="query-warning-wrap">
+                    <VDropdown
+                      v-if="row.isCode && isStepWarningVisible(activeStep.stateKey || activeStep.id, row.dataKey, row.showWarning)"
+                      class="query-warning-wrap"
+                      placement="bottom-start"
+                      :distance="6"
+                      :auto-hide="true"
+                    >
                       <button
                         type="button"
                         class="query-warning-trigger"
@@ -169,26 +176,28 @@ const fixQueryWarning = () => {
                       >
                         <img src="../../assets/warning.svg" width="20" height="20" alt="Ivy found an issue in how this might run.">
                       </button>
-                      <div class="query-warning-tooltip true-small" role="tooltip">
-                        <p class="query-warning-copy mb-1">Ivy: It looks like this code won't run as intended.</p>
-                        <div class="query-warning-actions mb-1">
-                          <button
-                            type="button"
-                            class="query-warning-action query-warning-action-ignore"
-                            @click.stop="ignoreQueryWarning"
-                          >
-                            Ignore
-                          </button>
-                          <button
-                            type="button"
-                            class="query-warning-action query-warning-action-fix"
-                            @click.stop="fixQueryWarning"
-                          >
-                            Fix This
-                          </button>
+                      <template #popper>
+                        <div class="query-warning-tooltip true-small">
+                          <p class="query-warning-copy mb-1">Ivy: It looks like this code won't run as intended.</p>
+                          <div class="query-warning-actions mb-1">
+                            <button
+                              type="button"
+                              class="query-warning-action query-warning-action-ignore"
+                              @click.stop="ignoreQueryWarning"
+                            >
+                              Ignore
+                            </button>
+                            <button
+                              type="button"
+                              class="query-warning-action query-warning-action-fix"
+                              @click.stop="fixQueryWarning"
+                            >
+                              Fix This
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    </span>
+                      </template>
+                    </VDropdown>
                     <span>{{ row.key }}</span>
                   </span>
                 </td>
@@ -275,6 +284,10 @@ const fixQueryWarning = () => {
 .source-pill-caret {
   filter: brightness(0) invert(1);
   opacity: 0.8;
+}
+
+.assistant-step-add-menu__label {
+  letter-spacing: 0.01em;
 }
 
 .step2-info-details-table td {
@@ -373,8 +386,6 @@ const fixQueryWarning = () => {
 .query-warning-wrap {
   display: inline-flex;
   line-height: 0;
-  position: relative;
-  z-index: 6;
 }
 
 .query-warning-trigger {
@@ -391,16 +402,8 @@ const fixQueryWarning = () => {
   color: #fff;
   line-height: 1.3;
   min-width: 13.5rem;
-  opacity: 0;
   padding: 0.35rem 0.5rem;
-  pointer-events: none;
-  position: absolute;
-  left: 0;
-  top: 100%;
-  transform: translateY(-2px);
-  transition: opacity 120ms ease, transform 120ms ease;
-  white-space: nowrap;
-  z-index: 6;
+  white-space: normal;
 }
 
 .query-warning-copy {
@@ -431,15 +434,6 @@ const fixQueryWarning = () => {
 .query-warning-action-ignore {
   background: transparent;
   border-color: transparent;
-}
-
-.query-warning-wrap:hover .query-warning-tooltip,
-.query-warning-wrap:focus-within .query-warning-tooltip,
-.query-warning-tooltip:hover,
-.query-warning-tooltip:focus-within {
-  opacity: 1;
-  pointer-events: auto;
-  transform: translateY(0);
 }
 
 .ivy-says-shell {

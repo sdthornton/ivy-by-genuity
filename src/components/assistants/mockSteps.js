@@ -218,12 +218,14 @@ const START_VARIANT_BASE = {
       { author: "You", body: "Keep this at 9:00 am local time.", stamp: "Feb 26, 8:59 AM" },
     ],
     rows: [
+      { key: "Entry Point", dataKey: "entryPoint" },
       { key: "Frequency", dataKey: "frequency" },
       { key: "Time", dataKey: "time" },
       { key: "Timezone", dataKey: "timezone" },
     ],
     ivySays: "This step triggers the assistant based on the current schedule selection.",
     builderData: {
+      entryPoint: "Scheduled",
       frequency: "Weekdays",
       time: "09:00 am",
       timezone: "Local",
@@ -235,11 +237,13 @@ const START_VARIANT_BASE = {
     pill: "Trigger",
     comments: [],
     rows: [
+      { key: "Entry Point", dataKey: "entryPoint" },
       { key: "Trigger Type", dataKey: "triggerType" },
       { key: "Event", dataKey: "event" },
     ],
     ivySays: "This step starts the assistant whenever the selected event happens.",
     builderData: {
+      entryPoint: "Event",
       triggerType: "Event-based",
       event: "When an event occurs",
     },
@@ -527,14 +531,6 @@ export function getStartBlockOptions() {
 
 export function getAddStepMenuGroups() {
   return [
-    {
-      key: "starting-blocks",
-      label: "Starting Blocks",
-      items: [
-        { key: "schedule", label: "Schedule", type: "schedule", startBlockMode: START_BLOCK_MODES.schedule },
-        { key: "trigger", label: "Trigger", type: "trigger", startBlockMode: START_BLOCK_MODES.trigger },
-      ],
-    },
     {
       key: "data",
       label: "Data",

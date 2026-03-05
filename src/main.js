@@ -1,4 +1,5 @@
 import { createApp } from 'vue'
+import FloatingVue from 'floating-vue'
 import 'floating-vue/dist/style.css'
 import './style.css'
 
@@ -23,4 +24,7 @@ const router = createRouter({
   routes,
 });
 
-createApp(App).use(router).mount('#app')
+createApp(App)
+  .use(router)
+  .use(FloatingVue)
+  .mount('#app')

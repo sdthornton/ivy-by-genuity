@@ -33,79 +33,69 @@ function handleAddStepSelection(item) {
 
 <template>
   <div class="builder-zoom">
-    <div class="builder-zoom-tooltip-wrap">
-      <button
-        type="button"
-        class="builder-action--zoom-in btn btn-sm bg-white py-1 px-2.5 fw-bold"
-        aria-label="Zoom in"
-        @click.stop="emit('zoom-in')"
-      >
-        &plus;
-      </button>
-      <div class="builder-zoom-tooltip true-small" role="tooltip">Zoom In</div>
-    </div>
-    <div class="builder-zoom-tooltip-wrap">
-      <button
-        type="button"
-        class="builder-action--zoom-out btn btn-sm bg-white py-1 px-2.5 fw-bold"
-        aria-label="Zoom out"
-        @click.stop="emit('zoom-out')"
-      >
-        &minus;
-      </button>
-      <div class="builder-zoom-tooltip true-small" role="tooltip">Zoom Out</div>
-    </div>
+    <button
+      v-tooltip="{ content: 'Zoom In', placement: 'left' }"
+      type="button"
+      class="builder-action--zoom-in btn btn-sm bg-white py-1 px-2.5 fw-bold"
+      aria-label="Zoom in"
+      @click.stop="emit('zoom-in')"
+    >
+      &plus;
+    </button>
+    <button
+      v-tooltip="{ content: 'Zoom Out', placement: 'left' }"
+      type="button"
+      class="builder-action--zoom-out btn btn-sm bg-white py-1 px-2.5 fw-bold"
+      aria-label="Zoom out"
+      @click.stop="emit('zoom-out')"
+    >
+      &minus;
+    </button>
   </div>
   <div class="assistant-step-floating-controls d-flex align-items-center gap-3">
-    <div class="builder-zoom-tooltip-wrap assistant-step-floating-tooltip-wrap">
-      <button
-        type="button"
-        class="assistant-step-floating-mini-btn assistant-step-control d-flex align-items-center justify-content-center"
-        aria-label="Undo"
-        @click.stop="emit('undo')"
+    <button
+      v-tooltip="{ content: 'Undo', placement: 'top' }"
+      type="button"
+      class="assistant-step-floating-mini-btn assistant-step-control d-flex align-items-center justify-content-center"
+      aria-label="Undo"
+      @click.stop="emit('undo')"
+    >
+      <img src="../../assets/undo.svg" width="14" height="14" class="d-block opacity-75">
+    </button>
+    <button
+      v-tooltip="{ content: 'Toggle comments', placement: 'top' }"
+      type="button"
+      class="assistant-step-floating-mini-btn assistant-step-control d-flex align-items-center justify-content-center"
+      aria-label="Toggle comments"
+      @click.stop="emit('toggle-editor-comments')"
+    >
+      <img v-if="showEditorComments" src="../../assets/eye-closed.svg" width="14" height="14" class="d-block">
+      <img v-else src="../../assets/eye-open.svg" width="14" height="14" class="d-block">
+    </button>
+    <button
+      v-tooltip="{ content: 'Toggle details', placement: 'top' }"
+      type="button"
+      class="assistant-step-floating-mini-btn assistant-step-control d-flex align-items-center justify-content-center"
+      aria-label="Toggle details"
+      @click.stop="emit('toggle-all-node-details')"
+    >
+      <img
+        src="../../assets/dropdown.svg"
+        width="14"
+        height="14"
+        class="d-block assistant-step-floating-mini-btn__icon"
+        :class="{ 'assistant-step-floating-mini-btn__icon--collapsed': !areAllDetailsCollapsed }"
+        aria-hidden="true"
       >
-        <img src="../../assets/undo.svg" width="14" height="14" class="d-block opacity-75">
-      </button>
-      <div class="builder-zoom-tooltip true-small" role="tooltip">Undo</div>
-    </div>
-    <div class="builder-zoom-tooltip-wrap assistant-step-floating-tooltip-wrap">
-      <button
-        type="button"
-        class="assistant-step-floating-mini-btn assistant-step-control d-flex align-items-center justify-content-center"
-        aria-label="Toggle comments"
-        @click.stop="emit('toggle-editor-comments')"
-      >
-        <img v-if="showEditorComments" src="../../assets/eye-closed.svg" width="14" height="14" class="d-block">
-        <img v-else src="../../assets/eye-open.svg" width="14" height="14" class="d-block">
-      </button>
-      <div class="builder-zoom-tooltip true-small" role="tooltip">Toggle comments</div>
-    </div>
-    <div class="builder-zoom-tooltip-wrap assistant-step-floating-tooltip-wrap">
-      <button
-        type="button"
-        class="assistant-step-floating-mini-btn assistant-step-control d-flex align-items-center justify-content-center"
-        aria-label="Toggle details"
-        @click.stop="emit('toggle-all-node-details')"
-      >
-        <img
-          src="../../assets/dropdown.svg"
-          width="14"
-          height="14"
-          class="d-block assistant-step-floating-mini-btn__icon"
-          :class="{ 'assistant-step-floating-mini-btn__icon--collapsed': !areAllDetailsCollapsed }"
-          aria-hidden="true"
-        >
-      </button>
-      <div class="builder-zoom-tooltip true-small" role="tooltip">Toggle details</div>
-    </div>
+    </button>
     <StepOptionsDropdown placement="top-end">
       <template #trigger="{ open }">
-        <div class="builder-zoom-tooltip-wrap assistant-step-floating-tooltip-wrap">
-          <button class="add-builder-node btn btn-dark rounded-circle d-flex align-items-center justify-content-center">
-            <img src="../../assets/plus-round.svg" width="20" height="20" class="d-block invert-to-white">
-          </button>
-          <div v-if="!open" class="builder-zoom-tooltip true-small" role="tooltip">Add Step</div>
-        </div>
+        <button
+          v-tooltip="{ content: 'Add Step', placement: 'top', disabled: open }"
+          class="add-builder-node btn btn-dark rounded-circle d-flex align-items-center justify-content-center"
+        >
+          <img src="../../assets/plus-round.svg" width="20" height="20" class="d-block invert-to-white">
+        </button>
       </template>
       <template #menu="{ close }">
         <AddStepMenuContent
@@ -128,39 +118,6 @@ function handleAddStepSelection(item) {
   position: absolute;
   right: 2.25rem;
   top: 1.5rem;
-}
-
-.builder-zoom-tooltip-wrap {
-  position: relative;
-}
-
-.builder-zoom-tooltip {
-  background-color: #1b2434;
-  border-radius: 0.35rem;
-  color: #fff;
-  line-height: 1.3;
-  opacity: 0;
-  padding: 0.35rem 0.5rem;
-  pointer-events: none;
-  position: absolute;
-  right: calc(100% + 0.5rem);
-  top: 50%;
-  transform: translateY(-50%);
-  white-space: nowrap;
-  z-index: 22;
-}
-
-.builder-zoom-tooltip-wrap:hover .builder-zoom-tooltip {
-  opacity: 1;
-  pointer-events: auto;
-}
-
-.assistant-step-floating-tooltip-wrap .builder-zoom-tooltip {
-  bottom: calc(100% + 0.5rem);
-  left: 50%;
-  right: auto;
-  top: auto;
-  transform: translateX(-50%);
 }
 
 .builder-action--zoom-in,
