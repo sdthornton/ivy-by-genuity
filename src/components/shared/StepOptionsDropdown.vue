@@ -213,8 +213,14 @@ onBeforeUnmount(() => {
           </a>
           <hr class="my-2 mx-1 border-top border-body-subtle opacity-100">
           <a href="#" class="dropdown-item d-flex align-items-center" @click.prevent="closeMenu">
-            <div style="border-radius: 0.25rem;" class="bg-primary me-2 p-1">
-              <img src="../../assets/sim-ai/action.svg" height="12" width="12" class="d-block invert-to-white">
+            <div style="border-radius: 0.25rem;" class="bg-ivy me-2 p-1">
+              <img src="../../assets/send-message.svg" height="12" width="12" class="d-block invert-to-white">
+            </div>
+            <span>Send Message</span>
+          </a>
+          <a href="#" class="dropdown-item d-flex align-items-center" @click.prevent="closeMenu">
+            <div style="border-radius: 0.25rem;" class="bg-ivy-action me-2 p-1">
+              <img src="../../assets/ivy-basic-icon.svg" height="12" width="12" class="d-block invert-to-white">
             </div>
             <span>Ivy Action</span>
           </a>

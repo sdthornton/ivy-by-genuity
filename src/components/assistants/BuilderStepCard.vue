@@ -1,7 +1,7 @@
 <script setup>
-import { nextTick, ref, watch } from "vue";
+import { computed, nextTick, ref, watch } from "vue";
 import StepOptionsDropdown from "../shared/StepOptionsDropdown.vue";
-import { isStepWarningVisible } from "./mockSteps";
+import { getSplitConditionSections, getVisibleStepRows, isStepWarningVisible } from "./mockSteps";
 
 const props = defineProps({
   node: {
@@ -61,9 +61,14 @@ const emit = defineEmits([
   "remove-connections",
   "delete-step",
   "select-start-block",
+  "add-split-else-if",
 ]);
 
 const commentComposerInput = ref(null);
+const visibleRows = computed(() => getVisibleStepRows(props.node));
+const splitConditionSections = computed(() => (
+  props.node.type === "split" ? getSplitConditionSections(props.node.data) : []
+));
 
 watch(
   () => props.isComposerOpen,
@@ -78,14 +83,27 @@ watch(
   },
 );
 
-function formatStepDetailValue(value) {
-  const nextValue = String(value ?? "").trim();
-  return nextValue || "-";
+function hasStepDetailValue(value) {
+  return String(value ?? "").trim().length > 0;
+}
+
+function formatStepDetailValue(row) {
+  const value = props.node.data?.[row?.dataKey];
+  if (hasStepDetailValue(value)) {
+    return String(value).trim();
+  }
+
+  return row?.placeholder || "-";
+}
+
+function isPlaceholderStepDetailValue(row) {
+  return !hasStepDetailValue(props.node.data?.[row?.dataKey]);
 }
 
 function shouldShowStepRowWarning(row) {
   return Boolean(
     row?.isCode
+      && hasStepDetailValue(props.node.data?.[row.dataKey])
       && isStepWarningVisible(
         props.node.stateKey || props.node.id,
         row.dataKey,
@@ -131,6 +149,19 @@ function handleCommentKeydown(event) {
 function handleStartBlockSelect(mode, close) {
   emit("select-start-block", mode);
   close();
+}
+
+function formatSplitConditionValue(section) {
+  const value = String(section?.value ?? "").trim();
+  if (value.length > 0) {
+    return value;
+  }
+
+  return section?.placeholder || "-";
+}
+
+function isSplitConditionPlaceholder(section) {
+  return String(section?.value ?? "").trim().length === 0;
 }
 </script>
 
@@ -353,10 +384,40 @@ function handleStartBlockSelect(mode, close) {
 
     <div class="assistant-step-details">
       <div v-show="!node.detailsCollapsed" class="assistant-step-details-content px-2.5 pb-2 not-as-small text-black">
-        <table class="w-100 table table-borderless table-sm mb-0">
+        <div v-if="node.type === 'split'" class="assistant-step-split-sections d-flex flex-column gap-2">
+          <section
+            v-for="section in splitConditionSections"
+            :key="section.id"
+            class="assistant-step-split-section border rounded-sm p-2"
+          >
+            <div class="assistant-step-split-section__label true-small text-muted fw-semibold mb-1">
+              {{ section.label }}
+            </div>
+            <div
+              class="assistant-step-split-section__value"
+              :class="{ 'assistant-step-split-section__value--placeholder': isSplitConditionPlaceholder(section) }"
+            >
+              {{ formatSplitConditionValue(section) }}
+            </div>
+            <div
+              v-tooltip="{ content: 'Click to remove. Drag to change.', placement: 'right' }"
+              class="assistant-step-connector assistant-step-connector--branch assistant-step-control"
+              :data-step-id="node.id"
+              :data-connector-kind="section.connectorKind"
+              role="button"
+              @pointerdown.stop.prevent="handleConnectorPointerDown($event, section.connectorKind)"
+              @pointerover="handleConnectorPointerHover($event, section.connectorKind)"
+              @pointermove="handleConnectorPointerHover($event, section.connectorKind)"
+              @pointerleave="handleConnectorPointerLeave(section.connectorKind)"
+              @click.stop
+            />
+          </section>
+        </div>
+
+        <table v-else class="w-100 table table-borderless table-sm mb-0">
           <tbody>
             <tr
-              v-for="row in node.rows"
+              v-for="row in visibleRows"
               :key="row.key"
             >
               <td class="text-muted text-capitalize assistant-step-detail__key">
@@ -374,8 +435,11 @@ function handleStartBlockSelect(mode, close) {
                 </span>
               </td>
               <td class="text-end assistant-step-detail__val">
-                <div class="assistant-step-detail__val-text">
-                  {{ formatStepDetailValue(node.data[row.dataKey]) }}
+                <div
+                  class="assistant-step-detail__val-text"
+                  :class="{ 'assistant-step-detail__val-text--placeholder': isPlaceholderStepDetailValue(row) }"
+                >
+                  {{ formatStepDetailValue(row) }}
                 </div>
               </td>
             </tr>
@@ -551,6 +615,17 @@ function handleStartBlockSelect(mode, close) {
   box-shadow: 0 6px 12px rgba(0, 0, 0, 0.28);
 }
 
+.assistant-step-connector--branch {
+  border-radius: 0.25rem;
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.22);
+  height: 0.45rem;
+  left: auto;
+  right: -0.34rem;
+  top: calc(50% - 0.225rem);
+  transform: none;
+  width: 0.85rem;
+}
+
 .assistant-step:hover .assistant-step-connector--top,
 .assistant-step--has-incoming .assistant-step-connector--top,
 .assistant-step-connector--top.assistant-step-connector--active-target,
@@ -614,6 +689,36 @@ table {
   text-overflow: ellipsis;
   white-space: normal;
   word-break: normal;
+}
+
+.assistant-step-detail__val-text--placeholder {
+  color: var(--bs-secondary-color);
+  opacity: 0.7;
+}
+
+.assistant-step-split-section {
+  background-color: white;
+  position: relative;
+}
+
+.assistant-step-split-section__label {
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+}
+
+.assistant-step-split-section__value {
+  line-height: 1.35;
+  min-height: 1.2rem;
+  padding-right: 0.75rem;
+}
+
+.assistant-step-split-section__value--placeholder {
+  color: var(--bs-secondary-color);
+  opacity: 0.7;
+}
+
+.assistant-step-split-add {
+  min-height: 1.5rem;
 }
 
 .assistant-step-comments {

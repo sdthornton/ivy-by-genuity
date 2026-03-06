@@ -8,19 +8,30 @@ import BuilderConnectionsLayer from "./BuilderConnectionsLayer.vue";
 import BuilderFloatingControls from "./BuilderFloatingControls.vue";
 import BuilderStepCard from "./BuilderStepCard.vue";
 import {
+  addSplitElseIfCondition,
   createBuilderNodeTemplates,
+  ensureSplitStepData,
   getAddStepMenuGroups,
   getStartBlockOptions,
+  getSplitBranchConnections,
+  getStepTypeDefinition,
+  getStepTypeMeta,
+  setLiveSidebarSteps,
 } from "./mockSteps";
 
-const emit = defineEmits(["toggleSidebar", "select-start-block"]);
+const emit = defineEmits(["toggleSidebar", "select-start-block", "nodes-change"]);
 
 function toggleSidebar(nodeId) {
+  selectedNodeId.value = Number(nodeId) || null;
   emit("toggleSidebar", nodeId);
 }
 
 function selectStartBlock(mode) {
   emit("select-start-block", mode);
+}
+
+function emitCurrentNodeIds() {
+  emit("nodes-change", nodes.map((node) => Number(node.id)).filter((id) => Number.isFinite(id)));
 }
 
 const props = defineProps({
@@ -42,6 +53,7 @@ const props = defineProps({
 const canvas = ref(null);
 const connectionLines = ref([]);
 const terminalAddControls = ref([]);
+const selectedNodeId = ref(null);
 const canvasSize = reactive({ width: 0, height: 0 });
 const viewportSize = reactive({ width: 0, height: 0 });
 const showEditorComments = ref(true);
@@ -67,6 +79,7 @@ const reorderDrag = reactive({
   originLineKey: null,
   originConnectionSourceId: null,
   originConnectionTargetId: null,
+  originConnectionSourceKind: "bottom",
   pointerX: 0,
   pointerY: 0,
   startX: 0,
@@ -85,6 +98,7 @@ const connectionMenu = reactive({
   open: false,
   sourceId: null,
   targetId: null,
+  sourceConnectorKind: "bottom",
   anchorX: 0,
   anchorY: 0,
   left: 0,
@@ -95,6 +109,7 @@ const connectionMenuEl = ref(null);
 const REORDER_DRAG_THRESHOLD = 8;
 const CONNECTION_MENU_OFFSET = 10;
 const CONNECTION_MENU_PADDING = 8;
+const INSERT_NODE_Y_SPACING = 84;
 
 const canvasPanStyle = computed(() => ({
   backgroundPosition: `${panOffset.x + 2}px ${panOffset.y + 4}px`,
@@ -145,21 +160,59 @@ function findNodeById(id) {
   return nodes.find(n => String(n.id) === String(id));
 }
 
-function findIncomingConnection(nodeId) {
-  const selectedId = String(nodeId);
-  const sourceNode = nodes.find((node) => node.connections?.some((target) => String(target) === selectedId));
-  if (!sourceNode) {
-    return null;
+function isBranchConnectorKind(connectorKind) {
+  return String(connectorKind || "").startsWith("branch:");
+}
+
+function getConnectionLineKey(sourceId, targetId, sourceConnectorKind = "bottom") {
+  if (isBranchConnectorKind(sourceConnectorKind)) {
+    return `${sourceId}-${sourceConnectorKind}-${targetId}`;
   }
 
-  return {
-    sourceId: String(sourceNode.id),
-    targetId: selectedId,
-  };
+  return `${sourceId}-${targetId}`;
+}
+
+function findIncomingConnection(nodeId) {
+  const selectedId = String(nodeId);
+  for (const sourceNode of nodes) {
+    if (sourceNode.connections?.some((target) => String(target) === selectedId)) {
+      return {
+        sourceId: String(sourceNode.id),
+        targetId: selectedId,
+        sourceConnectorKind: "bottom",
+      };
+    }
+
+    if (sourceNode.type === "split") {
+      const branchConnections = getSplitBranchConnections(sourceNode.data);
+      const branchEntry = Object.entries(branchConnections).find(([, targetId]) => String(targetId) === selectedId);
+      if (branchEntry) {
+        return {
+          sourceId: String(sourceNode.id),
+          targetId: selectedId,
+          sourceConnectorKind: branchEntry[0],
+        };
+      }
+    }
+  }
+
+  return null;
 }
 
 function hasIncomingConnection(nodeId) {
-  return nodes.some((node) => node.connections?.some((target) => String(target) === String(nodeId)));
+  const selectedId = String(nodeId);
+  return nodes.some((node) => {
+    if (node.connections?.some((target) => String(target) === selectedId)) {
+      return true;
+    }
+
+    if (node.type !== "split") {
+      return false;
+    }
+
+    const branchConnections = getSplitBranchConnections(node.data);
+    return Object.values(branchConnections).some((targetId) => String(targetId) === selectedId);
+  });
 }
 
 function isActiveConnectionDragSource(nodeId) {
@@ -181,10 +234,150 @@ function toggleEditorComments() {
   }
 }
 
-function handleAddStepMenuSelection(item) {
+function getAddSelectionPayload(selectionPayload) {
+  if (selectionPayload?.item) {
+    return {
+      item: selectionPayload.item,
+      context: selectionPayload.context || {},
+    };
+  }
+
+  return {
+    item: selectionPayload || null,
+    context: {},
+  };
+}
+
+function createNodeFromAddSelection(item) {
+  const stepType = item?.type || item?.key;
+  if (!stepType) {
+    return null;
+  }
+
+  const nextId = getNextNodeId();
+  const stepTypeMeta = getStepTypeMeta(stepType);
+  const stepTypeDefinition = getStepTypeDefinition(stepType);
+
+  return {
+    id: nextId,
+    stateKey: String(nextId),
+    type: stepType,
+    typeMeta: stepTypeMeta,
+    title: item?.label || stepTypeMeta.label,
+    pill: stepTypeDefinition.pill || stepTypeMeta.label,
+    sources: (stepTypeDefinition.sources || []).map((source) => ({ ...source })),
+    rows: (stepTypeDefinition.rows || []).map((row) => ({ ...row })),
+    comments: [],
+    ivySays: stepTypeDefinition.ivySays || "",
+    data: { ...(stepTypeDefinition.builderData || {}) },
+    detailsCollapsed: false,
+    connections: [],
+    isStartBlock: false,
+    startBlockMode: null,
+    x: 0,
+    y: 0,
+  };
+}
+
+function shiftNodesDownFrom(newNodeY, excludedNodeIds = []) {
+  const excludedNodeSet = new Set(excludedNodeIds.map((nodeId) => String(nodeId)));
+  nodes.forEach((node) => {
+    if (excludedNodeSet.has(String(node.id))) {
+      return;
+    }
+
+    if ((Number(node.y) || 0) >= newNodeY) {
+      node.y = (Number(node.y) || 0) + INSERT_NODE_Y_SPACING;
+    }
+  });
+}
+
+function insertNodeAfter(sourceNode, insertedNode, forcedTargetId = null) {
+  if (!sourceNode || !insertedNode) {
+    return false;
+  }
+
+  const rawTargetId = forcedTargetId || sourceNode.connections?.[0] || null;
+  const existingTargetNode = rawTargetId ? findNodeById(rawTargetId) : null;
+  const existingTargetId = existingTargetNode
+    && String(existingTargetNode.id) !== String(insertedNode.id)
+    ? existingTargetNode.id
+    : null;
+  insertedNode.x = Number(sourceNode.x) || 0;
+  insertedNode.y = (Number(sourceNode.y) || 0) + INSERT_NODE_Y_SPACING;
+
+  if (existingTargetId) {
+    shiftNodesDownFrom(insertedNode.y, [sourceNode.id, insertedNode.id]);
+    insertedNode.connections = [existingTargetId];
+  } else {
+    insertedNode.connections = [];
+  }
+
+  sourceNode.connections = [insertedNode.id];
+  nodes.push(insertedNode);
+  return true;
+}
+
+function getFloatingInsertionSourceNode() {
+  const selectedNode = selectedNodeId.value ? findNodeById(selectedNodeId.value) : null;
+  if (selectedNode) {
+    return selectedNode;
+  }
+
+  const terminalNodes = nodes.filter((node) => !Array.isArray(node.connections) || node.connections.length === 0);
+  if (terminalNodes.length) {
+    return terminalNodes.reduce((lowestNode, node) => (
+      (Number(node.y) || 0) > (Number(lowestNode.y) || 0) ? node : lowestNode
+    ), terminalNodes[0]);
+  }
+
+  return nodes.reduce((lowestNode, node) => (
+    (Number(node.y) || 0) > (Number(lowestNode.y) || 0) ? node : lowestNode
+  ), nodes[0] || null);
+}
+
+function handleAddStepMenuSelection(selectionPayload) {
+  const { item, context } = getAddSelectionPayload(selectionPayload);
+
   if (item?.startBlockMode) {
     selectStartBlock(item.startBlockMode);
+    return;
   }
+
+  const nextNode = createNodeFromAddSelection(item);
+  if (!nextNode) {
+    return;
+  }
+
+  if (!nodes.length) {
+    nodes.push(nextNode);
+    setLiveSidebarSteps(nodes);
+    emitCurrentNodeIds();
+    toggleSidebar(nextNode.id);
+    nextTick(() => scheduleConnectionLineUpdate());
+    return;
+  }
+
+  let wasInserted = false;
+  if (context.placement === "between" && context.sourceId && context.targetId) {
+    const sourceNode = findNodeById(context.sourceId);
+    wasInserted = insertNodeAfter(sourceNode, nextNode, context.targetId);
+  } else if (context.placement === "after" && context.sourceId) {
+    const sourceNode = findNodeById(context.sourceId);
+    wasInserted = insertNodeAfter(sourceNode, nextNode);
+  } else {
+    const sourceNode = getFloatingInsertionSourceNode();
+    wasInserted = insertNodeAfter(sourceNode, nextNode);
+  }
+
+  if (!wasInserted) {
+    nodes.push(nextNode);
+  }
+
+  setLiveSidebarSteps(nodes);
+  emitCurrentNodeIds();
+  toggleSidebar(nextNode.id);
+  nextTick(() => scheduleConnectionLineUpdate());
 }
 
 function handleUndoClick() {
@@ -373,6 +566,7 @@ function closeConnectionMenu() {
   connectionMenu.open = false;
   connectionMenu.sourceId = null;
   connectionMenu.targetId = null;
+  connectionMenu.sourceConnectorKind = "bottom";
   hoveredConnectionKey.value = null;
 }
 
@@ -395,7 +589,7 @@ function positionConnectionMenu() {
   );
 }
 
-function openConnectionMenu(sourceId, targetId, clientX, clientY) {
+function openConnectionMenu(sourceId, targetId, clientX, clientY, sourceConnectorKind = "bottom") {
   if (!sourceId || !targetId) {
     return;
   }
@@ -403,6 +597,7 @@ function openConnectionMenu(sourceId, targetId, clientX, clientY) {
   connectionMenu.open = true;
   connectionMenu.sourceId = String(sourceId);
   connectionMenu.targetId = String(targetId);
+  connectionMenu.sourceConnectorKind = sourceConnectorKind;
   connectionMenu.anchorX = clientX;
   connectionMenu.anchorY = clientY;
   connectionMenu.left = clientX + CONNECTION_MENU_OFFSET;
@@ -415,6 +610,21 @@ function openConnectionMenu(sourceId, targetId, clientX, clientY) {
 }
 
 function getConnectionForConnector(nodeId, connectorKind) {
+  if (isBranchConnectorKind(connectorKind)) {
+    const node = findNodeById(nodeId);
+    const branchConnections = getSplitBranchConnections(node?.data);
+    const targetId = branchConnections?.[connectorKind];
+    if (!targetId) {
+      return null;
+    }
+
+    return {
+      sourceId: String(nodeId),
+      targetId: String(targetId),
+      sourceConnectorKind: connectorKind,
+    };
+  }
+
   if (connectorKind === "bottom") {
     const node = findNodeById(nodeId);
     const targetId = node?.connections?.[0];
@@ -425,19 +635,28 @@ function getConnectionForConnector(nodeId, connectorKind) {
     return {
       sourceId: String(nodeId),
       targetId: String(targetId),
+      sourceConnectorKind: "bottom",
     };
   }
 
   return findIncomingConnection(nodeId);
 }
 
-function removeConnection(sourceId, targetId) {
+function removeConnection(sourceId, targetId, sourceConnectorKind = "bottom") {
   const sourceNode = findNodeById(sourceId);
   if (!sourceNode) {
     return;
   }
 
-  sourceNode.connections = (sourceNode.connections || []).filter((connectionId) => String(connectionId) !== String(targetId));
+  if (isBranchConnectorKind(sourceConnectorKind)) {
+    const branchConnections = getSplitBranchConnections(sourceNode.data);
+    if (String(branchConnections[sourceConnectorKind]) === String(targetId)) {
+      delete branchConnections[sourceConnectorKind];
+    }
+  } else {
+    sourceNode.connections = (sourceNode.connections || []).filter((connectionId) => String(connectionId) !== String(targetId));
+  }
+
   closeConnectionMenu();
   nextTick(() => scheduleConnectionLineUpdate());
 }
@@ -462,7 +681,11 @@ function handleConnectorPointerHover(_, nodeId, connectorKind) {
     return;
   }
 
-  hoveredConnectionKey.value = `${connection.sourceId}-${connection.targetId}`;
+  hoveredConnectionKey.value = getConnectionLineKey(
+    connection.sourceId,
+    connection.targetId,
+    connection.sourceConnectorKind,
+  );
 }
 
 function clearConnectorHover(nodeId, connectorKind) {
@@ -471,7 +694,11 @@ function clearConnectorHover(nodeId, connectorKind) {
     return;
   }
 
-  clearHoveredConnection(`${connection.sourceId}-${connection.targetId}`);
+  clearHoveredConnection(getConnectionLineKey(
+    connection.sourceId,
+    connection.targetId,
+    connection.sourceConnectorKind,
+  ));
 }
 
 function handleDocumentPointerDown(event) {
@@ -499,6 +726,7 @@ function resetReorderDrag() {
   reorderDrag.originLineKey = null;
   reorderDrag.originConnectionSourceId = null;
   reorderDrag.originConnectionTargetId = null;
+  reorderDrag.originConnectionSourceKind = "bottom";
   reorderDrag.pointerX = 0;
   reorderDrag.pointerY = 0;
   reorderDrag.startX = 0;
@@ -540,7 +768,11 @@ function updateReorderTarget(clientX, clientY) {
 
   reorderDrag.moved = true;
 
-  const expectedTargetKind = reorderDrag.sourceKind === "bottom" ? "top" : "bottom";
+  const expectedTargetKind = isBranchConnectorKind(reorderDrag.sourceKind)
+    ? "top"
+    : reorderDrag.sourceKind === "bottom"
+      ? "top"
+      : "bottom";
   const targetSelector = `.assistant-step-connector[data-connector-kind="${expectedTargetKind}"]`;
   const candidates = Array.from(canvas.value?.querySelectorAll(targetSelector) || []);
   const maxSnapDistance = 44;
@@ -579,6 +811,24 @@ function updateReorderTarget(clientX, clientY) {
 
 function handleReorderPointerMove(event) {
   updateReorderTarget(event.clientX, event.clientY);
+}
+
+function applyBranchConnectionDrag() {
+  const sourceId = String(reorderDrag.sourceId || "");
+  const sourceKind = String(reorderDrag.sourceKind || "");
+  const targetId = String(reorderDrag.targetId || "");
+  if (!sourceId || !targetId || !isBranchConnectorKind(sourceKind) || sourceId === targetId) {
+    return;
+  }
+
+  const sourceNode = findNodeById(sourceId);
+  if (!sourceNode) {
+    return;
+  }
+
+  ensureSplitStepData(sourceNode.data);
+  sourceNode.data.branchConnections[sourceKind] = targetId;
+  nextTick(() => scheduleConnectionLineUpdate());
 }
 
 function applyNodeReorder() {
@@ -636,18 +886,43 @@ function endReorderDrag() {
     return;
   }
 
+  const isBranchDrag = isBranchConnectorKind(reorderDrag.sourceKind);
   if (reorderDrag.moved && reorderDrag.targetId) {
-    applyNodeReorder();
+    if (isBranchDrag) {
+      applyBranchConnectionDrag();
+    } else {
+      applyNodeReorder();
+    }
   } else if (
     reorderDrag.moved
     && reorderDrag.originConnectionSourceId
     && reorderDrag.originConnectionTargetId
   ) {
-    removeConnection(reorderDrag.originConnectionSourceId, reorderDrag.originConnectionTargetId);
+    removeConnection(
+      reorderDrag.originConnectionSourceId,
+      reorderDrag.originConnectionTargetId,
+      reorderDrag.originConnectionSourceKind,
+    );
   } else if (!reorderDrag.moved) {
-    const connection = getConnectionForConnector(reorderDrag.sourceId, reorderDrag.sourceKind);
-    if (connection) {
-      openConnectionMenu(connection.sourceId, connection.targetId, reorderDrag.startX, reorderDrag.startY);
+    if (reorderDrag.originConnectionSourceId && reorderDrag.originConnectionTargetId) {
+      openConnectionMenu(
+        reorderDrag.originConnectionSourceId,
+        reorderDrag.originConnectionTargetId,
+        reorderDrag.startX,
+        reorderDrag.startY,
+        reorderDrag.originConnectionSourceKind,
+      );
+    } else {
+      const connection = getConnectionForConnector(reorderDrag.sourceId, reorderDrag.sourceKind);
+      if (connection) {
+        openConnectionMenu(
+          connection.sourceId,
+          connection.targetId,
+          reorderDrag.startX,
+          reorderDrag.startY,
+          connection.sourceConnectorKind,
+        );
+      }
     }
   }
 
@@ -671,6 +946,7 @@ function beginReorderDrag(event, nodeId, connectorKind, connectorEl, originLine 
   reorderDrag.originLineKey = originLine?.key || null;
   reorderDrag.originConnectionSourceId = originLine?.sourceId || null;
   reorderDrag.originConnectionTargetId = originLine?.targetId || null;
+  reorderDrag.originConnectionSourceKind = originLine?.sourceConnectorKind || "bottom";
   reorderDrag.startX = event.clientX;
   reorderDrag.startY = event.clientY;
   reorderDrag.sourceId = String(nodeId);
@@ -692,15 +968,30 @@ function beginReorderDrag(event, nodeId, connectorKind, connectorEl, originLine 
 function startReorderDrag(event, nodeId, connectorKind) {
   const originConnection = getConnectionForConnector(nodeId, connectorKind);
   const originLine = originConnection ? {
-    key: `${originConnection.sourceId}-${originConnection.targetId}`,
+    key: getConnectionLineKey(
+      originConnection.sourceId,
+      originConnection.targetId,
+      originConnection.sourceConnectorKind,
+    ),
     sourceId: originConnection.sourceId,
     targetId: originConnection.targetId,
+    sourceConnectorKind: originConnection.sourceConnectorKind,
   } : null;
 
   beginReorderDrag(event, nodeId, connectorKind, event.currentTarget, originLine);
 }
 
 function startLineReorderDrag(event, line) {
+  if (isBranchConnectorKind(line.sourceConnectorKind)) {
+    const connectorEl = getConnectorElement(line.sourceId, line.sourceConnectorKind);
+    if (!connectorEl) {
+      return;
+    }
+
+    beginReorderDrag(event, line.sourceId, line.sourceConnectorKind, connectorEl, line);
+    return;
+  }
+
   const lineEl = event.currentTarget;
   if (!(lineEl instanceof SVGLineElement)) {
     return;
@@ -755,6 +1046,7 @@ function updateConnectionLines() {
 
   const nodeEls = Array.from(canvasEl.querySelectorAll(".assistant-step[data-step-id]"));
   const anchors = new Map();
+  const branchAnchors = new Map();
 
   nodeEls.forEach((el) => {
     const nodeId = String(el.dataset.stepId || "");
@@ -769,6 +1061,25 @@ function updateConnectionLines() {
       topY: visualTop,
       bottomY: visualTop + el.offsetHeight,
     });
+
+    const branchConnectorEls = Array.from(
+      el.querySelectorAll('.assistant-step-connector[data-connector-kind^="branch:"]'),
+    );
+    branchConnectorEls.forEach((connectorEl) => {
+      if (!(connectorEl instanceof HTMLElement)) {
+        return;
+      }
+
+      const connectorKind = String(connectorEl.dataset.connectorKind || "");
+      if (!connectorKind) {
+        return;
+      }
+
+      branchAnchors.set(`${nodeId}|${connectorKind}`, {
+        x: visualLeft + connectorEl.offsetLeft + (connectorEl.offsetWidth / 2),
+        y: visualTop + connectorEl.offsetTop + (connectorEl.offsetHeight / 2),
+      });
+    });
   });
 
   const lines = [];
@@ -781,17 +1092,48 @@ function updateConnectionLines() {
       if (!target) return;
 
       lines.push({
-        key: `${node.id}-${targetId}`,
+        key: getConnectionLineKey(node.id, targetId, "bottom"),
         sourceId: String(node.id),
         targetId: String(targetId),
+        sourceConnectorKind: "bottom",
         x1: source.x,
         y1: source.bottomY,
         x2: target.x,
         y2: target.topY,
         midX: (source.x + target.x) / 2,
         midY: (source.bottomY + target.topY) / 2,
+        showInlineAdd: true,
       });
     });
+
+    if (node.type === "split") {
+      const branchConnections = getSplitBranchConnections(node.data);
+      Object.entries(branchConnections).forEach(([connectorKind, targetId]) => {
+        if (!isBranchConnectorKind(connectorKind) || !targetId) {
+          return;
+        }
+
+        const branchSource = branchAnchors.get(`${String(node.id)}|${connectorKind}`);
+        const target = anchors.get(String(targetId));
+        if (!branchSource || !target) {
+          return;
+        }
+
+        lines.push({
+          key: getConnectionLineKey(node.id, targetId, connectorKind),
+          sourceId: String(node.id),
+          targetId: String(targetId),
+          sourceConnectorKind: connectorKind,
+          x1: branchSource.x,
+          y1: branchSource.y,
+          x2: target.x,
+          y2: target.topY,
+          midX: (branchSource.x + target.x) / 2,
+          midY: (branchSource.y + target.topY) / 2,
+          showInlineAdd: false,
+        });
+      });
+    }
   });
 
   connectionLines.value = lines;
@@ -815,6 +1157,7 @@ function updateConnectionLines() {
       return {
         key: `terminal-add-${node.id}`,
         lineKey: `terminal-add-line-${node.id}`,
+        sourceId: String(node.id),
         x: anchor.x,
         top,
         x1: anchor.x,
@@ -957,6 +1300,20 @@ onMounted(() => {
 
 const nodes = reactive([]);
 
+function cloneNodeDataValue(value) {
+  if (Array.isArray(value)) {
+    return value.map((item) => cloneNodeDataValue(item));
+  }
+
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, nestedValue]) => [key, cloneNodeDataValue(nestedValue)]),
+    );
+  }
+
+  return value;
+}
+
 function cloneNodeTemplate(node, options = {}) {
   const { shareData = false, shareComments = false } = options;
 
@@ -964,11 +1321,35 @@ function cloneNodeTemplate(node, options = {}) {
     ...node,
     comments: shareComments ? node.comments : (node.comments || []).map((comment) => ({ ...comment })),
     rows: (node.rows || []).map((row) => ({ ...row })),
-    data: shareData ? node.data : { ...node.data },
+    data: shareData ? node.data : cloneNodeDataValue(node.data),
     detailsCollapsed: Boolean(node.detailsCollapsed),
     connections: [...(node.connections || [])],
   };
 }
+
+watch(
+  () => nodes.map((node) => {
+    if (node.type === "split") {
+      const splitData = node.data || {};
+      const elseIfSignature = Array.isArray(splitData.elseIfConditions)
+        ? splitData.elseIfConditions.join("|")
+        : "";
+
+      return [
+        node.id,
+        node.detailsCollapsed ? 1 : 0,
+        splitData.ifCondition || "",
+        elseIfSignature,
+        splitData.elseCondition || "",
+      ].join("::");
+    }
+
+    return [node.id, node.detailsCollapsed ? 1 : 0].join("::");
+  }),
+  () => {
+    nextTick(() => scheduleConnectionLineUpdate());
+  },
+);
 
 function getNextNodeId() {
   return nodes.reduce((maxId, node) => Math.max(maxId, Number(node.id) || 0), 0) + 1;
@@ -1000,6 +1381,19 @@ function duplicateStep(nodeId) {
   duplicatedNode.y = sourceNode.y + GRID_SIZE * 2;
 
   nodes.push(duplicatedNode);
+  setLiveSidebarSteps(nodes);
+  emitCurrentNodeIds();
+  nextTick(() => scheduleConnectionLineUpdate());
+}
+
+function addSplitElseIfForNode(nodeId) {
+  const node = findNodeById(nodeId);
+  if (!node || node.type !== "split") {
+    return;
+  }
+
+  ensureSplitStepData(node.data);
+  addSplitElseIfCondition(node.data);
   nextTick(() => scheduleConnectionLineUpdate());
 }
 
@@ -1009,10 +1403,23 @@ function removeAllConnections(nodeId) {
   nodes.forEach((node) => {
     if (String(node.id) === selectedId) {
       node.connections = [];
+      if (node.type === "split") {
+        ensureSplitStepData(node.data);
+        node.data.branchConnections = {};
+      }
       return;
     }
 
     node.connections = (node.connections || []).filter((targetId) => String(targetId) !== selectedId);
+
+    if (node.type === "split") {
+      const branchConnections = getSplitBranchConnections(node.data);
+      Object.keys(branchConnections).forEach((connectorKind) => {
+        if (String(branchConnections[connectorKind]) === selectedId) {
+          delete branchConnections[connectorKind];
+        }
+      });
+    }
   });
 
   nextTick(() => scheduleConnectionLineUpdate());
@@ -1036,8 +1443,23 @@ function deleteStep(nodeId) {
   nodes.splice(index, 1);
   nodes.forEach((node) => {
     node.connections = (node.connections || []).filter((targetId) => String(targetId) !== selectedId);
+
+    if (node.type === "split") {
+      const branchConnections = getSplitBranchConnections(node.data);
+      Object.keys(branchConnections).forEach((connectorKind) => {
+        if (String(branchConnections[connectorKind]) === selectedId) {
+          delete branchConnections[connectorKind];
+        }
+      });
+    }
   });
 
+  if (selectedNodeId.value && String(selectedNodeId.value) === selectedId) {
+    selectedNodeId.value = null;
+  }
+
+  setLiveSidebarSteps(nodes);
+  emitCurrentNodeIds();
   nextTick(() => scheduleConnectionLineUpdate());
 }
 
@@ -1049,6 +1471,8 @@ function rebuildNodes() {
 
   nodes.splice(0, nodes.length);
   nextTemplates.forEach((template) => nodes.push(cloneNodeTemplate(template, { shareData: true, shareComments: true })));
+  setLiveSidebarSteps(nodes);
+  emitCurrentNodeIds();
 
   nextTick(() => {
     scheduleConnectionLineUpdate();
@@ -1065,6 +1489,7 @@ watch(
 /* END MOCK DATA */
 
 onBeforeUnmount(() => {
+  setLiveSidebarSteps([]);
   nodeInteraction?.unset();
   nodeInteraction = null;
   document.removeEventListener("pointerdown", handleDocumentPointerDown);
@@ -1133,7 +1558,7 @@ onBeforeUnmount(() => {
             <button
               type="button"
               class="dropdown-item"
-              @click.stop="removeConnection(connectionMenu.sourceId, connectionMenu.targetId)"
+              @click.stop="removeConnection(connectionMenu.sourceId, connectionMenu.targetId, connectionMenu.sourceConnectorKind)"
             >
               Remove connection
             </button>
@@ -1167,6 +1592,7 @@ onBeforeUnmount(() => {
             @remove-connections="removeAllConnections"
             @delete-step="deleteStep"
             @select-start-block="selectStartBlock"
+            @add-split-else-if="addSplitElseIfForNode"
           />
         </TransitionGroup>
 

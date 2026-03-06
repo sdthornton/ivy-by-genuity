@@ -27,7 +27,12 @@ const emit = defineEmits([
 ]);
 
 function handleAddStepSelection(item) {
-  emit("add-step-select", item);
+  emit("add-step-select", {
+    item,
+    context: {
+      placement: "floating",
+    },
+  });
 }
 </script>
 

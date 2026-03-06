@@ -64,8 +64,8 @@ function handleLinePointerLeave(lineKey) {
   emit("line-pointerleave", { lineKey });
 }
 
-function handleAddStepSelection(item) {
-  emit("add-step-select", item);
+function handleAddStepSelection(item, context = {}) {
+  emit("add-step-select", { item, context });
 }
 </script>
 
@@ -143,7 +143,7 @@ function handleAddStepSelection(item) {
   </svg>
 
   <StepOptionsDropdown
-    v-for="line in connectionLines"
+    v-for="line in connectionLines.filter((line) => line.showInlineAdd !== false)"
     :key="`mid-add-${line.key}`"
     v-show="hiddenDraggedConnectionKey !== line.key"
     class="assistant-step-inline-add"
@@ -163,7 +163,11 @@ function handleAddStepSelection(item) {
       <AddStepMenuContent
         :groups="addStepMenuGroups"
         :close-menu="close"
-        @select="handleAddStepSelection"
+        @select="(item) => handleAddStepSelection(item, {
+          placement: 'between',
+          sourceId: line.sourceId,
+          targetId: line.targetId,
+        })"
       />
     </template>
   </StepOptionsDropdown>
@@ -189,7 +193,10 @@ function handleAddStepSelection(item) {
       <AddStepMenuContent
         :groups="addStepMenuGroups"
         :close-menu="close"
-        @select="handleAddStepSelection"
+        @select="(item) => handleAddStepSelection(item, {
+          placement: 'after',
+          sourceId: terminalAdd.sourceId,
+        })"
       />
     </template>
   </StepOptionsDropdown>
@@ -209,7 +216,10 @@ function handleAddStepSelection(item) {
       <AddStepMenuContent
         :groups="addStepMenuGroups"
         :close-menu="close"
-        @select="handleAddStepSelection"
+        @select="(item) => handleAddStepSelection(item, {
+          placement: 'after',
+          sourceId: singleStartTerminalAddControl.sourceId,
+        })"
       />
     </template>
   </StepOptionsDropdown>

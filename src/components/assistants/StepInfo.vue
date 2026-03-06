@@ -3,12 +3,19 @@ import { ref, computed } from "vue";
 import StepOptionsDropdown from "../shared/StepOptionsDropdown.vue";
 import EditableDetailValue from "../shared/EditableDetailValue.vue";
 import {
-  sourceOptions,
-  getSidebarStep,
-  getStartBlockOptions,
-  isStepWarningVisible,
-  setStepWarningVisible,
+  addSplitElseIfCondition,
   applyStepWarningFix,
+  ensureSplitStepData,
+  getNormalizedWaitMode,
+  getSidebarStep,
+  getSplitConditionSections,
+  getStartBlockOptions,
+  getVisibleStepRows,
+  getWaitModeOptions,
+  isStepWarningVisible,
+  setSplitConditionValue,
+  setStepWarningVisible,
+  sourceOptions,
 } from "./mockSteps";
 
 const props = defineProps({
@@ -30,10 +37,19 @@ const emit = defineEmits(["close", "select-start-block"]);
 
 const sourceSearch = ref("");
 const startBlockOptions = computed(() => getStartBlockOptions());
+const waitModeOptions = getWaitModeOptions();
 const activeStep = computed(() => getSidebarStep(props.selectedStepId, {
   startBlockMode: props.startBlockMode,
   startTriggerOption: props.startTriggerOption,
 }));
+const activeStepRows = computed(() => getVisibleStepRows(activeStep.value));
+const activeWaitMode = computed(() => getNormalizedWaitMode(activeStep.value?.data?.waitMode));
+const activeWaitModeLabel = computed(() => (
+  waitModeOptions.find((option) => option.key === activeWaitMode.value)?.label || waitModeOptions[0]?.label || "Set duration"
+));
+const splitConditionSections = computed(() => (
+  activeStep.value?.type === "split" ? getSplitConditionSections(activeStep.value?.data) : []
+));
 
 const ignoreQueryWarning = () => {
   setStepWarningVisible(activeStep.value.stateKey || activeStep.value.id, "code", false);
@@ -42,6 +58,47 @@ const ignoreQueryWarning = () => {
 const fixQueryWarning = () => {
   const stepKey = activeStep.value.stateKey || activeStep.value.id;
   applyStepWarningFix(stepKey, "code");
+};
+
+const hasDetailValue = (value) => String(value ?? "").trim().length > 0;
+
+const isRowWarningVisible = (row) => {
+  if (!row?.isCode || !hasDetailValue(activeStep.value?.data?.[row.dataKey])) {
+    return false;
+  }
+
+  return isStepWarningVisible(
+    activeStep.value.stateKey || activeStep.value.id,
+    row.dataKey,
+    row.showWarning,
+  );
+};
+
+const selectWaitMode = (waitMode, close) => {
+  if (activeStep.value?.type !== "wait" || !activeStep.value?.data) {
+    close();
+    return;
+  }
+
+  activeStep.value.data.waitMode = getNormalizedWaitMode(waitMode);
+  close();
+};
+
+const handleSplitConditionInput = (branchId, event) => {
+  if (activeStep.value?.type !== "split") {
+    return;
+  }
+
+  setSplitConditionValue(activeStep.value.data, branchId, event?.target?.value ?? "");
+};
+
+const addSplitElseIf = () => {
+  if (activeStep.value?.type !== "split") {
+    return;
+  }
+
+  ensureSplitStepData(activeStep.value.data);
+  addSplitElseIfCondition(activeStep.value.data);
 };
 </script>
 
@@ -152,18 +209,73 @@ const fixQueryWarning = () => {
           </div>
         </div>
 
-        <div class="mt-4 w-100">
-          <h6 class="fw-medium mb-1">Details</h6>
+        <div v-if="activeStep.type === 'wait'" class="mt-4 w-100">
+          <h6 class="fw-medium mb-1">Wait Type</h6>
+          <StepOptionsDropdown placement="bottom-start" menu-class="wait-mode-menu">
+            <template #trigger>
+              <button
+                type="button"
+                class="wait-mode-trigger btn btn-sm btn-white border rounded-sm px-2 py-1 d-inline-flex align-items-center justify-content-between not-as-small"
+                aria-label="Select wait type"
+              >
+                <span>{{ activeWaitModeLabel }}</span>
+                <img src="../../assets/dropdown.svg" width="12" height="12" class="ms-2 opacity-75" alt="">
+              </button>
+            </template>
+            <template #menu="{ close }">
+              <button
+                v-for="option in waitModeOptions"
+                :key="option.key"
+                type="button"
+                class="dropdown-item text-start"
+                @click="selectWaitMode(option.key, close)"
+              >
+                {{ option.label }}
+              </button>
+            </template>
+          </StepOptionsDropdown>
+        </div>
+
+        <div v-if="activeStep.type === 'split'" class="mt-4 w-100">
+          <div class="split-condition-stack d-flex flex-column gap-2">
+            <section
+              v-for="section in splitConditionSections"
+              :key="section.id"
+              class="split-condition-section border rounded-sm p-2"
+            >
+              <div class="split-condition-label true-small text-muted fw-semibold mb-1">
+                {{ section.label }}
+              </div>
+              <input
+                type="text"
+                class="form-control form-control-sm not-as-small"
+                :placeholder="section.placeholder"
+                :value="section.value"
+                @input="handleSplitConditionInput(section.branchId, $event)"
+              >
+            </section>
+            <button
+              type="button"
+              class="split-condition-add btn btn-sm btn-white border rounded-sm align-self-start"
+              @click="addSplitElseIf"
+            >
+              + Else If
+            </button>
+          </div>
+        </div>
+
+        <div v-else class="mt-4 w-100">
+          <h6 class="fw-medium mb-1">Details/Config</h6>
           <table class="table table-striped w-100 not-as-small mb-0 step2-info-details-table">
             <tbody>
               <tr
-                v-for="row in activeStep.rows"
+                v-for="row in activeStepRows"
                 :key="row.key"
               >
                 <td class="query-key-cell">
                   <span class="query-key-label">
                     <VDropdown
-                      v-if="row.isCode && isStepWarningVisible(activeStep.stateKey || activeStep.id, row.dataKey, row.showWarning)"
+                      v-if="isRowWarningVisible(row)"
                       class="query-warning-wrap"
                       placement="bottom-start"
                       :distance="6"
@@ -206,6 +318,7 @@ const fixQueryWarning = () => {
                     v-model="activeStep.data[row.dataKey]"
                     align="start"
                     :multiline="row.isCode"
+                    :empty-label="row.placeholder || '-'"
                   />
                 </td>
               </tr>
@@ -216,15 +329,18 @@ const fixQueryWarning = () => {
         <div class="mt-4 w-100">
           <h6 class="fw-medium mb-1">Comments</h6>
           <div class="comments-stack d-flex flex-column gap-2">
-            <div
-              v-for="comment in activeStep.comments"
-              :key="`${comment.author}-${comment.stamp}`"
-              class="comment-item bg-titan-white rounded-sm p-2"
-            >
-              <div class="comment-author true-small mb-1">{{ comment.author }}</div>
-              <p class="comment-body not-as-small mb-0">{{ comment.body }}</p>
-              <div class="comment-meta text-end">{{ comment.stamp }}</div>
-            </div>
+            <template v-if="activeStep.comments.length">
+              <div
+                v-for="comment in activeStep.comments"
+                :key="`${comment.author}-${comment.stamp}`"
+                class="comment-item bg-titan-white rounded-sm p-2"
+              >
+                <div class="comment-author true-small mb-1">{{ comment.author }}</div>
+                <p class="comment-body not-as-small mb-0">{{ comment.body }}</p>
+                <div class="comment-meta text-end">{{ comment.stamp }}</div>
+              </div>
+            </template>
+            <p v-else class="not-as-small text-secondary mb-0">No comments.</p>
           </div>
         </div>
       </div>
@@ -343,6 +459,27 @@ const fixQueryWarning = () => {
 
 :deep(.source-picker-menu) .source-picker-item:hover {
   color: var(--bs-gray-900);
+}
+
+:deep(.wait-mode-menu) {
+  min-width: 11rem;
+}
+
+.wait-mode-trigger {
+  min-width: 11rem;
+}
+
+.split-condition-label {
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+}
+
+.split-condition-section {
+  background-color: white;
+}
+
+.split-condition-add {
+  min-height: 1.75rem;
 }
 
 .comments-stack {

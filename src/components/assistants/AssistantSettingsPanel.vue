@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from "vue";
+import { computed, nextTick, ref } from "vue";
 import StepOptionsDropdown from "../shared/StepOptionsDropdown.vue";
 import iconClock from "../../assets/clock.svg";
 import iconEyeOpen from "../../assets/eye-open.svg";
@@ -40,6 +40,7 @@ const props = defineProps({
 });
 
 const emit = defineEmits(["close", "select-trigger"]);
+const titleInput = ref(null);
 const categoryOptions = [
   "security",
   "threats",
@@ -88,6 +89,15 @@ const permissionTeams = [
 
 const creatorInitials = computed(() => toInitials(props.settings.creator, "Y"));
 const creatorAvatarStyle = computed(() => ({ backgroundColor: CREATOR_AVATAR_COLOR }));
+const isSavedStatus = computed(() => (
+  String(props.settings.status || "").trim().toLowerCase() === "saved"
+));
+const statusPillClass = computed(() => (
+  isSavedStatus.value ? "bg-primary text-white" : "bg-secondary-subtle text-dark"
+));
+const statusTooltip = computed(() => (
+  isSavedStatus.value ? "no unsaved changes." : "there are unsaved changes"
+));
 const creatorTooltip = computed(() => {
   const creator = props.settings.creator || "Unknown";
   const createdAt = props.settings.createdAt || props.settings.updatedAt || "an unknown time";
@@ -267,6 +277,21 @@ function getLogStatusClass(status) {
 
   return "bg-secondary-subtle text-secondary";
 }
+
+async function focusTitleInput() {
+  await nextTick();
+  const input = titleInput.value;
+  if (!input) {
+    return;
+  }
+
+  input.focus();
+  input.select?.();
+}
+
+defineExpose({
+  focusTitleInput,
+});
 </script>
 
 <template>
@@ -295,8 +320,9 @@ function getLogStatusClass(status) {
       <section class="assistant-settings-body pt-4 px-2.5 mx-4">
         <div class="d-inline-flex align-items-center justify-content-start gap-2 border rounded-pill px-2 py-1 mb-4">
           <div 
+            v-tooltip="{ content: statusTooltip, placement: 'top' }"
             class="d-inline-flex align-items-center rounded-pill px-2 smallest"
-            :class="settings.status === 'Draft' ? 'bg-secondary-subtle text-dark' : 'bg-success text-white'"
+            :class="statusPillClass"
           >
             {{ settings.status }}
           </div>
@@ -320,6 +346,7 @@ function getLogStatusClass(status) {
           <StepOptionsDropdown placement="bottom-start" menu-class="assistant-category-menu">
             <template #trigger>
               <div 
+                v-tooltip="{ content: 'Category.', placement: 'top' }"
                 class="fw-medium true-small text-black text-capitalize rounded-pill px-2 d-inline-flex"
                 :class="`bg-category-${settings.category}`"
               >
@@ -360,6 +387,7 @@ function getLogStatusClass(status) {
             Title
           </label>
           <input
+            ref="titleInput"
             id="assistant_settings_title"
             type="text"
             class="form-control not-as-small"

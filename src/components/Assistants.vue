@@ -7,7 +7,13 @@ import StepInfo  from "./assistants/StepInfo.vue";
 import AssistantBuilder from "./assistants/AssistantBuilder.vue";
 import AssistantSettingsPanel from "./assistants/AssistantSettingsPanel.vue";
 import StepOptionsDropdown from "./shared/StepOptionsDropdown.vue";
-import { createBuilderNodeTemplates, isStepWarningVisible, syncStartStepDataFromTrigger } from "./assistants/mockSteps";
+import {
+  applyMockFlowStepDataForBuildStep,
+  createBuilderNodeTemplates,
+  isStepWarningVisible,
+  resetMockFlowStepData,
+  syncStartStepDataFromTrigger,
+} from "./assistants/mockSteps";
 import iconClock from "../assets/clock.svg";
 import iconStar from "../assets/star.svg";
 import iconStop from "../assets/stop.svg";
@@ -16,6 +22,7 @@ import { ref, nextTick, onMounted, onBeforeUnmount, computed, reactive } from "v
 const buildStep = ref(0);
 const showSidebar = ref(false);
 const showSettingsModal = ref(false);
+const settingsPanelRef = ref(null);
 const selectedSidebarStepId = ref(1);
 const assistantSettings = reactive({
   title: "New Assistant",
@@ -156,12 +163,24 @@ const selectStartBlock = (mode) => {
   updateSelectedTrigger(NO_TRIGGER_OPTION);
 };
 
-const openSettingsModal = () => {
+const focusSettingsTitleInput = async () => {
+  await nextTick();
+  settingsPanelRef.value?.focusTitleInput?.();
+};
+
+const openSettingsModal = async ({ focusTitle = false } = {}) => {
   showSettingsModal.value = true;
+  if (focusTitle) {
+    await focusSettingsTitleInput();
+  }
 };
 
 const closeSettingsModal = () => {
   showSettingsModal.value = false;
+};
+
+const openSettingsModalForTitleEdit = () => {
+  openSettingsModal({ focusTitle: true });
 };
 
 const INTRO_MESSAGE = `
@@ -287,8 +306,10 @@ async function appendIvyMessage(markup) {
 }
 
 function applyConversationState(state = {}) {
+  let hasBuildStepUpdate = false;
   if (typeof state.buildStep === "number") {
     buildStep.value = state.buildStep;
+    hasBuildStepUpdate = true;
   }
 
   if ("assistantTitle" in state) {
@@ -309,6 +330,10 @@ function applyConversationState(state = {}) {
 
   if ("selectedHeaderTrigger" in state) {
     updateSelectedTrigger(state.selectedHeaderTrigger || null);
+  }
+
+  if (hasBuildStepUpdate) {
+    applyMockFlowStepDataForBuildStep(buildStep.value);
   }
 }
 
@@ -336,6 +361,8 @@ async function initializeConversation() {
 }
 
 onMounted(async () => {
+  resetMockFlowStepData();
+  applyMockFlowStepDataForBuildStep(buildStep.value);
   await initializeConversation();
 });
 
@@ -346,6 +373,18 @@ onBeforeUnmount(() => {
 const onBuilderStepSelect = (nodeId) => {
   selectedSidebarStepId.value = Number(nodeId) || selectedSidebarStepId.value;
   showSidebar.value = true;
+};
+
+const onBuilderNodesChange = (nodeIds = []) => {
+  const selectedId = Number(selectedSidebarStepId.value);
+  if (!showSidebar.value || !Number.isFinite(selectedId)) {
+    return;
+  }
+
+  const stepStillExists = nodeIds.some((id) => Number(id) === selectedId);
+  if (!stepStillExists) {
+    showSidebar.value = false;
+  }
 };
 
 </script> 
@@ -376,7 +415,14 @@ const onBuilderStepSelect = (nodeId) => {
         <div class="d-flex align-items-center me-4">
           <span class="mx-3 text-secondary reduced flex-shrink-0">&rsaquo;</span>
           <span class="assistant-header-title fw-medium text-truncate">{{ assistantTitle }}</span>
-          <img src="../assets/edit.svg" height="12" width="12" class="assistant-header-title-edit ms-2 opacity-25 flex-shrink-0">
+          <button
+            type="button"
+            class="assistant-header-title-edit btn btn-link p-0 border-0 bg-transparent ms-2 opacity-25 flex-shrink-0 d-inline-flex align-items-center justify-content-center"
+            aria-label="Edit assistant title"
+            @click="openSettingsModalForTitleEdit"
+          >
+            <img src="../assets/edit.svg" height="12" width="12" alt="">
+          </button>
         </div>
         <StepOptionsDropdown class="assistant-header-trigger" placement="bottom-start" menu-class="header-trigger-menu">
           <template #trigger>
@@ -442,7 +488,7 @@ const onBuilderStepSelect = (nodeId) => {
           class="btn btn-sm reduced px-2.5 rounded-sm d-inline-flex align-items-center"
           style="margin-right: -1rem;"
           aria-label="Assistant settings"
-          @click="openSettingsModal"
+          @click="openSettingsModal()"
         >
           <img src="../assets/ellipses.svg" height="24" width="24" style="transform: rotate(90deg);">
         </button>
@@ -456,6 +502,7 @@ const onBuilderStepSelect = (nodeId) => {
         :start-block-mode="startBlockMode"
         :start-trigger-option="selectedHeaderTrigger"
         @toggleSidebar="onBuilderStepSelect"
+        @nodes-change="onBuilderNodesChange"
         @select-start-block="selectStartBlock"
       />
       <article
@@ -492,6 +539,7 @@ const onBuilderStepSelect = (nodeId) => {
         aria-label="Assistant settings"
       >
         <AssistantSettingsPanel
+          ref="settingsPanelRef"
           :settings="assistantSettings"
           :trigger-label="headerTriggerLabel"
           :trigger-configured="hasConfiguredHeaderTrigger"

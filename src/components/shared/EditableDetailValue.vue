@@ -197,8 +197,9 @@ onMounted(() => {
 }
 
 .editable-detail-value__surface--empty::before {
+  color: var(--bs-secondary-color);
   content: attr(data-empty-label);
-  opacity: 0.55;
+  opacity: 0.7;
 }
 
 .editable-detail-value__surface--multiline {

@@ -221,7 +221,7 @@ h5, .h5 {
 }
 
 .bg-note {
-  background-color: #ffdc2f !important;
+  background-color: #d9a404 !important;
 }
 
 .bg-split {
@@ -242,6 +242,10 @@ h5, .h5 {
 
 .bg-ivy {
   background-color: var(--bs-primary) !important;
+}
+
+.bg-ivy-action {
+  background-color: #0f8f7a !important;
 }
 
 .bg-category-security {

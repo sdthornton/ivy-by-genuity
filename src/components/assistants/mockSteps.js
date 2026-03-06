@@ -3,7 +3,8 @@ import iconCalendar from "../../assets/sim-ai/calendar.svg";
 import iconLookup from "../../assets/sim-ai/lookup.svg";
 import iconCode from "../../assets/sim-ai/code.svg";
 import iconTrigger from "../../assets/sim-ai/trigger.svg";
-import iconAction from "../../assets/sim-ai/action.svg";
+import iconSendMessage from "../../assets/send-message.svg";
+import iconIvyAction from "../../assets/ivy-basic-icon.svg";
 import iconWait from "../../assets/sim-ai/wait.svg";
 import iconNote from "../../assets/sim-ai/note.svg";
 import iconSplit from "../../assets/sim-ai/split.svg";
@@ -12,6 +13,7 @@ import iconLoop from "../../assets/sim-ai/loop.svg";
 import iconAlert from "../../assets/sim-ai/alert.svg";
 import iconPlay from "../../assets/play.svg";
 import sharepointLogo from "../../assets/sharepoint.png";
+import { MOCK_FLOW_STEP_DATA_BY_STATE_KEY, MOCK_FLOW_STEP_STATE_ORDER } from "./mockAssistantBuildData";
 
 export const sourceOptions = [
   "Entra ID",
@@ -27,6 +29,11 @@ export const sourceOptions = [
   "Microsoft 365",
   "Google Workspace",
   "OneLogin",
+];
+
+export const WAIT_MODE_OPTIONS = [
+  { key: "duration", label: "Set duration" },
+  { key: "specific-time", label: "Specific time" },
 ];
 
 export const STEP_TYPE_META = {
@@ -96,9 +103,15 @@ export const STEP_TYPE_META = {
     iconInvert: true,
     label: "Alert",
   },
-  action: {
+  message: {
     bgClass: "bg-ivy",
-    icon: iconAction,
+    icon: iconSendMessage,
+    iconInvert: true,
+    label: "Send Message",
+  },
+  action: {
+    bgClass: "bg-ivy-action",
+    icon: iconIvyAction,
     iconInvert: true,
     label: "Ivy Action",
   },
@@ -116,6 +129,190 @@ const START_STATE_KEYS = {
   trigger: "trigger",
 };
 
+export const STEP_TYPE_DEFINITIONS = {
+  start: {
+    pill: "Start",
+    rows: [
+      { key: "Entry Point", dataKey: "entryPoint", placeholder: "Manual, scheduled, or event-based" },
+    ],
+    builderData: {
+      entryPoint: "Manual",
+    },
+    ivySays: "This start block keeps the flow ready to run manually until you swap in a schedule or event trigger.",
+  },
+  schedule: {
+    pill: "Schedule",
+    rows: [
+      { key: "Entry Point", dataKey: "entryPoint", placeholder: "How this flow starts" },
+      { key: "Frequency", dataKey: "frequency", placeholder: "How often should this run?" },
+      { key: "Time", dataKey: "time", placeholder: "When should this run?" },
+      { key: "Timezone", dataKey: "timezone", placeholder: "Which timezone applies?" },
+    ],
+    builderData: {
+      entryPoint: "Scheduled",
+      frequency: "Weekdays",
+      time: "09:00 am",
+      timezone: "Local",
+    },
+    ivySays: "This step triggers the assistant based on the current schedule selection.",
+  },
+  trigger: {
+    pill: "Trigger",
+    rows: [
+      { key: "Entry Point", dataKey: "entryPoint", placeholder: "How this flow starts" },
+      { key: "Trigger Type", dataKey: "triggerType", placeholder: "What kind of trigger?" },
+      { key: "Event", dataKey: "event", placeholder: "What event should start this?" },
+    ],
+    builderData: {
+      entryPoint: "Event",
+      triggerType: "Event-based",
+      event: "When an event occurs",
+    },
+    ivySays: "This step starts the assistant whenever the selected event happens.",
+  },
+  lookup: {
+    pill: "Data Source(s)",
+    sources: [
+      { label: "SharePoint", icon: sharepointLogo },
+    ],
+    rows: [
+      { key: "Source", dataKey: "source", placeholder: "Pick a source system" },
+      { key: "Source Table/List", dataKey: "list", placeholder: "Enter a table or list name (optional)" },
+      { key: "Code", dataKey: "code", isCode: true, showWarning: true, placeholder: "Write a lookup query or filter" },
+    ],
+    builderData: {
+      source: "",
+      list: "",
+      code: "",
+    },
+    ivySays: 'This step pulls your SharePoint data for recent users from the "SP GetAudit" list.',
+  },
+  code: {
+    pill: "Code",
+    rows: [
+      { key: "Operation", dataKey: "operation", placeholder: "Describe the code action" },
+      { key: "Target", dataKey: "target", placeholder: "What should this code target?" },
+      { key: "Runtime", dataKey: "runtime", placeholder: "SQL, JS, Python, etc." },
+      { key: "Code", dataKey: "code", isCode: true, showWarning: false, placeholder: "Write the code to run" },
+    ],
+    builderData: {
+      operation: "",
+      target: "",
+      runtime: "",
+      code: "",
+    },
+    ivySays: "This code step runs custom logic against your selected target.",
+  },
+  message: {
+    pill: "Send Message",
+    rows: [
+      { key: "Action", dataKey: "action", placeholder: "What message action should happen?" },
+      { key: "Destination", dataKey: "channel", placeholder: "Where should this be delivered?" },
+      { key: "Recipients/Channel", dataKey: "recipients", placeholder: "Who or what channel should get this?" },
+      { key: "Payload", dataKey: "payload", placeholder: "What content should be sent?" },
+    ],
+    builderData: {
+      action: "",
+      channel: "",
+      recipients: "",
+      payload: "",
+    },
+    ivySays: "This message step delivers the flow output to the selected destination and audience.",
+  },
+  action: {
+    pill: "Ivy Action",
+    rows: [
+      { key: "Action", dataKey: "action", placeholder: "What should Ivy do?" },
+    ],
+    builderData: {
+      action: "",
+    },
+    ivySays: "This step lets Ivy perform a general action from natural language instructions.",
+  },
+  wait: {
+    pill: "Wait",
+    rows: [
+      { key: "Duration", dataKey: "duration", placeholder: "How long should it pause?", waitModes: ["duration"] },
+      { key: "At what time", dataKey: "atTime", placeholder: "What time should this resume?", waitModes: ["specific-time"] },
+    ],
+    builderData: {
+      waitMode: "duration",
+      duration: "",
+      atTime: "",
+    },
+    ivySays: "This step pauses the flow for a duration or until a specific time.",
+  },
+  note: {
+    pill: "Note",
+    rows: [
+      { key: "Note", dataKey: "note", placeholder: "Let Ivy know what note to create from this flow's data." },
+      { key: "Collection", dataKey: "collection", placeholder: "Should this note be added to a collection?" },
+      { key: "Visibility", dataKey: "visibility", placeholder: "Who can see this note?" },
+    ],
+    builderData: {
+      note: "",
+      collection: "",
+      visibility: "",
+    },
+    ivySays: "This step lets Ivy create a new chat/note from natural language instructions and place it in the selected collection.",
+  },
+  split: {
+    pill: "Split",
+    rows: [],
+    builderData: {
+      ifCondition: "",
+      elseIfConditions: [],
+      elseCondition: "",
+      branchConnections: {},
+    },
+    ivySays: "This step routes execution by evaluating if/else-if/else conditions.",
+  },
+  parallel: {
+    pill: "Parallel",
+    rows: [
+      { key: "Branches", dataKey: "branches", placeholder: "How many branches should run?" },
+      { key: "Merge Policy", dataKey: "mergePolicy", placeholder: "How should branches rejoin?" },
+      { key: "Timeout", dataKey: "timeout", placeholder: "Maximum parallel run time" },
+    ],
+    builderData: {
+      branches: "",
+      mergePolicy: "",
+      timeout: "",
+    },
+    ivySays: "This step runs multiple branches at the same time and merges them.",
+  },
+  loop: {
+    pill: "Loop",
+    rows: [
+      { key: "Loop Mode", dataKey: "loopMode", placeholder: "For each, while, or until mode" },
+      { key: "Source / Condition", dataKey: "sourceOrCondition", placeholder: "What drives loop repetition?" },
+      { key: "Max Iterations", dataKey: "maxIterations", placeholder: "Safety limit for loop runs" },
+    ],
+    builderData: {
+      loopMode: "",
+      sourceOrCondition: "",
+      maxIterations: "",
+    },
+    ivySays: "This step repeats actions over a collection or while a condition remains true.",
+  },
+  alert: {
+    pill: "Alert",
+    rows: [
+      { key: "Severity", dataKey: "severity", placeholder: "How severe is this alert?" },
+      { key: "Condition", dataKey: "condition", placeholder: "When should this alert fire?" },
+      { key: "Channels", dataKey: "channels", placeholder: "Where should alerts be sent?" },
+      { key: "Recipients", dataKey: "recipients", placeholder: "Who should be notified?" },
+    ],
+    builderData: {
+      severity: "",
+      condition: "",
+      channels: "",
+      recipients: "",
+    },
+    ivySays: "This step raises notifications when defined conditions are met.",
+  },
+};
+
 const BASE_FLOW_STEPS = [
   {
     id: 2,
@@ -123,21 +320,14 @@ const BASE_FLOW_STEPS = [
     type: "lookup",
     title: "SP GetAudit Data",
     builderTitle: "Get SP Audit Data",
-    pill: "Data Source(s)",
     sources: [{ label: "SharePoint", icon: sharepointLogo }],
     rows: [
-      { key: "Source Table/List", dataKey: "list" },
-      { key: "Code", dataKey: "code", isCode: true, showWarning: true },
+      { key: "Source Table/List", dataKey: "list", placeholder: "Enter a table or list name (optional)" },
+      { key: "Code", dataKey: "code", isCode: true, showWarning: true, placeholder: "Write a lookup query or filter" },
     ],
     comments: [
       { author: "You", body: "Confirm this should run every weekday morning.", stamp: "Feb 26, 9:05 AM" },
     ],
-    ivySays: 'This step pulls your SharePoint data for recent users from the "SP GetAudit" list.',
-    builderData: {
-      source: "SharePoint",
-      list: "SP GetAudit",
-      code: "Get yesterday's SharePoint audit activity if present.",
-    },
     detailsCollapsed: false,
     connections: [3],
     x: 0,
@@ -150,19 +340,14 @@ const BASE_FLOW_STEPS = [
     title: "Prune Audit Data",
     sources: [],
     rows: [
-      { key: "Operation", dataKey: "operation" },
-      { key: "Target", dataKey: "target" },
-      { key: "Code", dataKey: "code", isCode: true, showWarning: false },
+      { key: "Operation", dataKey: "operation", placeholder: "Describe the code action" },
+      { key: "Target", dataKey: "target", placeholder: "What should this code target?" },
+      { key: "Code", dataKey: "code", isCode: true, showWarning: false, placeholder: "Write the code to run" },
     ],
     comments: [
       { author: "You", body: "Delete anything older than one week.", stamp: "Feb 26, 9:06 AM" },
     ],
     ivySays: "This code step removes SharePoint audit rows older than seven days.",
-    builderData: {
-      operation: "Delete old audit records",
-      target: "SP GetAudit",
-      code: "DELETE FROM [SP GetAudit] WHERE [Created] < DATEADD(day, -7, GETUTCDATE())",
-    },
     detailsCollapsed: false,
     connections: [4],
     x: 0,
@@ -171,24 +356,18 @@ const BASE_FLOW_STEPS = [
   {
     id: 4,
     stateKey: "4",
-    type: "action",
+    type: "message",
     title: "Email Audit List",
-    pill: "Ivy Action",
     sources: [],
     rows: [
-      { key: "Action", dataKey: "action" },
-      { key: "Channel", dataKey: "channel" },
-      { key: "Recipients", dataKey: "recipients" },
+      { key: "Action", dataKey: "action", placeholder: "What message action should happen?" },
+      { key: "Destination", dataKey: "channel", placeholder: "Where should this be delivered?" },
+      { key: "Recipients/Channel", dataKey: "recipients", placeholder: "Who or what channel should get this?" },
     ],
     comments: [
       { author: "You", body: "Use this as the final delivery step.", stamp: "Feb 26, 9:07 AM" },
     ],
-    ivySays: "This action step sends the summarized audit result to your configured recipients.",
-    builderData: {
-      action: "Send Daily Audit Summary",
-      channel: "Email",
-      recipients: "Security Team",
-    },
+    ivySays: "This message step sends the summarized audit result to your configured recipients.",
     detailsCollapsed: false,
     connections: [],
     x: 0,
@@ -200,53 +379,19 @@ const START_VARIANT_BASE = {
   start: {
     stateKey: START_STATE_KEYS.start,
     type: "start",
-    pill: "Start",
     comments: [],
-    rows: [
-      { key: "Entry Point", dataKey: "entryPoint" },
-    ],
-    ivySays: "This start block keeps the flow ready to run manually until you swap in a schedule or event trigger.",
-    builderData: {
-      entryPoint: "Manual",
-    },
   },
   schedule: {
     stateKey: START_STATE_KEYS.schedule,
     type: "schedule",
-    pill: "Schedule",
     comments: [
       { author: "You", body: "Keep this at 9:00 am local time.", stamp: "Feb 26, 8:59 AM" },
     ],
-    rows: [
-      { key: "Entry Point", dataKey: "entryPoint" },
-      { key: "Frequency", dataKey: "frequency" },
-      { key: "Time", dataKey: "time" },
-      { key: "Timezone", dataKey: "timezone" },
-    ],
-    ivySays: "This step triggers the assistant based on the current schedule selection.",
-    builderData: {
-      entryPoint: "Scheduled",
-      frequency: "Weekdays",
-      time: "09:00 am",
-      timezone: "Local",
-    },
   },
   trigger: {
     stateKey: START_STATE_KEYS.trigger,
     type: "trigger",
-    pill: "Trigger",
     comments: [],
-    rows: [
-      { key: "Entry Point", dataKey: "entryPoint" },
-      { key: "Trigger Type", dataKey: "triggerType" },
-      { key: "Event", dataKey: "event" },
-    ],
-    ivySays: "This step starts the assistant whenever the selected event happens.",
-    builderData: {
-      entryPoint: "Event",
-      triggerType: "Event-based",
-      event: "When an event occurs",
-    },
   },
 };
 
@@ -262,6 +407,20 @@ function cloneSources(sources = []) {
   return sources.map((source) => ({ ...source }));
 }
 
+function cloneDataValue(value) {
+  if (Array.isArray(value)) {
+    return value.map((item) => cloneDataValue(item));
+  }
+
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, nestedValue]) => [key, cloneDataValue(nestedValue)]),
+    );
+  }
+
+  return value;
+}
+
 function createWarningState(rows = []) {
   return rows.reduce((rowAcc, row) => {
     if (row.dataKey) {
@@ -271,40 +430,292 @@ function createWarningState(rows = []) {
   }, {});
 }
 
+function getResolvedTypeDefinition(type) {
+  return STEP_TYPE_DEFINITIONS[type] || STEP_TYPE_DEFINITIONS.note;
+}
+
+function normalizeWaitMode(mode) {
+  return mode === "specific-time" ? "specific-time" : "duration";
+}
+
+function resolveStepPill(type, pill) {
+  return pill || getResolvedTypeDefinition(type).pill || getStepTypeMeta(type).label;
+}
+
+function resolveStepRows(type, rows) {
+  return cloneRows(rows || getResolvedTypeDefinition(type).rows || []);
+}
+
+function resolveStepSources(type, sources) {
+  return cloneSources(sources || getResolvedTypeDefinition(type).sources || []);
+}
+
+function resolveStepBuilderData(type, builderData) {
+  const resolved = cloneDataValue(getResolvedTypeDefinition(type).builderData || {});
+  Object.entries(builderData || {}).forEach(([key, value]) => {
+    resolved[key] = cloneDataValue(value);
+  });
+  return resolved;
+}
+
+function resolveStepIvySays(type, ivySays) {
+  return ivySays || getResolvedTypeDefinition(type).ivySays || "";
+}
+
+function resolveStepDefinition(step) {
+  return {
+    ...step,
+    pill: resolveStepPill(step.type, step.pill),
+    rows: resolveStepRows(step.type, step.rows),
+    builderData: resolveStepBuilderData(step.type, step.builderData),
+    ivySays: resolveStepIvySays(step.type, step.ivySays),
+    comments: cloneComments(step.comments),
+    sources: resolveStepSources(step.type, step.sources),
+  };
+}
+
+const resolvedStartVariants = Object.fromEntries(
+  Object.entries(START_VARIANT_BASE).map(([mode, step]) => [mode, resolveStepDefinition(step)]),
+);
+const resolvedBaseFlowSteps = BASE_FLOW_STEPS.map((step) => resolveStepDefinition(step));
+
 const sharedStepData = reactive({
-  [START_STATE_KEYS.start]: { ...START_VARIANT_BASE.start.builderData },
-  [START_STATE_KEYS.schedule]: { ...START_VARIANT_BASE.schedule.builderData },
-  [START_STATE_KEYS.trigger]: { ...START_VARIANT_BASE.trigger.builderData },
-  ...BASE_FLOW_STEPS.reduce((acc, step) => {
+  [START_STATE_KEYS.start]: { ...resolvedStartVariants.start.builderData },
+  [START_STATE_KEYS.schedule]: { ...resolvedStartVariants.schedule.builderData },
+  [START_STATE_KEYS.trigger]: { ...resolvedStartVariants.trigger.builderData },
+  ...resolvedBaseFlowSteps.reduce((acc, step) => {
     acc[step.stateKey] = { ...step.builderData };
     return acc;
   }, {}),
 });
 
 const sharedStepComments = reactive({
-  [START_STATE_KEYS.start]: cloneComments(START_VARIANT_BASE.start.comments),
-  [START_STATE_KEYS.schedule]: cloneComments(START_VARIANT_BASE.schedule.comments),
-  [START_STATE_KEYS.trigger]: cloneComments(START_VARIANT_BASE.trigger.comments),
-  ...BASE_FLOW_STEPS.reduce((acc, step) => {
+  [START_STATE_KEYS.start]: cloneComments(resolvedStartVariants.start.comments),
+  [START_STATE_KEYS.schedule]: cloneComments(resolvedStartVariants.schedule.comments),
+  [START_STATE_KEYS.trigger]: cloneComments(resolvedStartVariants.trigger.comments),
+  ...resolvedBaseFlowSteps.reduce((acc, step) => {
     acc[step.stateKey] = cloneComments(step.comments);
     return acc;
   }, {}),
 });
 
 const sharedStepWarnings = reactive({
-  [START_STATE_KEYS.start]: createWarningState(START_VARIANT_BASE.start.rows),
-  [START_STATE_KEYS.schedule]: createWarningState(START_VARIANT_BASE.schedule.rows),
-  [START_STATE_KEYS.trigger]: createWarningState(START_VARIANT_BASE.trigger.rows),
-  ...BASE_FLOW_STEPS.reduce((acc, step) => {
+  [START_STATE_KEYS.start]: createWarningState(resolvedStartVariants.start.rows),
+  [START_STATE_KEYS.schedule]: createWarningState(resolvedStartVariants.schedule.rows),
+  [START_STATE_KEYS.trigger]: createWarningState(resolvedStartVariants.trigger.rows),
+  ...resolvedBaseFlowSteps.reduce((acc, step) => {
     acc[step.stateKey] = createWarningState(step.rows);
     return acc;
   }, {}),
 });
 
-export const MOCK_STEP_COUNT = BASE_FLOW_STEPS.length + 1;
+const initialSharedStepDataByStateKey = Object.fromEntries(
+  Object.entries(sharedStepData).map(([stateKey, value]) => [stateKey, cloneDataValue(value)]),
+);
+
+const liveSidebarSteps = reactive({});
+
+export const MOCK_STEP_COUNT = resolvedBaseFlowSteps.length + 1;
 
 export function getStepTypeMeta(type) {
   return STEP_TYPE_META[type] || STEP_TYPE_META.note;
+}
+
+export function getStepTypeDefinition(type) {
+  return {
+    ...getResolvedTypeDefinition(type),
+    sources: resolveStepSources(type),
+    rows: resolveStepRows(type),
+    builderData: resolveStepBuilderData(type),
+  };
+}
+
+function toNormalizedSplitConditionText(value) {
+  return String(value ?? "");
+}
+
+function toNormalizedElseIfConditions(value) {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return value.map((condition) => toNormalizedSplitConditionText(condition));
+}
+
+export function ensureSplitStepData(stepData = null) {
+  if (!stepData || typeof stepData !== "object") {
+    return {
+      ifCondition: "",
+      elseIfConditions: [],
+      elseCondition: "",
+      branchConnections: {},
+    };
+  }
+
+  if (!("ifCondition" in stepData)) {
+    stepData.ifCondition = "";
+  } else {
+    stepData.ifCondition = toNormalizedSplitConditionText(stepData.ifCondition);
+  }
+
+  stepData.elseIfConditions = toNormalizedElseIfConditions(stepData.elseIfConditions);
+
+  if (!("elseCondition" in stepData)) {
+    stepData.elseCondition = "";
+  } else {
+    stepData.elseCondition = toNormalizedSplitConditionText(stepData.elseCondition);
+  }
+
+  if (!stepData.branchConnections || typeof stepData.branchConnections !== "object") {
+    stepData.branchConnections = {};
+  }
+
+  return stepData;
+}
+
+export function addSplitElseIfCondition(stepData = null) {
+  const normalized = ensureSplitStepData(stepData);
+  normalized.elseIfConditions.push("");
+  return normalized.elseIfConditions.length - 1;
+}
+
+export function getSplitBranchConnectorKind(branchId) {
+  return `branch:${String(branchId)}`;
+}
+
+export function getSplitBranchConnections(stepData = null) {
+  return ensureSplitStepData(stepData).branchConnections;
+}
+
+export function getSplitConditionSections(stepData = null) {
+  const normalized = ensureSplitStepData(stepData);
+  const sections = [
+    {
+      id: "if",
+      branchId: "if",
+      connectorKind: getSplitBranchConnectorKind("if"),
+      label: "If",
+      value: normalized.ifCondition,
+      placeholder: "Condition to evaluate first",
+    },
+  ];
+
+  normalized.elseIfConditions.forEach((condition, index) => {
+    const branchId = `else-if-${index}`;
+    sections.push({
+      id: branchId,
+      branchId,
+      connectorKind: getSplitBranchConnectorKind(branchId),
+      label: "Else If",
+      value: condition,
+      placeholder: "Additional condition",
+    });
+  });
+
+  sections.push({
+    id: "else",
+    branchId: "else",
+    connectorKind: getSplitBranchConnectorKind("else"),
+    label: "Else",
+    value: normalized.elseCondition,
+    placeholder: "Fallback branch",
+  });
+
+  return sections;
+}
+
+export function setSplitConditionValue(stepData = null, branchId = "", value = "") {
+  const normalized = ensureSplitStepData(stepData);
+  const nextValue = toNormalizedSplitConditionText(value);
+
+  if (branchId === "if") {
+    normalized.ifCondition = nextValue;
+    return;
+  }
+
+  if (branchId === "else") {
+    normalized.elseCondition = nextValue;
+    return;
+  }
+
+  const branchMatch = String(branchId).match(/^else-if-(\d+)$/);
+  if (!branchMatch) {
+    return;
+  }
+
+  const elseIfIndex = Number(branchMatch[1]);
+  if (!Number.isFinite(elseIfIndex) || elseIfIndex < 0) {
+    return;
+  }
+
+  while (normalized.elseIfConditions.length <= elseIfIndex) {
+    normalized.elseIfConditions.push("");
+  }
+
+  normalized.elseIfConditions[elseIfIndex] = nextValue;
+}
+
+export function getWaitModeOptions() {
+  return WAIT_MODE_OPTIONS.map((option) => ({ ...option }));
+}
+
+export function getNormalizedWaitMode(mode) {
+  return normalizeWaitMode(mode);
+}
+
+export function getVisibleStepRows(step = null) {
+  const rows = Array.isArray(step?.rows) ? step.rows : [];
+  if (step?.type !== "wait") {
+    return rows;
+  }
+
+  const waitMode = normalizeWaitMode(step?.data?.waitMode);
+  return rows.filter((row) => {
+    if (!Array.isArray(row?.waitModes) || !row.waitModes.length) {
+      return true;
+    }
+
+    return row.waitModes.includes(waitMode);
+  });
+}
+
+function resetStepDataByStateKey(stateKey) {
+  const defaults = cloneDataValue(initialSharedStepDataByStateKey[stateKey]);
+  if (!defaults) {
+    return;
+  }
+
+  if (!sharedStepData[stateKey]) {
+    sharedStepData[stateKey] = reactive({ ...defaults });
+    return;
+  }
+
+  Object.keys(sharedStepData[stateKey]).forEach((key) => {
+    delete sharedStepData[stateKey][key];
+  });
+  Object.assign(sharedStepData[stateKey], defaults);
+}
+
+export function resetMockFlowStepData() {
+  MOCK_FLOW_STEP_STATE_ORDER.forEach((stateKey) => {
+    resetStepDataByStateKey(stateKey);
+  });
+}
+
+export function applyMockFlowStepDataForBuildStep(buildStep = 0) {
+  resetMockFlowStepData();
+
+  const resolvedBuildStep = Math.max(0, Number(buildStep) || 0);
+  const visibleFlowStepCount = Math.max(0, resolvedBuildStep - 1);
+  for (let index = 0; index < visibleFlowStepCount; index += 1) {
+    const stateKey = MOCK_FLOW_STEP_STATE_ORDER[index];
+    const mockValues = MOCK_FLOW_STEP_DATA_BY_STATE_KEY[stateKey];
+    if (!stateKey || !mockValues || !sharedStepData[stateKey]) {
+      continue;
+    }
+
+    Object.assign(sharedStepData[stateKey], mockValues);
+  }
 }
 
 function getNormalizedStartBlockMode(startBlockMode) {
@@ -373,10 +784,10 @@ export function syncStartStepDataFromTrigger(triggerOption) {
 
 function createStartStepDefinition(startBlockMode = START_BLOCK_MODES.start, triggerOption = null) {
   const resolvedMode = getNormalizedStartBlockMode(startBlockMode);
-  const variant = START_VARIANT_BASE[resolvedMode];
+  const variant = resolvedStartVariants[resolvedMode];
   const stateKey = getStartStateKey(resolvedMode);
   const typeMeta = getStepTypeMeta(variant.type);
-  const hasFollowingSteps = BASE_FLOW_STEPS.length > 0;
+  const hasFollowingSteps = resolvedBaseFlowSteps.length > 0;
 
   return {
     id: 1,
@@ -414,7 +825,7 @@ function getResolvedStepDefinitions(options = {}) {
 
   return [
     createStartStepDefinition(startBlockMode, triggerOption),
-    ...BASE_FLOW_STEPS.map((step) => ({
+    ...resolvedBaseFlowSteps.map((step) => ({
       ...step,
       typeMeta: getStepTypeMeta(step.type),
       isStartBlock: false,
@@ -462,7 +873,8 @@ export function setStepWarningVisible(stepKey, dataKey, visible) {
 }
 
 export function applyStepWarningFix(stepKey, dataKey) {
-  const stepData = getSharedStepData(stepKey);
+  const resolvedStepKey = resolveStepStateKey(stepKey);
+  const stepData = getSharedStepData(stepKey) || liveSidebarSteps[resolvedStepKey]?.data;
   if (!stepData || dataKey !== "code") {
     return false;
   }
@@ -472,8 +884,60 @@ export function applyStepWarningFix(stepKey, dataKey) {
   return true;
 }
 
+export function setLiveSidebarSteps(steps = []) {
+  Object.keys(liveSidebarSteps).forEach((id) => {
+    delete liveSidebarSteps[id];
+  });
+
+  steps.forEach((step) => {
+    if (!step?.id) {
+      return;
+    }
+
+    const resolvedType = step.type || "note";
+    const typeMeta = step.typeMeta || getStepTypeMeta(resolvedType);
+    const resolvedRows = Array.isArray(step.rows) && step.rows.length
+      ? step.rows
+      : resolveStepRows(resolvedType);
+
+    liveSidebarSteps[String(step.id)] = {
+      ...step,
+      stateKey: step.stateKey || String(step.id),
+      type: resolvedType,
+      typeMeta,
+      pill: step.pill || resolveStepPill(resolvedType),
+      rows: resolvedRows,
+      data: step.data || resolveStepBuilderData(resolvedType),
+      comments: Array.isArray(step.comments) ? step.comments : [],
+      sources: resolveStepSources(resolvedType, step.sources),
+      ivySays: step.ivySays || resolveStepIvySays(resolvedType),
+      isStartBlock: Boolean(step.isStartBlock),
+      startBlockMode: step.startBlockMode || null,
+    };
+  });
+}
+
 export function getSidebarStep(stepId, options = {}) {
   const selectedId = Number(stepId);
+  const liveStep = liveSidebarSteps[String(selectedId)];
+  if (liveStep) {
+    return {
+      id: liveStep.id,
+      stateKey: liveStep.stateKey,
+      pill: liveStep.pill || liveStep.typeMeta.label,
+      typeMeta: liveStep.typeMeta,
+      type: liveStep.type,
+      title: liveStep.title,
+      sources: liveStep.sources,
+      rows: liveStep.rows,
+      data: liveStep.data,
+      comments: liveStep.comments,
+      ivySays: liveStep.ivySays,
+      isStartBlock: Boolean(liveStep.isStartBlock),
+      startBlockMode: liveStep.startBlockMode,
+    };
+  }
+
   const stepDefinitions = getResolvedStepDefinitions(options);
   const step = stepDefinitions.find((definition) => definition.id === selectedId) || stepDefinitions[0];
 
@@ -552,6 +1016,7 @@ export function getAddStepMenuGroups() {
       key: "actions",
       label: "Actions",
       items: [
+        { key: "message", label: "Send Message", type: "message" },
         { key: "action", label: "Ivy Action", type: "action" },
         { key: "code", label: "Run Code", type: "code" },
         { key: "note", label: "Create Note", type: "note" },
