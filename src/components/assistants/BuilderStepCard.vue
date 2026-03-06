@@ -434,7 +434,7 @@ function isSplitConditionPlaceholder(section) {
                   <span>{{ row.key }}</span>
                 </span>
               </td>
-              <td class="text-end assistant-step-detail__val">
+              <td class="assistant-step-detail__val">
                 <div
                   class="assistant-step-detail__val-text"
                   :class="{ 'assistant-step-detail__val-text--placeholder': isPlaceholderStepDetailValue(row) }"
@@ -685,7 +685,6 @@ table {
   min-width: 0;
   overflow: hidden;
   overflow-wrap: break-word;
-  text-align: right;
   text-overflow: ellipsis;
   white-space: normal;
   word-break: normal;

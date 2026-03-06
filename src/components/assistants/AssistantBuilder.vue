@@ -279,17 +279,42 @@ function createNodeFromAddSelection(item) {
   };
 }
 
-function shiftNodesDownFrom(newNodeY, excludedNodeIds = []) {
+function shiftDownstreamNodes(startNodeId, offsetY, excludedNodeIds = []) {
+  if (!startNodeId || !Number.isFinite(offsetY) || offsetY === 0) {
+    return;
+  }
+
   const excludedNodeSet = new Set(excludedNodeIds.map((nodeId) => String(nodeId)));
-  nodes.forEach((node) => {
-    if (excludedNodeSet.has(String(node.id))) {
-      return;
+  const visited = new Set();
+  const queue = [String(startNodeId)];
+
+  while (queue.length) {
+    const currentId = queue.shift();
+    if (!currentId || visited.has(currentId) || excludedNodeSet.has(currentId)) {
+      continue;
     }
 
-    if ((Number(node.y) || 0) >= newNodeY) {
-      node.y = (Number(node.y) || 0) + INSERT_NODE_Y_SPACING;
+    visited.add(currentId);
+    const node = findNodeById(currentId);
+    if (!node) {
+      continue;
     }
-  });
+
+    node.y = (Number(node.y) || 0) + offsetY;
+
+    (node.connections || []).forEach((targetId) => {
+      queue.push(String(targetId));
+    });
+
+    if (node.type === "split") {
+      const branchConnections = getSplitBranchConnections(node.data);
+      Object.values(branchConnections).forEach((targetId) => {
+        if (targetId) {
+          queue.push(String(targetId));
+        }
+      });
+    }
+  }
 }
 
 function insertNodeAfter(sourceNode, insertedNode, forcedTargetId = null) {
@@ -303,18 +328,32 @@ function insertNodeAfter(sourceNode, insertedNode, forcedTargetId = null) {
     && String(existingTargetNode.id) !== String(insertedNode.id)
     ? existingTargetNode.id
     : null;
-  insertedNode.x = Number(sourceNode.x) || 0;
-  insertedNode.y = (Number(sourceNode.y) || 0) + INSERT_NODE_Y_SPACING;
+  const sourceX = Number(sourceNode.x) || 0;
+  const sourceY = Number(sourceNode.y) || 0;
+  const targetY = Number(existingTargetNode?.y);
+
+  let insertionOffsetY = INSERT_NODE_Y_SPACING;
+  if (Number.isFinite(targetY)) {
+    const sourceToTargetGap = targetY - sourceY;
+    if (sourceToTargetGap > 0) {
+      insertionOffsetY = Math.max(INSERT_NODE_Y_SPACING, sourceToTargetGap);
+    }
+  }
+
+  insertedNode.x = sourceX;
+  insertedNode.y = sourceY + insertionOffsetY;
 
   if (existingTargetId) {
-    shiftNodesDownFrom(insertedNode.y, [sourceNode.id, insertedNode.id]);
+    shiftDownstreamNodes(existingTargetId, insertionOffsetY, [sourceNode.id, insertedNode.id]);
     insertedNode.connections = [existingTargetId];
   } else {
     insertedNode.connections = [];
   }
 
   sourceNode.connections = [insertedNode.id];
-  nodes.push(insertedNode);
+  const sourceNodeIndex = nodes.findIndex((node) => String(node.id) === String(sourceNode.id));
+  const insertionIndex = sourceNodeIndex === -1 ? nodes.length : sourceNodeIndex + 1;
+  nodes.splice(insertionIndex, 0, insertedNode);
   return true;
 }
 
