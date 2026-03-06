@@ -1,5 +1,5 @@
 <script setup>
-import StepInfoTypeGeneric from "./StepInfoTypeGeneric.vue";
+import StepInfoTypeContainer from "./StepInfoTypeContainer.vue";
 
 const props = defineProps({
   activeStep: {
@@ -20,10 +20,11 @@ const emit = defineEmits(["close", "select-start-block"]);
 </script>
 
 <template>
-  <StepInfoTypeGeneric
+  <StepInfoTypeContainer
     :active-step="props.activeStep"
     :start-block-options="props.startBlockOptions"
     :source-options="props.sourceOptions"
+    :show-details-table="true"
     @close="emit('close')"
     @select-start-block="(mode) => emit('select-start-block', mode)"
   />

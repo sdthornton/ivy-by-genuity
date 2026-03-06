@@ -1,7 +1,14 @@
 <script setup>
 import { computed, nextTick, ref, watch } from "vue";
 import StepOptionsDropdown from "../shared/StepOptionsDropdown.vue";
-import { getSplitConditionSections, getVisibleStepRows, isStepWarningVisible } from "./mockSteps";
+import AddStepMenuContent from "./AddStepMenuContent.vue";
+import {
+  getAddStepMenuGroups,
+  getContainerInnerSections,
+  getSplitConditionSections,
+  getVisibleStepRows,
+  isStepWarningVisible,
+} from "./mockSteps";
 
 const props = defineProps({
   node: {
@@ -62,13 +69,28 @@ const emit = defineEmits([
   "delete-step",
   "select-start-block",
   "add-split-else-if",
+  "set-inner-step",
+  "add-inner-step",
 ]);
 
 const commentComposerInput = ref(null);
+const addStepMenuGroups = computed(() => getAddStepMenuGroups());
 const visibleRows = computed(() => getVisibleStepRows(props.node));
-const splitConditionSections = computed(() => (
-  props.node.type === "split" ? getSplitConditionSections(props.node.data) : []
+const branchConditionSections = computed(() => (
+  props.node.type === "split"
+    ? getSplitConditionSections(props.node.data)
+    : []
 ));
+const isContainerStep = computed(() => props.node.type === "parallel" || props.node.type === "loop");
+const isSplitContainerStep = computed(() => props.node.type === "split");
+const hasBranchContainer = computed(() => isContainerStep.value || isSplitContainerStep.value);
+const containerInnerSections = computed(() => {
+  if (!isContainerStep.value) {
+    return [];
+  }
+
+  return getContainerInnerSections(props.node?.data, props.node.type);
+});
 
 watch(
   () => props.isComposerOpen,
@@ -163,14 +185,34 @@ function formatSplitConditionValue(section) {
 function isSplitConditionPlaceholder(section) {
   return String(section?.value ?? "").trim().length === 0;
 }
+
+function handleContainerSectionSelection(sectionIndex, item, close) {
+  emit("set-inner-step", {
+    nodeId: props.node.id,
+    sectionIndex,
+    item,
+  });
+  close();
+}
+
+function handleContainerAddSelection(item, close) {
+  emit("add-inner-step", {
+    nodeId: props.node.id,
+    item,
+  });
+  close();
+}
 </script>
 
 <template>
   <div
-    class="assistant-step border rounded bg-white"
+    class="assistant-step border rounded"
     :class="{
       'assistant-step--has-incoming': hasIncomingConnection,
       'assistant-step--reordering': isReorderingNodes,
+      'assistant-step--container': hasBranchContainer,
+      'bg-white': !hasBranchContainer,
+      'bg-titan-white': hasBranchContainer,
       'border-primary': isActiveConnectionDragSource || isActiveConnectionDragTarget,
     }"
     draggable
@@ -270,7 +312,7 @@ function isSplitConditionPlaceholder(section) {
     <div
       class="assistant-step-header px-2.5 py-2.5 d-flex align-items-center justify-content-start"
       :class="{
-        'border-bottom': !node.detailsCollapsed,
+        'border-bottom': !node.detailsCollapsed && !hasBranchContainer,
         'assistant-step-header--collapsed': node.detailsCollapsed,
       }"
     >
@@ -344,6 +386,7 @@ function isSplitConditionPlaceholder(section) {
 
       <div class="assistant-step-header-actions ms-auto d-flex align-items-center">
         <button
+          v-if="!hasBranchContainer"
           type="button"
           class="assistant-step-header-toggle assistant-step-control me-1"
           aria-label="Toggle step details"
@@ -383,35 +426,168 @@ function isSplitConditionPlaceholder(section) {
     </div>
 
     <div class="assistant-step-details">
-      <div v-show="!node.detailsCollapsed" class="assistant-step-details-content px-2.5 pb-2 not-as-small text-black">
-        <div v-if="node.type === 'split'" class="assistant-step-split-sections d-flex flex-column gap-2">
-          <section
-            v-for="section in splitConditionSections"
-            :key="section.id"
-            class="assistant-step-split-section border rounded-sm p-2"
+      <div
+        v-show="!node.detailsCollapsed"
+        class="assistant-step-details-content not-as-small text-black"
+        :class="hasBranchContainer ? 'px-4 pb-4 pt-3' : 'px-2.5 pb-2'"
+      >
+        <div v-if="isContainerStep" class="assistant-step-container-body d-flex flex-column">
+          <table
+            v-if="node.type === 'loop' && visibleRows.length"
+            class="assistant-step-container-details table table-borderless table-sm w-100 mb-3"
           >
-            <div class="assistant-step-split-section__label true-small text-muted fw-semibold mb-1">
-              {{ section.label }}
-            </div>
-            <div
-              class="assistant-step-split-section__value"
-              :class="{ 'assistant-step-split-section__value--placeholder': isSplitConditionPlaceholder(section) }"
+            <tbody>
+              <tr
+                v-for="row in visibleRows"
+                :key="row.key"
+              >
+                <td class="text-muted text-capitalize assistant-step-detail__key">
+                  <span class="assistant-step-detail__key-label">
+                    <span>{{ row.key }}</span>
+                  </span>
+                </td>
+                <td class="assistant-step-detail__val">
+                  <div
+                    class="assistant-step-detail__val-text"
+                    :class="{ 'assistant-step-detail__val-text--placeholder': isPlaceholderStepDetailValue(row) }"
+                  >
+                    {{ formatStepDetailValue(row) }}
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+
+          <div class="assistant-step-container-sections d-flex align-items-start">
+            <section
+              v-for="(section, sectionIndex) in containerInnerSections"
+              :key="`${node.id}-container-${section.id}`"
+              class="assistant-step-container-branch"
             >
-              {{ formatSplitConditionValue(section) }}
-            </div>
-            <div
-              v-tooltip="{ content: 'Click to remove. Drag to change.', placement: 'right' }"
-              class="assistant-step-connector assistant-step-connector--branch assistant-step-control"
-              :data-step-id="node.id"
-              :data-connector-kind="section.connectorKind"
-              role="button"
-              @pointerdown.stop.prevent="handleConnectorPointerDown($event, section.connectorKind)"
-              @pointerover="handleConnectorPointerHover($event, section.connectorKind)"
-              @pointermove="handleConnectorPointerHover($event, section.connectorKind)"
-              @pointerleave="handleConnectorPointerLeave(section.connectorKind)"
+              <StepOptionsDropdown
+                class="assistant-step-container-branch-selector"
+                placement="bottom-start"
+                menu-class="assistant-step-container-menu"
+                @click.stop
+              >
+                <template #trigger>
+                  <button
+                    type="button"
+                    class="assistant-step-container-branch-selector__trigger assistant-step-control"
+                    :aria-label="`Choose inner step for branch ${sectionIndex + 1}`"
+                  >
+                    <span
+                      class="assistant-step-container-branch-pill true-small fw-semibold rounded-pill px-2 py-0 d-inline-flex align-items-center"
+                      :class="{ 'assistant-step-container-branch-pill--placeholder': !section.type }"
+                    >
+                      <span>{{ section.label }}</span>
+                      <img src="../../assets/arrow-down-b.svg" width="10" height="10" class="assistant-step-container-branch-pill__caret ms-1">
+                    </span>
+                  </button>
+                </template>
+                <template #menu="{ close }">
+                  <AddStepMenuContent
+                    :groups="addStepMenuGroups"
+                    :close-menu="close"
+                    @select="(item) => handleContainerSectionSelection(sectionIndex, item, close)"
+                  />
+                </template>
+              </StepOptionsDropdown>
+              <div
+                class="assistant-step-container-branch-value mt-2"
+                :class="{ 'assistant-step-container-branch-value--placeholder': !section.type }"
+              >
+                {{ section.type ? "Selected inner box" : "Select an inner box type." }}
+              </div>
+              <div
+                v-tooltip="{ content: 'Click to remove. Drag to change.', placement: 'right' }"
+                class="assistant-step-connector assistant-step-connector--parallel-branch assistant-step-control"
+                :data-step-id="node.id"
+                :data-connector-kind="section.connectorKind"
+                role="button"
+                @pointerdown.stop.prevent="handleConnectorPointerDown($event, section.connectorKind)"
+                @pointerover="handleConnectorPointerHover($event, section.connectorKind)"
+                @pointermove="handleConnectorPointerHover($event, section.connectorKind)"
+                @pointerleave="handleConnectorPointerLeave(section.connectorKind)"
+                @click.stop
+              />
+              <div class="assistant-step-parallel-branch-tail" aria-hidden="true">
+                <span class="assistant-step-parallel-branch-tail__line" />
+                <span class="assistant-step-parallel-branch-tail__plus d-inline-flex align-items-center justify-content-center fw-semibold">+</span>
+              </div>
+            </section>
+
+            <StepOptionsDropdown
+              class="assistant-step-parallel-add"
+              placement="bottom-start"
+              menu-class="assistant-step-container-menu"
               @click.stop
-            />
-          </section>
+            >
+              <template #trigger>
+                <button
+                  type="button"
+                  class="assistant-step-parallel-add__trigger btn btn-white border"
+                  aria-label="Add inner branch"
+                >
+                  +
+                </button>
+              </template>
+              <template #menu="{ close }">
+                <AddStepMenuContent
+                  :groups="addStepMenuGroups"
+                  :close-menu="close"
+                  @select="(item) => handleContainerAddSelection(item, close)"
+                />
+              </template>
+            </StepOptionsDropdown>
+          </div>
+        </div>
+
+        <div v-else-if="isSplitContainerStep" class="assistant-step-container-body d-flex flex-column">
+          <div class="assistant-step-container-sections assistant-step-split-sections d-flex align-items-start">
+            <template
+              v-for="(section, sectionIndex) in branchConditionSections"
+              :key="`${node.id}-split-${section.id}`"
+            >
+              <section class="assistant-step-container-branch assistant-step-split-branch">
+                <span class="assistant-step-container-branch-pill assistant-step-container-branch-pill--split true-small fw-semibold rounded-pill px-2 py-0 d-inline-flex align-items-center">
+                  {{ section.label }}
+                </span>
+                <div
+                  class="assistant-step-container-branch-value mt-2"
+                  :class="{ 'assistant-step-container-branch-value--placeholder': isSplitConditionPlaceholder(section) }"
+                >
+                  {{ formatSplitConditionValue(section) }}
+                </div>
+                <div
+                  v-tooltip="{ content: 'Click to remove. Drag to change.', placement: 'right' }"
+                  class="assistant-step-connector assistant-step-connector--parallel-branch assistant-step-control"
+                  :data-step-id="node.id"
+                  :data-connector-kind="section.connectorKind"
+                  role="button"
+                  @pointerdown.stop.prevent="handleConnectorPointerDown($event, section.connectorKind)"
+                  @pointerover="handleConnectorPointerHover($event, section.connectorKind)"
+                  @pointermove="handleConnectorPointerHover($event, section.connectorKind)"
+                  @pointerleave="handleConnectorPointerLeave(section.connectorKind)"
+                  @click.stop
+                />
+                <div class="assistant-step-parallel-branch-tail" aria-hidden="true">
+                  <span class="assistant-step-parallel-branch-tail__line" />
+                  <span class="assistant-step-parallel-branch-tail__plus d-inline-flex align-items-center justify-content-center fw-semibold">+</span>
+                </div>
+              </section>
+
+              <button
+                v-if="sectionIndex === 0"
+                type="button"
+                class="assistant-step-split-add__trigger btn btn-white border"
+                aria-label="Add Else If branch"
+                @click.stop="emit('add-split-else-if', node.id)"
+              >
+                +
+              </button>
+            </template>
+          </div>
         </div>
 
         <table v-else class="w-100 table table-borderless table-sm mb-0">
@@ -449,6 +625,7 @@ function isSplitConditionPlaceholder(section) {
     </div>
 
     <div
+      v-if="!hasBranchContainer"
       v-tooltip="{ content: 'Click to remove. Drag to change.', placement: 'right' }"
       class="assistant-step-connector assistant-step-connector--bottom assistant-step-control"
       :class="{
@@ -481,6 +658,21 @@ function isSplitConditionPlaceholder(section) {
 
   &:active {
     cursor: grabbing;
+  }
+}
+
+.assistant-step--container {
+  box-shadow: 0 4px 8px -2px rgba(0,0,0,0.1);
+  max-width: 34rem;
+
+  .assistant-step-header {
+    border: 0;
+    border-top-left-radius: 0.5rem;
+    border-top-right-radius: 0.5rem;
+  }
+
+  .assistant-step-details {
+    overflow: visible;
   }
 }
 
@@ -615,17 +807,6 @@ function isSplitConditionPlaceholder(section) {
   box-shadow: 0 6px 12px rgba(0, 0, 0, 0.28);
 }
 
-.assistant-step-connector--branch {
-  border-radius: 0.25rem;
-  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.22);
-  height: 0.45rem;
-  left: auto;
-  right: -0.34rem;
-  top: calc(50% - 0.225rem);
-  transform: none;
-  width: 0.85rem;
-}
-
 .assistant-step:hover .assistant-step-connector--top,
 .assistant-step--has-incoming .assistant-step-connector--top,
 .assistant-step-connector--top.assistant-step-connector--active-target,
@@ -695,29 +876,128 @@ table {
   opacity: 0.7;
 }
 
-.assistant-step-split-section {
+.assistant-step-split-sections {
+  gap: 1rem;
+}
+
+.assistant-step-container-sections {
+  gap: 1rem;
+}
+
+.assistant-step-container-branch {
   background-color: white;
+  border: 1px solid var(--bs-gray-300);
+  border-radius: 0.5rem;
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 0.5rem 0.6rem 1.65rem;
   position: relative;
 }
 
-.assistant-step-split-section__label {
-  letter-spacing: 0.01em;
-  text-transform: uppercase;
+.assistant-step-container-branch-selector__trigger {
+  background: transparent;
+  border: 0;
+  padding: 0;
 }
 
-.assistant-step-split-section__value {
+.assistant-step-container-branch-pill {
+  background-color: var(--bs-gray-200);
+  color: var(--bs-gray-700);
+  line-height: 1.2;
+}
+
+.assistant-step-container-branch-pill--split {
+  color: var(--bs-gray-800);
+}
+
+.assistant-step-container-branch-pill--placeholder {
+  background-color: var(--bs-gray-100);
+  color: var(--bs-gray-600);
+}
+
+.assistant-step-container-branch-pill__caret {
+  opacity: 0.55;
+}
+
+.assistant-step-container-branch-value {
   line-height: 1.35;
   min-height: 1.2rem;
-  padding-right: 0.75rem;
 }
 
-.assistant-step-split-section__value--placeholder {
+.assistant-step-container-branch-value--placeholder {
   color: var(--bs-secondary-color);
   opacity: 0.7;
 }
 
-.assistant-step-split-add {
-  min-height: 1.5rem;
+.assistant-step-split-add__trigger {
+  align-items: center;
+  align-self: center;
+  border-radius: 999px;
+  display: inline-flex;
+  font-size: 1rem;
+  height: 1.75rem;
+  justify-content: center;
+  line-height: 1;
+  min-width: 1.75rem;
+  padding: 0;
+  width: 1.75rem;
+}
+
+.assistant-step-connector--parallel-branch {
+  border-radius: 0.25rem;
+  bottom: -0.28rem;
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.22);
+  height: 0.45rem;
+  left: 50%;
+  right: auto;
+  top: auto;
+  transform: translate(-50%, 50%);
+  width: 0.85rem;
+}
+
+.assistant-step-parallel-branch-tail {
+  align-items: center;
+  bottom: -2.15rem;
+  display: flex;
+  flex-direction: column;
+  left: 50%;
+  pointer-events: none;
+  position: absolute;
+  transform: translateX(-50%);
+
+  &__line {
+    border-left: 2px dashed var(--bs-gray-400);
+    height: 1.1rem;
+  }
+
+  &__plus {
+    background-color: var(--bs-dark);
+    border-radius: 999px;
+    color: white;
+    height: 1.1rem;
+    line-height: 1;
+    margin-top: 0.08rem;
+    width: 1.1rem;
+  }
+}
+
+.assistant-step-parallel-add {
+  align-items: center;
+  align-self: center;
+  display: inline-flex;
+}
+
+.assistant-step-parallel-add__trigger {
+  align-items: center;
+  border-radius: 999px;
+  display: inline-flex;
+  font-size: 1rem;
+  height: 1.75rem;
+  justify-content: center;
+  line-height: 1;
+  min-width: 1.75rem;
+  padding: 0;
+  width: 1.75rem;
 }
 
 .assistant-step-comments {
@@ -817,8 +1097,7 @@ table {
 
 .assistant-step:hover .assistant-step-comment-add,
 .assistant-step-comments:hover .assistant-step-comment-add,
-.assistant-step-comments--composer-open .assistant-step-comment-add,
-.assistant-step-comment-add--visible {
+.assistant-step-comments--composer-open .assistant-step-comment-add {
   opacity: 1;
   pointer-events: auto;
 }

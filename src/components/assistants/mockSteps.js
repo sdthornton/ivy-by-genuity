@@ -176,12 +176,10 @@ export const STEP_TYPE_DEFINITIONS = {
       { label: "SharePoint", icon: sharepointLogo },
     ],
     rows: [
-      { key: "Source", dataKey: "source", placeholder: "Pick a source system" },
       { key: "Source Table/List", dataKey: "list", placeholder: "Enter a table or list name (optional)" },
-      { key: "Code", dataKey: "code", isCode: true, showWarning: true, placeholder: "Write a lookup query or filter" },
+      { key: "Code", dataKey: "code", isCode: true, showWarning: true, placeholder: "Write a lookup query or filter (optional)" },
     ],
     builderData: {
-      source: "",
       list: "",
       code: "",
     },
@@ -206,7 +204,7 @@ export const STEP_TYPE_DEFINITIONS = {
   message: {
     pill: "Send Message",
     rows: [
-      { key: "Action", dataKey: "action", placeholder: "What message action should happen?" },
+      { key: "Action", dataKey: "action", placeholder: "What message/data would you like to send?" },
       { key: "Destination", dataKey: "channel", placeholder: "Where should this be delivered?" },
       { key: "Recipients/Channel", dataKey: "recipients", placeholder: "Who or what channel should get this?" },
       { key: "Payload", dataKey: "payload", placeholder: "What content should be sent?" },
@@ -269,17 +267,15 @@ export const STEP_TYPE_DEFINITIONS = {
   },
   parallel: {
     pill: "Parallel",
-    rows: [
-      { key: "Branches", dataKey: "branches", placeholder: "How many branches should run?" },
-      { key: "Merge Policy", dataKey: "mergePolicy", placeholder: "How should branches rejoin?" },
-      { key: "Timeout", dataKey: "timeout", placeholder: "Maximum parallel run time" },
-    ],
+    rows: [],
     builderData: {
-      branches: "",
-      mergePolicy: "",
-      timeout: "",
+      innerSteps: [
+        { branchId: "parallel-a", type: "", label: "Choose block" },
+        { branchId: "parallel-b", type: "", label: "Choose block" },
+      ],
+      branchConnections: {},
     },
-    ivySays: "This step runs multiple branches at the same time and merges them.",
+    ivySays: "This step runs selected branches in parallel and merges the results.",
   },
   loop: {
     pill: "Loop",
@@ -289,6 +285,11 @@ export const STEP_TYPE_DEFINITIONS = {
       { key: "Max Iterations", dataKey: "maxIterations", placeholder: "Safety limit for loop runs" },
     ],
     builderData: {
+      innerSteps: [
+        { branchId: "loop-a", type: "", label: "Choose block" },
+        { branchId: "loop-b", type: "", label: "Choose block" },
+      ],
+      branchConnections: {},
       loopMode: "",
       sourceOrCondition: "",
       maxIterations: "",
@@ -323,7 +324,7 @@ const BASE_FLOW_STEPS = [
     sources: [{ label: "SharePoint", icon: sharepointLogo }],
     rows: [
       { key: "Source Table/List", dataKey: "list", placeholder: "Enter a table or list name (optional)" },
-      { key: "Code", dataKey: "code", isCode: true, showWarning: true, placeholder: "Write a lookup query or filter" },
+      { key: "Code", dataKey: "code", isCode: true, showWarning: true, placeholder: "Write a lookup query or filter (optional)" },
     ],
     comments: [
       { author: "You", body: "Confirm this should run every weekday morning.", stamp: "Feb 26, 9:05 AM" },
@@ -360,7 +361,7 @@ const BASE_FLOW_STEPS = [
     title: "Email Audit List",
     sources: [],
     rows: [
-      { key: "Action", dataKey: "action", placeholder: "What message action should happen?" },
+      { key: "Action", dataKey: "action", placeholder: "What message/data would you like to send?" },
       { key: "Destination", dataKey: "channel", placeholder: "Where should this be delivered?" },
       { key: "Recipients/Channel", dataKey: "recipients", placeholder: "Who or what channel should get this?" },
     ],
@@ -583,8 +584,140 @@ export function getSplitBranchConnectorKind(branchId) {
   return `branch:${String(branchId)}`;
 }
 
+const DEFAULT_CONTAINER_BRANCH_COUNT = 2;
+
+function getContainerBranchPrefix(containerType = "") {
+  const prefix = String(containerType || "branch").trim().toLowerCase();
+  return prefix || "branch";
+}
+
+function toNormalizedInnerStep(step = {}, index = 0, branchPrefix = "branch") {
+  const normalizedBranchId = String(step?.branchId || "").trim() || `${branchPrefix}-${index + 1}`;
+  const normalizedType = String(step?.type || "").trim();
+  const normalizedLabel = String(step?.label || "").trim() || "Choose block";
+
+  return {
+    branchId: normalizedBranchId,
+    type: normalizedType,
+    label: normalizedLabel,
+  };
+}
+
+function getDefaultContainerInnerSteps(branchPrefix = "branch", count = DEFAULT_CONTAINER_BRANCH_COUNT) {
+  return Array.from({ length: count }, (_, index) => toNormalizedInnerStep({}, index, branchPrefix));
+}
+
+function resolveContainerSelection(item = null) {
+  const type = String(item?.type || item?.key || "").trim();
+  const label = String(item?.label || "").trim();
+
+  return {
+    type,
+    label: label || "Choose block",
+  };
+}
+
+function getUniqueContainerBranchId(innerSteps = [], branchPrefix = "branch") {
+  const existingIds = new Set(
+    innerSteps.map((step) => String(step?.branchId || "").trim()).filter(Boolean),
+  );
+
+  let index = Math.max(1, existingIds.size + 1);
+  while (existingIds.has(`${branchPrefix}-${index}`)) {
+    index += 1;
+  }
+
+  return `${branchPrefix}-${index}`;
+}
+
+export function ensureContainerStepData(stepData = null, containerType = "branch") {
+  const branchPrefix = getContainerBranchPrefix(containerType);
+  if (!stepData || typeof stepData !== "object") {
+    return {
+      innerSteps: getDefaultContainerInnerSteps(branchPrefix),
+      branchConnections: {},
+    };
+  }
+
+  if (!stepData.branchConnections || typeof stepData.branchConnections !== "object") {
+    stepData.branchConnections = {};
+  }
+
+  const normalizedInnerSteps = Array.isArray(stepData.innerSteps)
+    ? stepData.innerSteps.map((step, index) => toNormalizedInnerStep(step, index, branchPrefix))
+    : [];
+
+  stepData.innerSteps = normalizedInnerSteps.length
+    ? normalizedInnerSteps
+    : getDefaultContainerInnerSteps(branchPrefix);
+
+  return stepData;
+}
+
+export function getContainerInnerSections(stepData = null, containerType = "branch") {
+  const normalized = ensureContainerStepData(stepData, containerType);
+
+  return normalized.innerSteps.map((step, index) => ({
+    id: `${step.branchId}-${index}`,
+    branchId: step.branchId,
+    connectorKind: getSplitBranchConnectorKind(step.branchId),
+    label: step.label || "Choose block",
+    type: step.type || "",
+  }));
+}
+
+export function setContainerInnerStepSelection(stepData = null, containerType = "branch", sectionIndex = -1, item = null) {
+  const normalized = ensureContainerStepData(stepData, containerType);
+  const targetIndex = Number(sectionIndex);
+  if (!Number.isFinite(targetIndex) || targetIndex < 0 || targetIndex >= normalized.innerSteps.length) {
+    return false;
+  }
+
+  const currentStep = toNormalizedInnerStep(
+    normalized.innerSteps[targetIndex],
+    targetIndex,
+    getContainerBranchPrefix(containerType),
+  );
+  const selection = resolveContainerSelection(item);
+
+  normalized.innerSteps[targetIndex] = {
+    ...currentStep,
+    type: selection.type,
+    label: selection.label,
+  };
+
+  return true;
+}
+
+export function addContainerInnerStepSelection(stepData = null, containerType = "branch", item = null) {
+  const normalized = ensureContainerStepData(stepData, containerType);
+  const branchPrefix = getContainerBranchPrefix(containerType);
+  const selection = resolveContainerSelection(item);
+  const branchId = getUniqueContainerBranchId(normalized.innerSteps, branchPrefix);
+
+  normalized.innerSteps.push({
+    branchId,
+    type: selection.type,
+    label: selection.label,
+  });
+
+  return branchId;
+}
+
 export function getSplitBranchConnections(stepData = null) {
   return ensureSplitStepData(stepData).branchConnections;
+}
+
+export function ensureBranchStepData(stepData = null, nodeType = "split") {
+  if (nodeType === "split") {
+    return ensureSplitStepData(stepData);
+  }
+
+  return ensureContainerStepData(stepData, nodeType);
+}
+
+export function getBranchConnections(stepData = null, nodeType = "split") {
+  return ensureBranchStepData(stepData, nodeType).branchConnections;
 }
 
 export function getSplitConditionSections(stepData = null) {
