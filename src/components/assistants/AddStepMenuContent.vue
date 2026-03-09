@@ -13,8 +13,11 @@ const props = defineProps({
 const emit = defineEmits(["select"]);
 
 function handleSelect(item) {
-  emit("select", item);
-  props.closeMenu?.();
+  try {
+    emit("select", item);
+  } finally {
+    props.closeMenu?.();
+  }
 }
 </script>
 

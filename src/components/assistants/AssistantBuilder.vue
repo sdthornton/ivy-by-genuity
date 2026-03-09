@@ -7,21 +7,34 @@ import AddStepMenuContent from "./AddStepMenuContent.vue";
 import BuilderConnectionsLayer from "./BuilderConnectionsLayer.vue";
 import BuilderFloatingControls from "./BuilderFloatingControls.vue";
 import BuilderStepCard from "./BuilderStepCard.vue";
+import {
+  computeBuilderConnectionLayout,
+  getBranchConnectorCenterInCanvas,
+  getNodeHeightInCanvas,
+  getNodeMetricsInCanvas,
+} from "./builderConnectionLayout";
+import {
+  getConnectionLineKey,
+  isBranchConnectorKind,
+  isBranchContainerNodeType,
+} from "./builderConnectionKeys";
 import { useBuilderConnectionInteractions } from "./useBuilderConnectionInteractions";
+import {
+  createBuilderNodeTemplates,
+  setLiveSidebarSteps,
+} from "./mockSteps";
 import {
   addContainerInnerStepSelection,
   addSplitElseIfCondition,
-  createBuilderNodeTemplates,
   ensureBranchStepData,
   ensureSplitStepData,
   getAddStepMenuGroups,
   getBranchConnections,
-  setContainerInnerStepSelection,
   getStartBlockOptions,
   getStepTypeDefinition,
   getStepTypeMeta,
-  setLiveSidebarSteps,
-} from "./mockSteps";
+  setContainerInnerStepSelection,
+} from "./stepRuntime";
 
 const emit = defineEmits(["toggleSidebar", "select-start-block", "nodes-change"]);
 
@@ -75,6 +88,7 @@ const RECENTER_TRANSITION_MS = 160;
 const DEFAULT_TERMINAL_SEGMENT_LENGTH = 42;
 const START_LAYOUT_CENTERING_THRESHOLD = 1;
 const INSERT_NODE_Y_SPACING = 84;
+const BRANCH_INSERT_SEGMENT_LENGTH = DEFAULT_TERMINAL_SEGMENT_LENGTH;
 
 const canvasPanStyle = computed(() => ({
   backgroundPosition: `${panOffset.x + 2}px ${panOffset.y + 4}px`,
@@ -111,8 +125,6 @@ const {
   nodes,
   findNodeById,
   findIncomingConnection,
-  isBranchConnectorKind,
-  getConnectionLineKey,
   getBranchConnections,
   ensureBranchStepData,
   scheduleConnectionLineUpdate: () => scheduleConnectionLineUpdate(),
@@ -153,22 +165,6 @@ const commentComposer = reactive({
 
 function findNodeById(id) {
   return nodes.find(n => String(n.id) === String(id));
-}
-
-function isBranchConnectorKind(connectorKind) {
-  return String(connectorKind || "").startsWith("branch:");
-}
-
-function isBranchContainerNodeType(nodeType) {
-  return nodeType === "split" || nodeType === "parallel" || nodeType === "loop";
-}
-
-function getConnectionLineKey(sourceId, targetId, sourceConnectorKind = "bottom") {
-  if (isBranchConnectorKind(sourceConnectorKind)) {
-    return `${sourceId}-${sourceConnectorKind}-${targetId}`;
-  }
-
-  return `${sourceId}-${targetId}`;
 }
 
 function findIncomingConnection(nodeId) {
@@ -386,6 +382,20 @@ function handleAddStepMenuSelection(selectionPayload) {
     return;
   }
 
+  if (
+    context.placement === "between"
+    && context.sourceId
+    && context.targetId
+    && isBranchConnectorKind(context.sourceConnectorKind)
+  ) {
+    addBranchStepForNode({
+      nodeId: context.sourceId,
+      connectorKind: context.sourceConnectorKind,
+      item,
+    });
+    return;
+  }
+
   const nextNode = createNodeFromAddSelection(item);
   if (!nextNode) {
     return;
@@ -596,137 +606,29 @@ function handleCardCommentKeydown({ event, nodeId }) {
 
 function updateConnectionLines() {
   const canvasEl = canvas.value;
-  if (!canvasEl) return;
+  if (!canvasEl) {
+    return;
+  }
 
-  canvasSize.width = canvasEl.clientWidth;
-  canvasSize.height = canvasEl.clientHeight;
-
-  const nodeEls = Array.from(canvasEl.querySelectorAll(".assistant-step[data-step-id]"));
-  const anchors = new Map();
-  const branchAnchors = new Map();
-
-  nodeEls.forEach((el) => {
-    const nodeId = String(el.dataset.stepId || "");
-    if (!nodeId) return;
-    const node = findNodeById(nodeId);
-    if (!node) return;
-
-    const visualLeft = el.offsetLeft + node.x;
-    const visualTop = el.offsetTop + node.y;
-    anchors.set(nodeId, {
-      x: visualLeft + (el.offsetWidth / 2),
-      topY: visualTop,
-      bottomY: visualTop + el.offsetHeight,
-    });
-
-    const branchConnectorEls = Array.from(
-      el.querySelectorAll('.assistant-step-connector[data-connector-kind^="branch:"]'),
-    );
-    branchConnectorEls.forEach((connectorEl) => {
-      if (!(connectorEl instanceof HTMLElement)) {
-        return;
-      }
-
-      const connectorKind = String(connectorEl.dataset.connectorKind || "");
-      if (!connectorKind) {
-        return;
-      }
-
-      branchAnchors.set(`${nodeId}|${connectorKind}`, {
-        x: visualLeft + connectorEl.offsetLeft + (connectorEl.offsetWidth / 2),
-        y: visualTop + connectorEl.offsetTop + (connectorEl.offsetHeight / 2),
-      });
-    });
+  const nextLayout = computeBuilderConnectionLayout({
+    canvasEl,
+    zoomLevel: Number(zoomLevel.value) > 0 ? Number(zoomLevel.value) : 1,
+    nodes,
+    findNodeById,
+    isBranchContainerNodeType,
+    isBranchConnectorKind,
+    getBranchConnections,
+    getConnectionLineKey,
+    defaultTerminalSegmentLength: DEFAULT_TERMINAL_SEGMENT_LENGTH,
   });
+  if (!nextLayout) {
+    return;
+  }
 
-  const lines = [];
-  nodes.forEach((node) => {
-    const source = anchors.get(String(node.id));
-    if (!source) return;
-
-    (node.connections || []).forEach((targetId) => {
-      const target = anchors.get(String(targetId));
-      if (!target) return;
-
-      lines.push({
-        key: getConnectionLineKey(node.id, targetId, "bottom"),
-        sourceId: String(node.id),
-        targetId: String(targetId),
-        sourceConnectorKind: "bottom",
-        x1: source.x,
-        y1: source.bottomY,
-        x2: target.x,
-        y2: target.topY,
-        midX: (source.x + target.x) / 2,
-        midY: (source.bottomY + target.topY) / 2,
-        showInlineAdd: true,
-      });
-    });
-
-    if (isBranchContainerNodeType(node.type)) {
-      const branchConnections = getBranchConnections(node.data, node.type);
-      Object.entries(branchConnections).forEach(([connectorKind, targetId]) => {
-        if (!isBranchConnectorKind(connectorKind) || !targetId) {
-          return;
-        }
-
-        const branchSource = branchAnchors.get(`${String(node.id)}|${connectorKind}`);
-        const target = anchors.get(String(targetId));
-        if (!branchSource || !target) {
-          return;
-        }
-
-        lines.push({
-          key: getConnectionLineKey(node.id, targetId, connectorKind),
-          sourceId: String(node.id),
-          targetId: String(targetId),
-          sourceConnectorKind: connectorKind,
-          x1: branchSource.x,
-          y1: branchSource.y,
-          x2: target.x,
-          y2: target.topY,
-          midX: (branchSource.x + target.x) / 2,
-          midY: (branchSource.y + target.topY) / 2,
-          showInlineAdd: false,
-        });
-      });
-    }
-  });
-
-  connectionLines.value = lines;
-
-  const terminalSegmentLength = lines.length
-    ? lines.reduce((sum, line) => sum + Math.abs(line.midY - line.y1), 0) / lines.length
-    : DEFAULT_TERMINAL_SEGMENT_LENGTH;
-
-  const terminalNodes = nodes.filter((node) => (
-    !isBranchContainerNodeType(node.type)
-    && (
-    !(node.connections || []).some((targetId) => anchors.has(String(targetId)))
-    )
-  ));
-  terminalAddControls.value = terminalNodes
-    .map((node) => {
-      const anchor = anchors.get(String(node.id));
-      if (!anchor) {
-        return null;
-      }
-
-      const top = anchor.bottomY + terminalSegmentLength;
-
-      return {
-        key: `terminal-add-${node.id}`,
-        lineKey: `terminal-add-line-${node.id}`,
-        sourceId: String(node.id),
-        x: anchor.x,
-        top,
-        x1: anchor.x,
-        y1: anchor.bottomY,
-        x2: anchor.x,
-        y2: top,
-      };
-    })
-    .filter(Boolean);
+  canvasSize.width = nextLayout.canvasWidth;
+  canvasSize.height = nextLayout.canvasHeight;
+  connectionLines.value = nextLayout.connectionLines;
+  terminalAddControls.value = nextLayout.terminalAddControls;
 }
 
 function centerSingleStartBlankLayout() {
@@ -793,6 +695,11 @@ const scheduleConnectionLineUpdate = () => {
     updateConnectionLines();
   });
 };
+
+function handleNodesLayoutSettled() {
+  scheduleConnectionLineUpdate();
+  requestAnimationFrame(() => scheduleConnectionLineUpdate());
+}
 
 let canvasResizeObserver = null;
 
@@ -976,7 +883,102 @@ function addSplitElseIfForNode(nodeId) {
 
   ensureSplitStepData(node.data);
   addSplitElseIfCondition(node.data);
+  setLiveSidebarSteps(nodes);
   nextTick(() => scheduleConnectionLineUpdate());
+}
+
+function getBranchConnectorCenter(nodeId, connectorKind) {
+  return getBranchConnectorCenterInCanvas({
+    canvasEl: canvas.value,
+    nodeId,
+    connectorKind,
+    isBranchConnectorKind,
+    zoomLevel: Number(zoomLevel.value) > 0 ? Number(zoomLevel.value) : 1,
+  });
+}
+
+function getNodeLocalHeight(nodeId) {
+  return getNodeHeightInCanvas({
+    canvasEl: canvas.value,
+    nodeId,
+    zoomLevel: Number(zoomLevel.value) > 0 ? Number(zoomLevel.value) : 1,
+  });
+}
+
+function getNodeLocalMetrics(nodeId) {
+  return getNodeMetricsInCanvas({
+    canvasEl: canvas.value,
+    nodeId,
+    zoomLevel: Number(zoomLevel.value) > 0 ? Number(zoomLevel.value) : 1,
+  });
+}
+
+function addBranchStepForNode({ nodeId, connectorKind, item } = {}) {
+  const sourceNode = findNodeById(nodeId);
+  if (!sourceNode || !isBranchConnectorKind(connectorKind) || !isBranchContainerNodeType(sourceNode.type)) {
+    return;
+  }
+
+  const nextNode = createNodeFromAddSelection(item);
+  if (!nextNode) {
+    return;
+  }
+
+  const branchConnections = getBranchConnections(sourceNode.data, sourceNode.type);
+  const rawTargetId = branchConnections[connectorKind] || null;
+  const existingTargetNode = rawTargetId ? findNodeById(rawTargetId) : null;
+  const existingTargetId = existingTargetNode
+    && String(existingTargetNode.id) !== String(nextNode.id)
+    ? existingTargetNode.id
+    : null;
+
+  const sourceNodeHeight = getNodeLocalHeight(sourceNode.id) || INSERT_NODE_Y_SPACING;
+  nextNode.x = Number(sourceNode.x) || 0;
+  nextNode.y = (Number(sourceNode.y) || 0) + sourceNodeHeight + BRANCH_INSERT_SEGMENT_LENGTH;
+
+  nextNode.connections = [];
+  if (existingTargetId) {
+    nextNode.connections = [existingTargetId];
+  }
+
+  branchConnections[connectorKind] = nextNode.id;
+
+  const sourceNodeIndex = nodes.findIndex((node) => String(node.id) === String(sourceNode.id));
+  const insertionIndex = sourceNodeIndex === -1 ? nodes.length : sourceNodeIndex + 1;
+  nodes.splice(insertionIndex, 0, nextNode);
+
+  setLiveSidebarSteps(nodes);
+  emitCurrentNodeIds();
+  toggleSidebar(nextNode.id);
+
+  nextTick(() => {
+    const refreshedConnectorCenter = getBranchConnectorCenter(sourceNode.id, connectorKind);
+    const insertedMetrics = getNodeLocalMetrics(nextNode.id);
+    if (refreshedConnectorCenter && insertedMetrics) {
+      const desiredTopY = refreshedConnectorCenter.y + BRANCH_INSERT_SEGMENT_LENGTH;
+      nextNode.x += refreshedConnectorCenter.x - insertedMetrics.centerX;
+      nextNode.y += desiredTopY - insertedMetrics.top;
+    }
+
+    if (existingTargetId) {
+      const refreshedInsertedMetrics = getNodeLocalMetrics(nextNode.id);
+      const existingTargetMetrics = getNodeLocalMetrics(existingTargetId);
+      if (refreshedInsertedMetrics && existingTargetMetrics) {
+        const minTargetTop = refreshedInsertedMetrics.top
+          + refreshedInsertedMetrics.height
+          + DEFAULT_TERMINAL_SEGMENT_LENGTH;
+        const shiftAmount = Math.ceil(minTargetTop - existingTargetMetrics.top);
+        if (shiftAmount > 0) {
+          shiftDownstreamNodes(existingTargetId, shiftAmount, [sourceNode.id, nextNode.id]);
+        }
+      }
+    }
+
+    setLiveSidebarSteps(nodes);
+    scheduleConnectionLineUpdate();
+    requestAnimationFrame(() => scheduleConnectionLineUpdate());
+    window.setTimeout(() => scheduleConnectionLineUpdate(), 220);
+  });
 }
 
 function setInnerStepForNode({ nodeId, sectionIndex, item } = {}) {
@@ -990,6 +992,7 @@ function setInnerStepForNode({ nodeId, sectionIndex, item } = {}) {
     return;
   }
 
+  setLiveSidebarSteps(nodes);
   nextTick(() => scheduleConnectionLineUpdate());
 }
 
@@ -1000,6 +1003,7 @@ function addInnerStepForNode({ nodeId, item } = {}) {
   }
 
   addContainerInnerStepSelection(node.data, node.type, item);
+  setLiveSidebarSteps(nodes);
   nextTick(() => scheduleConnectionLineUpdate());
 }
 
@@ -1167,7 +1171,11 @@ onBeforeUnmount(() => {
             </button>
           </div>
         </Teleport>
-        <TransitionGroup name="nodes">
+        <TransitionGroup
+          name="nodes"
+          @after-enter="handleNodesLayoutSettled"
+          @after-leave="handleNodesLayoutSettled"
+        >
           <BuilderStepCard
             v-for="(node, nodeIndex) in nodes"
             :key="node.id"
@@ -1196,6 +1204,7 @@ onBeforeUnmount(() => {
             @delete-step="deleteStep"
             @select-start-block="selectStartBlock"
             @add-split-else-if="addSplitElseIfForNode"
+            @add-branch-step="addBranchStepForNode"
             @set-inner-step="setInnerStepForNode"
             @add-inner-step="addInnerStepForNode"
           />

@@ -4,7 +4,7 @@ import StepOptionsDropdown from "../../shared/StepOptionsDropdown.vue";
 import {
   getNormalizedWaitMode,
   getWaitModeOptions,
-} from "../mockSteps";
+} from "../stepRuntime";
 import StepInfoPanelBase from "./StepInfoPanelBase.vue";
 import StepInfoDetailsTable from "./StepInfoDetailsTable.vue";
 

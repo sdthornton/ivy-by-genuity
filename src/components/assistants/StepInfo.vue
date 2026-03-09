@@ -2,9 +2,11 @@
 import { computed } from "vue";
 import {
   getSidebarStep,
+} from "./mockSteps";
+import {
   getStartBlockOptions,
   sourceOptions,
-} from "./mockSteps";
+} from "./stepRuntime";
 import StepInfoTypeAction from "./step-info/StepInfoTypeAction.vue";
 import StepInfoTypeAlert from "./step-info/StepInfoTypeAlert.vue";
 import StepInfoTypeCode from "./step-info/StepInfoTypeCode.vue";

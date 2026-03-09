@@ -150,7 +150,6 @@ onBeforeUnmount(() => {
   >
     <div
       ref="triggerEl"
-      class="step-options-trigger"
       role="button"
       tabindex="0"
       @click="toggleMenu"
@@ -180,10 +179,6 @@ onBeforeUnmount(() => {
 
 .step-options-dropdown--open {
   z-index: 300;
-}
-
-.step-options-trigger {
-  cursor: pointer;
 }
 
 .step-options-menu {

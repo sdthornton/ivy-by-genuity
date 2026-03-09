@@ -1,4 +1,8 @@
 import { nextTick, reactive, ref } from "vue";
+import {
+  getConnectionLineKey,
+  isBranchConnectorKind,
+} from "./builderConnectionKeys";
 
 const REORDER_DRAG_THRESHOLD = 8;
 const CONNECTION_MENU_OFFSET = 10;
@@ -10,8 +14,6 @@ export function useBuilderConnectionInteractions({
   nodes,
   findNodeById,
   findIncomingConnection,
-  isBranchConnectorKind,
-  getConnectionLineKey,
   getBranchConnections,
   ensureBranchStepData,
   scheduleConnectionLineUpdate,

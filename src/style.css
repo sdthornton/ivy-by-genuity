@@ -284,6 +284,20 @@ h5, .h5 {
   background-color: #A6F4C5 !important;
 }
 
+.bg-info-banner {
+  background-color: #B1BCFD;
+  background-image: 
+    linear-gradient(
+      90deg,
+      hsl(154deg 51% 75%) 0%,
+      hsl(185deg 64% 78%) 20%,
+      hsl(216deg 82% 82%) 40%,
+      hsl(231deg 95% 84%) 60%,
+      hsl(231deg 95% 84%) 80%,
+      hsl(231deg 95% 84%) 100%
+    );
+}
+
 .text-avatar {
   align-items: center;
   display: inline-flex;
@@ -315,4 +329,16 @@ h5, .h5 {
 .v-popper--theme-tooltip .v-popper__arrow-inner,
 .v-popper--theme-tooltip .v-popper__arrow-outer {
   border-color: #1b2434;
+}
+
+.basic-box-grid {
+  display: grid;
+  gap: 1.5rem;
+  grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
+  justify-content: start;
+}
+
+.basic-box-grid__item {
+  max-width: 25rem;
+  width: 100%;
 }

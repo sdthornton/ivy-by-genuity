@@ -224,8 +224,8 @@ body {
   inset: $content-inset;
   left: $left-nav-closed-width;
   overflow: scroll;
-  padding-left: 4.5rem;
-  padding-right: 4.5rem;
+  padding-left: 3rem;
+  padding-right: 3rem;
   position: fixed;
   transition: left 0.2s ease-in-out;
 

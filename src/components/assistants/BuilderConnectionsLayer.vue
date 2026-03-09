@@ -1,4 +1,5 @@
 <script setup>
+import { computed } from "vue";
 import StepOptionsDropdown from "../shared/StepOptionsDropdown.vue";
 import AddStepMenuContent from "./AddStepMenuContent.vue";
 
@@ -67,6 +68,18 @@ function handleLinePointerLeave(lineKey) {
 function handleAddStepSelection(item, context = {}) {
   emit("add-step-select", { item, context });
 }
+
+function isBranchConnectionLine(line) {
+  return String(line?.sourceConnectorKind || "").startsWith("branch:");
+}
+
+const standardConnectionLines = computed(() => (
+  props.connectionLines.filter((line) => !isBranchConnectionLine(line))
+));
+
+const branchConnectionLines = computed(() => (
+  props.connectionLines.filter((line) => isBranchConnectionLine(line))
+));
 </script>
 
 <template>
@@ -96,7 +109,7 @@ function handleAddStepSelection(item, context = {}) {
     aria-hidden="true"
   >
     <line
-      v-for="line in connectionLines"
+      v-for="line in standardConnectionLines"
       :key="`highlight-${line.key}`"
       v-show="highlightedConnectionKey === line.key && hiddenDraggedConnectionKey !== line.key"
       class="assistant-step-connection-hover-band"
@@ -106,7 +119,7 @@ function handleAddStepSelection(item, context = {}) {
       :y2="line.y2"
     />
     <line
-      v-for="line in connectionLines"
+      v-for="line in standardConnectionLines"
       :key="`hit-${line.key}`"
       v-show="hiddenDraggedConnectionKey !== line.key"
       class="assistant-step-connection-hit-area"
@@ -121,7 +134,7 @@ function handleAddStepSelection(item, context = {}) {
       @pointerleave="handleLinePointerLeave(line.key)"
     />
     <line
-      v-for="line in connectionLines"
+      v-for="line in standardConnectionLines"
       :key="line.key"
       v-show="hiddenDraggedConnectionKey !== line.key"
       class="assistant-step-connection-line"
@@ -139,6 +152,51 @@ function handleAddStepSelection(item, context = {}) {
       :y1="terminalAdd.y1"
       :x2="terminalAdd.x2"
       :y2="terminalAdd.y2"
+    />
+  </svg>
+
+  <svg
+    class="assistant-step-connections assistant-step-connections--branch"
+    :width="canvasSize.width"
+    :height="canvasSize.height"
+    overflow="visible"
+    aria-hidden="true"
+  >
+    <line
+      v-for="line in branchConnectionLines"
+      :key="`highlight-${line.key}`"
+      v-show="highlightedConnectionKey === line.key && hiddenDraggedConnectionKey !== line.key"
+      class="assistant-step-connection-hover-band"
+      :x1="line.x1"
+      :y1="line.y1"
+      :x2="line.x2"
+      :y2="line.y2"
+    />
+    <line
+      v-for="line in branchConnectionLines"
+      :key="`hit-${line.key}`"
+      v-show="hiddenDraggedConnectionKey !== line.key"
+      class="assistant-step-connection-hit-area"
+      :x1="line.x1"
+      :y1="line.y1"
+      :x2="line.x2"
+      :y2="line.y2"
+      v-tooltip="{ content: 'Click to remove. Drag to change.', placement: 'right' }"
+      @pointerdown.stop.prevent="handleLinePointerDown($event, line)"
+      @pointerover="handleLinePointerHover($event, line.key)"
+      @pointermove="handleLinePointerHover($event, line.key)"
+      @pointerleave="handleLinePointerLeave(line.key)"
+    />
+    <line
+      v-for="line in branchConnectionLines"
+      :key="line.key"
+      v-show="hiddenDraggedConnectionKey !== line.key"
+      class="assistant-step-connection-line"
+      :class="{ 'assistant-step-connection-line--active': highlightedConnectionKey === line.key }"
+      :x1="line.x1"
+      :y1="line.y1"
+      :x2="line.x2"
+      :y2="line.y2"
     />
   </svg>
 
@@ -167,6 +225,7 @@ function handleAddStepSelection(item, context = {}) {
           placement: 'between',
           sourceId: line.sourceId,
           targetId: line.targetId,
+          sourceConnectorKind: line.sourceConnectorKind,
         })"
       />
     </template>
@@ -236,6 +295,10 @@ function handleAddStepSelection(item, context = {}) {
   z-index: 1;
 }
 
+.assistant-step-connections--branch {
+  z-index: 4;
+}
+
 .assistant-step-reorder-overlay {
   inset: 0;
   overflow: visible;
@@ -292,7 +355,7 @@ function handleAddStepSelection(item, context = {}) {
   margin-left: -0.625rem;
   margin-top: -0.625rem;
   position: absolute;
-  z-index: 3;
+  z-index: 6;
 }
 
 .assistant-step-inline-add:focus-within,
@@ -318,7 +381,7 @@ function handleAddStepSelection(item, context = {}) {
 .assistant-step-terminal-add {
   position: absolute;
   transform: translate(-50%, -50%);
-  z-index: 3;
+  z-index: 6;
 }
 
 .assistant-step-terminal-add--card {

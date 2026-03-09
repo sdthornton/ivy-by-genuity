@@ -7,7 +7,7 @@ import {
   getAddStepMenuGroups,
   getContainerInnerSections,
   setContainerInnerStepSelection,
-} from "../mockSteps";
+} from "../stepRuntime";
 import StepInfoDetailsTable from "./StepInfoDetailsTable.vue";
 import StepInfoPanelBase from "./StepInfoPanelBase.vue";
 

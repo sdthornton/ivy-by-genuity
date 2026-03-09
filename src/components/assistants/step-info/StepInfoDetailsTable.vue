@@ -2,8 +2,10 @@
 import { computed } from "vue";
 import EditableDetailValue from "../../shared/EditableDetailValue.vue";
 import {
-  applyStepWarningFix,
   getVisibleStepRows,
+} from "../stepRuntime";
+import {
+  applyStepWarningFix,
   isStepWarningVisible,
   setStepWarningVisible,
 } from "../mockSteps";
@@ -15,7 +17,9 @@ const props = defineProps({
   },
 });
 
-const rows = computed(() => getVisibleStepRows(props.step));
+const rows = computed(() => (
+  getVisibleStepRows(props.step).filter((row) => !row?.hideInStepInfo)
+));
 
 function hasDetailValue(value) {
   return String(value ?? "").trim().length > 0;
@@ -45,8 +49,8 @@ function fixQueryWarning() {
 
 <template>
   <div class="mt-4 w-100">
-    <h6 class="fw-medium mb-1">Details/Config</h6>
-    <table class="table table-striped w-100 not-as-small mb-0 step2-info-details-table">
+    <h6 class="fw-medium mb-2">Details/Config</h6>
+    <table class="table table-striped w-100 not-as-small mb-0 step-info-details-table">
       <tbody>
         <tr
           v-for="row in rows"
@@ -108,18 +112,18 @@ function fixQueryWarning() {
 </template>
 
 <style lang="scss" scoped>
-.step2-info-details-table td {
+.step-info-details-table td {
   vertical-align: top;
   white-space: normal;
 }
 
-.step2-info-details-table td:first-child {
+.step-info-details-table td:first-child {
   overflow-wrap: normal;
-  white-space: nowrap;
   word-break: normal;
+  width: min-content;
 }
 
-.step2-info-details-table td:last-child {
+.step-info-details-table td:last-child {
   overflow-wrap: break-word;
   word-break: normal;
 }

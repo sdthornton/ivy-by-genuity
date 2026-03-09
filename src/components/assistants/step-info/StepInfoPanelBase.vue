@@ -23,17 +23,17 @@ const sourceSearch = ref("");
 </script>
 
 <template>
-  <div class="step2-info-panel d-flex flex-column h-100">
+  <div class="step-info-panel d-flex flex-column h-100">
     <button
       type="button"
-      class="step2-info-close-btn btn btn-sm btn-white rounded-circle d-flex align-items-center justify-content-center"
+      class="step-info-close-btn btn btn-sm btn-white rounded-circle d-flex align-items-center justify-content-center"
       aria-label="Close step details"
       @click="emit('close')"
     >
       &times;
     </button>
 
-    <div class="step2-info-top d-flex flex-column">
+    <div class="step-info-top d-flex flex-column">
       <div class="side-content-scroll d-flex flex-column align-items-start">
         <StepOptionsDropdown
           v-if="activeStep.isStartBlock"
@@ -153,7 +153,7 @@ const sourceSearch = ref("");
     </div>
 
     <div class="ivy-says-shell pt-2 bg-white">
-      <div class="ivy-says-sticky text-secondary bg-iceberg-blue p-3 rounded-sm not-as-small">
+      <div class="border position-relative text-secondary bg-iceberg-blue p-3 rounded-sm not-as-small">
         <img src="../../../assets/nav-resources-alt.svg" height="16" width="16" class="me-2">
         <strong>Ivy says:</strong> {{ activeStep.ivySays }}
       </div>
@@ -162,18 +162,18 @@ const sourceSearch = ref("");
 </template>
 
 <style lang="scss" scoped>
-.step2-info-panel {
+.step-info-panel {
   min-height: 0;
   overflow: hidden;
   position: relative;
 }
 
-.step2-info-top {
+.step-info-top {
   flex: 1;
   min-height: 0;
 }
 
-.step2-info-close-btn {
+.step-info-close-btn {
   font-size: 1.5rem;
   height: 2rem;
   line-height: 1;
@@ -284,9 +284,5 @@ const sourceSearch = ref("");
   padding: 0 1.5rem 1.5rem;
   width: 100%;
   z-index: 2;
-}
-
-.ivy-says-sticky {
-  position: relative;
 }
 </style>

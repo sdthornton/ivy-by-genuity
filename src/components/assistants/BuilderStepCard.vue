@@ -3,10 +3,13 @@ import { computed, nextTick, ref, watch } from "vue";
 import StepOptionsDropdown from "../shared/StepOptionsDropdown.vue";
 import AddStepMenuContent from "./AddStepMenuContent.vue";
 import {
+  getBranchConnections,
   getAddStepMenuGroups,
   getContainerInnerSections,
   getSplitConditionSections,
   getVisibleStepRows,
+} from "./stepRuntime";
+import {
   isStepWarningVisible,
 } from "./mockSteps";
 
@@ -69,6 +72,7 @@ const emit = defineEmits([
   "delete-step",
   "select-start-block",
   "add-split-else-if",
+  "add-branch-step",
   "set-inner-step",
   "add-inner-step",
 ]);
@@ -84,6 +88,11 @@ const branchConditionSections = computed(() => (
 const isContainerStep = computed(() => props.node.type === "parallel" || props.node.type === "loop");
 const isSplitContainerStep = computed(() => props.node.type === "split");
 const hasBranchContainer = computed(() => isContainerStep.value || isSplitContainerStep.value);
+const splitBranchConnections = computed(() => (
+  isSplitContainerStep.value
+    ? getBranchConnections(props.node?.data, props.node?.type)
+    : {}
+));
 const containerInnerSections = computed(() => {
   if (!isContainerStep.value) {
     return [];
@@ -186,6 +195,10 @@ function isSplitConditionPlaceholder(section) {
   return String(section?.value ?? "").trim().length === 0;
 }
 
+function isSplitBranchConnected(connectorKind) {
+  return Boolean(splitBranchConnections.value?.[connectorKind]);
+}
+
 function handleContainerSectionSelection(sectionIndex, item, close) {
   emit("set-inner-step", {
     nodeId: props.node.id,
@@ -198,6 +211,15 @@ function handleContainerSectionSelection(sectionIndex, item, close) {
 function handleContainerAddSelection(item, close) {
   emit("add-inner-step", {
     nodeId: props.node.id,
+    item,
+  });
+  close();
+}
+
+function handleSplitBranchAddSelection(connectorKind, item, close) {
+  emit("add-branch-step", {
+    nodeId: props.node.id,
+    connectorKind,
     item,
   });
   close();
@@ -341,7 +363,7 @@ function handleContainerAddSelection(item, close) {
         <template #trigger>
           <button
             type="button"
-            class="assistant-step-start-switcher__trigger assistant-step-control"
+            class="assistant-step-start-switcher__trigger assistant-step-control d-flex"
             aria-label="Change starting block"
           >
             <span class="assistant-step-start-switcher__pill true-small fw-medium text-white d-inline-flex align-items-center rounded-pill px-2 py-0" :class="node.typeMeta.bgClass">
@@ -353,7 +375,7 @@ function handleContainerAddSelection(item, close) {
                 :class="{ 'invert-to-white': node.typeMeta.iconInvert }"
               >
               <span>{{ node.typeMeta.label }}</span>
-              <img src="../../assets/dropdown.svg" width="11" height="11" class="assistant-step-start-switcher__caret ms-1">
+              <img src="../../assets/dropdown.svg" width="11" height="11" class="assistant-step-start-switcher__caret ms-3">
             </span>
           </button>
         </template>
@@ -428,28 +450,34 @@ function handleContainerAddSelection(item, close) {
     <div class="assistant-step-details">
       <div
         v-show="!node.detailsCollapsed"
-        class="assistant-step-details-content not-as-small text-black"
-        :class="hasBranchContainer ? 'px-4 pb-4 pt-3' : 'px-2.5 pb-2'"
+        class="true-small text-black"
+        :class="hasBranchContainer ? 'px-4 pb-4 pt-3' : 'px-2.5 py-2'"
       >
         <div v-if="isContainerStep" class="assistant-step-container-body d-flex flex-column">
           <table
             v-if="node.type === 'loop' && visibleRows.length"
-            class="assistant-step-container-details table table-borderless table-sm w-100 mb-3"
+            class="assistant-step-container-details table table-borderless table-sm w-100"
           >
             <tbody>
               <tr
                 v-for="row in visibleRows"
                 :key="row.key"
               >
-                <td class="text-muted text-capitalize assistant-step-detail__key">
+                <td class="text-muted assistant-step-detail__key">
                   <span class="assistant-step-detail__key-label">
                     <span>{{ row.key }}</span>
                   </span>
                 </td>
                 <td class="assistant-step-detail__val">
                   <div
+                    v-if="isPlaceholderStepDetailValue(row)"
+                    class="text-body-tertiary"
+                  >
+                    &dash;
+                  </div>
+                  <div
+                    v-else
                     class="assistant-step-detail__val-text"
-                    :class="{ 'assistant-step-detail__val-text--placeholder': isPlaceholderStepDetailValue(row) }"
                   >
                     {{ formatStepDetailValue(row) }}
                   </div>
@@ -513,7 +541,12 @@ function handleContainerAddSelection(item, close) {
               />
               <div class="assistant-step-parallel-branch-tail" aria-hidden="true">
                 <span class="assistant-step-parallel-branch-tail__line" />
-                <span class="assistant-step-parallel-branch-tail__plus d-inline-flex align-items-center justify-content-center fw-semibold">+</span>
+                <span
+                  class="assistant-step-parallel-branch-tail__plus d-inline-flex align-items-center justify-content-center fw-semibold assistant-step-branch-anchor"
+                  :data-step-id="node.id"
+                  :data-connector-kind="section.connectorKind"
+                  :data-branch-id="section.branchId"
+                >+</span>
               </div>
             </section>
 
@@ -546,7 +579,7 @@ function handleContainerAddSelection(item, close) {
         <div v-else-if="isSplitContainerStep" class="assistant-step-container-body d-flex flex-column">
           <div class="assistant-step-container-sections assistant-step-split-sections d-flex align-items-start">
             <template
-              v-for="(section, sectionIndex) in branchConditionSections"
+              v-for="section in branchConditionSections"
               :key="`${node.id}-split-${section.id}`"
             >
               <section class="assistant-step-container-branch assistant-step-split-branch">
@@ -559,33 +592,7 @@ function handleContainerAddSelection(item, close) {
                 >
                   {{ formatSplitConditionValue(section) }}
                 </div>
-                <div
-                  v-tooltip="{ content: 'Click to remove. Drag to change.', placement: 'right' }"
-                  class="assistant-step-connector assistant-step-connector--parallel-branch assistant-step-control"
-                  :data-step-id="node.id"
-                  :data-connector-kind="section.connectorKind"
-                  role="button"
-                  @pointerdown.stop.prevent="handleConnectorPointerDown($event, section.connectorKind)"
-                  @pointerover="handleConnectorPointerHover($event, section.connectorKind)"
-                  @pointermove="handleConnectorPointerHover($event, section.connectorKind)"
-                  @pointerleave="handleConnectorPointerLeave(section.connectorKind)"
-                  @click.stop
-                />
-                <div class="assistant-step-parallel-branch-tail" aria-hidden="true">
-                  <span class="assistant-step-parallel-branch-tail__line" />
-                  <span class="assistant-step-parallel-branch-tail__plus d-inline-flex align-items-center justify-content-center fw-semibold">+</span>
-                </div>
               </section>
-
-              <button
-                v-if="sectionIndex === 0"
-                type="button"
-                class="assistant-step-split-add__trigger btn btn-white border"
-                aria-label="Add Else If branch"
-                @click.stop="emit('add-split-else-if', node.id)"
-              >
-                +
-              </button>
             </template>
           </div>
         </div>
@@ -596,7 +603,7 @@ function handleContainerAddSelection(item, close) {
               v-for="row in visibleRows"
               :key="row.key"
             >
-              <td class="text-muted text-capitalize assistant-step-detail__key">
+              <td class="text-muted assistant-step-detail__key">
                 <span class="assistant-step-detail__key-label">
                   <img
                     v-if="shouldShowStepRowWarning(row)"
@@ -612,8 +619,14 @@ function handleContainerAddSelection(item, close) {
               </td>
               <td class="assistant-step-detail__val">
                 <div
+                  v-if="isPlaceholderStepDetailValue(row)"
+                  class="text-body-tertiary"
+                >
+                  &dash;
+                </div>
+                <div
+                  v-else
                   class="assistant-step-detail__val-text"
-                  :class="{ 'assistant-step-detail__val-text--placeholder': isPlaceholderStepDetailValue(row) }"
                 >
                   {{ formatStepDetailValue(row) }}
                 </div>
@@ -621,6 +634,64 @@ function handleContainerAddSelection(item, close) {
             </tr>
           </tbody>
         </table>
+      </div>
+    </div>
+
+    <div
+      v-if="isSplitContainerStep && !node.detailsCollapsed"
+      class="assistant-step-split-branch-exits"
+      @click.stop
+    >
+      <div
+        v-for="section in branchConditionSections"
+        :key="`${node.id}-split-exit-${section.id}`"
+        class="assistant-step-split-branch-exit"
+      >
+        <div
+          v-tooltip="{ content: 'Click to remove. Drag to change.', placement: 'right' }"
+          class="assistant-step-connector assistant-step-connector--split-branch assistant-step-control"
+          :class="{
+            'assistant-step-connector--active-target': isActiveConnectionDragTarget,
+            'assistant-step-connector--drag-source': isActiveConnectionDragSource,
+          }"
+          :data-step-id="node.id"
+          :data-connector-kind="section.connectorKind"
+          role="button"
+          @pointerdown.stop.prevent="handleConnectorPointerDown($event, section.connectorKind)"
+          @pointerover="handleConnectorPointerHover($event, section.connectorKind)"
+          @pointermove="handleConnectorPointerHover($event, section.connectorKind)"
+          @pointerleave="handleConnectorPointerLeave(section.connectorKind)"
+          @click.stop
+        />
+        <div v-if="!isSplitBranchConnected(section.connectorKind)" class="assistant-step-split-branch-tail">
+          <span class="assistant-step-split-branch-tail__line" />
+          <StepOptionsDropdown
+            class="assistant-step-split-branch-add"
+            placement="bottom-start"
+            menu-class="assistant-step-container-menu"
+            @click.stop
+          >
+            <template #trigger>
+              <button
+                type="button"
+                class="assistant-step-split-branch-add__trigger assistant-step-control assistant-step-branch-anchor"
+                :data-step-id="node.id"
+                :data-connector-kind="section.connectorKind"
+                :data-branch-id="section.branchId"
+                :aria-label="`Add a step for ${section.label}`"
+              >
+                <img src="../../assets/plus-round.svg" width="12" height="12" class="d-block invert-to-white" alt="">
+              </button>
+            </template>
+            <template #menu="{ close }">
+              <AddStepMenuContent
+                :groups="addStepMenuGroups"
+                :close-menu="close"
+                @select="(item) => handleSplitBranchAddSelection(section.connectorKind, item, close)"
+              />
+            </template>
+          </StepOptionsDropdown>
+        </div>
       </div>
     </div>
 
@@ -646,10 +717,15 @@ function handleContainerAddSelection(item, close) {
 
 <style lang="scss" scoped>
 .assistant-step {
+  --assistant-step-card-width: 18rem;
+  --assistant-connector-node-width: 1rem;
+  --assistant-connector-node-height: 0.5rem;
+  --assistant-connector-plus-size: 1.25rem;
   box-shadow: 0 4px 8px -2px rgba(0,0,0,0.1);
   cursor: grab;
   margin: 0 auto;
-  max-width: 18rem;
+  max-width: var(--assistant-step-card-width);
+  width: var(--assistant-step-card-width);
   position: relative;
   transform: translate3d(0,0,0);
   user-select: none;
@@ -663,7 +739,8 @@ function handleContainerAddSelection(item, close) {
 
 .assistant-step--container {
   box-shadow: 0 4px 8px -2px rgba(0,0,0,0.1);
-  max-width: 34rem;
+  max-width: none;
+  width: fit-content;
 
   .assistant-step-header {
     border: 0;
@@ -682,10 +759,6 @@ function handleContainerAddSelection(item, close) {
 
 .assistant-step-control {
   cursor: pointer;
-}
-
-.assistant-step-header {
-  min-height: 2.5rem;
 }
 
 .assistant-step-start-switcher {
@@ -769,10 +842,6 @@ function handleContainerAddSelection(item, close) {
   overflow: hidden;
 }
 
-.assistant-step-details-content {
-  background-color: transparent;
-}
-
 .assistant-step-details-caret {
   opacity: 0.55;
   transition: transform 120ms ease-in-out;
@@ -786,13 +855,13 @@ function handleContainerAddSelection(item, close) {
   background-color: var(--bs-dark);
   border-radius: 0.3rem;
   cursor: grab;
-  height: 0.5rem;
+  height: var(--assistant-connector-node-height);
   left: 50%;
   pointer-events: auto;
   position: absolute;
   transform: translateX(-50%);
   transition: opacity 120ms ease-in-out, box-shadow 120ms ease-in-out, background-color 120ms ease-in-out;
-  width: 1rem;
+  width: var(--assistant-connector-node-width);
 }
 
 .assistant-step-connector--top {
@@ -832,8 +901,8 @@ table {
 
 .assistant-step-detail__key {
   overflow-wrap: normal;
-  white-space: nowrap;
   word-break: normal;
+  width: min-content;
 }
 
 .assistant-step-detail__key-label {
@@ -871,27 +940,44 @@ table {
   word-break: normal;
 }
 
-.assistant-step-detail__val-text--placeholder {
-  color: var(--bs-secondary-color);
-  opacity: 0.7;
-}
-
 .assistant-step-split-sections {
   gap: 1rem;
 }
 
-.assistant-step-container-sections {
+.assistant-step-split-branch-exits {
+  bottom: 0;
+  display: flex;
   gap: 1rem;
+  height: 0;
+  left: 1.5rem;
+  pointer-events: none;
+  position: absolute;
+  z-index: 5;
+}
+
+.assistant-step-split-branch-exit {
+  flex: 0 0 var(--assistant-step-card-width);
+  height: 0;
+  position: relative;
+  width: var(--assistant-step-card-width);
+}
+
+.assistant-step-container-sections {
+  align-items: flex-start;
+  display: flex;
+  gap: 1rem;
+  width: max-content;
 }
 
 .assistant-step-container-branch {
   background-color: white;
   border: 1px solid var(--bs-gray-300);
   border-radius: 0.5rem;
-  flex: 1 1 0;
-  min-width: 0;
+  flex: 0 0 var(--assistant-step-card-width);
+  min-width: var(--assistant-step-card-width);
   padding: 0.5rem 0.6rem 1.65rem;
   position: relative;
+  width: var(--assistant-step-card-width);
 }
 
 .assistant-step-container-branch-selector__trigger {
@@ -929,55 +1015,116 @@ table {
   opacity: 0.7;
 }
 
-.assistant-step-split-add__trigger {
+.assistant-step-split-branch-tail {
   align-items: center;
-  align-self: center;
-  border-radius: 999px;
+  display: flex;
+  flex-direction: column;
+  left: 50%;
+  position: absolute;
+  top: calc(var(--assistant-connector-node-height) + 0.08rem);
+  transform: translateX(-50%);
+
+  &__line {
+    background-image: repeating-linear-gradient(
+      to bottom,
+      var(--bs-gray-400) 0 5px,
+      transparent 5px 11px
+    );
+    background-position: 50% 0;
+    background-repeat: repeat-y;
+    background-size: 2px 11px;
+    height: 2.6rem;
+    pointer-events: none;
+    width: 2px;
+    animation: assistant-step-split-branch-flow 1.8s linear infinite;
+  }
+}
+
+.assistant-step-split-branch-add {
+  align-items: center;
   display: inline-flex;
-  font-size: 1rem;
-  height: 1.75rem;
+  pointer-events: auto;
+}
+
+.assistant-step-split-branch-add__trigger {
+  align-items: center;
+  background-color: var(--bs-dark);
+  border: 0;
+  border-radius: 999px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
+  color: white;
+  display: inline-flex;
+  height: var(--assistant-connector-plus-size);
   justify-content: center;
   line-height: 1;
-  min-width: 1.75rem;
   padding: 0;
-  width: 1.75rem;
+  width: var(--assistant-connector-plus-size);
+}
+
+.assistant-step-split-branch-add__trigger:hover {
+  background-color: #3e4756;
+}
+
+@keyframes assistant-step-split-branch-flow {
+  to {
+    background-position-y: 11px;
+  }
 }
 
 .assistant-step-connector--parallel-branch {
-  border-radius: 0.25rem;
+  border-radius: 0.3rem;
   bottom: -0.28rem;
   box-shadow: 0 6px 12px rgba(0, 0, 0, 0.22);
-  height: 0.45rem;
+  height: var(--assistant-connector-node-height);
   left: 50%;
   right: auto;
   top: auto;
   transform: translate(-50%, 50%);
-  width: 0.85rem;
+  width: var(--assistant-connector-node-width);
+}
+
+.assistant-step-connector--split-branch {
+  border-radius: 0.3rem;
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.22);
+  pointer-events: auto;
+  left: 50%;
+  position: absolute;
+  top: -0.28rem;
+  transform: translateX(-50%);
 }
 
 .assistant-step-parallel-branch-tail {
   align-items: center;
-  bottom: -2.15rem;
   display: flex;
   flex-direction: column;
   left: 50%;
   pointer-events: none;
   position: absolute;
+  top: calc(100% + 0.47rem);
   transform: translateX(-50%);
 
   &__line {
-    border-left: 2px dashed var(--bs-gray-400);
-    height: 1.1rem;
+    background-image: repeating-linear-gradient(
+      to bottom,
+      var(--bs-gray-400) 0 5px,
+      transparent 5px 11px
+    );
+    background-position: 50% 0;
+    background-repeat: repeat-y;
+    background-size: 2px 11px;
+    height: 2.6rem;
+    width: 2px;
+    animation: assistant-step-split-branch-flow 1.8s linear infinite;
   }
 
   &__plus {
     background-color: var(--bs-dark);
     border-radius: 999px;
     color: white;
-    height: 1.1rem;
+    height: var(--assistant-connector-plus-size);
     line-height: 1;
     margin-top: 0.08rem;
-    width: 1.1rem;
+    width: var(--assistant-connector-plus-size);
   }
 }
 

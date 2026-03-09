@@ -626,7 +626,7 @@ defineExpose({
     </div>
 
     <div class="ivy-says-shell pt-2 bg-light">
-      <div class="ivy-says-sticky text-secondary bg-iceberg-blue p-3 rounded-sm not-as-small mx-4 mb-4">
+      <div class="border text-secondary bg-iceberg-blue p-3 rounded-sm not-as-small mx-4 mb-4">
         <img src="../../assets/nav-resources-alt.svg" height="16" width="16" class="me-2">
         <strong>Ivy says:</strong> {{ ivyContent.overview }}
         <div

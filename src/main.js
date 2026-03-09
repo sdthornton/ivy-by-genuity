@@ -9,6 +9,7 @@ import HomePage from "./components/HomePage.vue";
 import Chat from "./components/Chat.vue";
 import PromptLibrary from "./components/PromptLibrary.vue";
 import Assistants from "./components/Assistants.vue";
+import AssistantsIndex from "./components/AssistantsIndex.vue";
 import Collections from "./components/Collections.vue";
 
 const routes = [
@@ -16,6 +17,7 @@ const routes = [
   { path: "/chat", component: Chat, name: "Chat" },
   { path: "/prompt-library", component: PromptLibrary, name: "Prompt Library" },
   { path: "/assistants", component: Assistants, name: "Assistants", meta: { splitContent: true } },
+  { path: "/assistants-index", component: AssistantsIndex, name: "Assistants Index" },
   { path: "/collections", component: Collections, name: "Collections" },
 ];
 

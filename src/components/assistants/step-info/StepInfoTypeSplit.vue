@@ -2,10 +2,9 @@
 import { computed } from "vue";
 import {
   addSplitElseIfCondition,
-  ensureSplitStepData,
   getSplitConditionSections,
   setSplitConditionValue,
-} from "../mockSteps";
+} from "../stepRuntime";
 import StepInfoPanelBase from "./StepInfoPanelBase.vue";
 
 const props = defineProps({
@@ -31,9 +30,8 @@ function handleSplitConditionInput(branchId, event) {
   setSplitConditionValue(props.activeStep.data, branchId, event?.target?.value ?? "");
 }
 
-function addSplitElseIf() {
-  ensureSplitStepData(props.activeStep.data);
-  addSplitElseIfCondition(props.activeStep.data);
+function addSplitElseIf(insertAfterSectionIndex) {
+  addSplitElseIfCondition(props.activeStep.data, insertAfterSectionIndex);
 }
 </script>
 
@@ -47,30 +45,34 @@ function addSplitElseIf() {
   >
     <template #details>
       <div class="mt-4 w-100">
-        <div class="split-condition-stack d-flex flex-column gap-2">
-          <section
-            v-for="section in splitConditionSections"
+        <div class="split-condition-stack d-flex flex-column">
+          <template
+            v-for="(section, sectionIndex) in splitConditionSections"
             :key="section.id"
-            class="split-condition-section border rounded-sm p-2"
           >
-            <div class="split-condition-label true-small text-muted fw-semibold mb-1">
-              {{ section.label }}
-            </div>
-            <input
-              type="text"
-              class="form-control form-control-sm not-as-small"
-              :placeholder="section.placeholder"
-              :value="section.value"
-              @input="handleSplitConditionInput(section.branchId, $event)"
+            <section class="split-condition-section py-1">
+              <div class="split-condition-label true-small text-muted fw-semibold mb-1">
+                {{ section.label }}
+              </div>
+              <input
+                type="text"
+                class="form-control form-control-sm not-as-small"
+                :placeholder="section.placeholder"
+                :value="section.value"
+                @input="handleSplitConditionInput(section.branchId, $event)"
+              >
+            </section>
+            <button
+              v-if="sectionIndex < splitConditionSections.length - 1"
+              type="button"
+              class="split-condition-separator"
+              aria-label="Add Else If condition"
+              @click="addSplitElseIf(sectionIndex)"
             >
-          </section>
-          <button
-            type="button"
-            class="split-condition-add btn btn-sm btn-white border rounded-sm align-self-start"
-            @click="addSplitElseIf"
-          >
-            + Else If
-          </button>
+              <span class="split-condition-separator__line" />
+              <span class="split-condition-separator__plus d-inline-flex align-items-center justify-content-center">+</span>
+            </button>
+          </template>
         </div>
       </div>
     </template>
@@ -84,10 +86,56 @@ function addSplitElseIf() {
 }
 
 .split-condition-section {
-  background-color: white;
+  padding-inline: 0.1rem;
 }
 
-.split-condition-add {
-  min-height: 1.75rem;
+.split-condition-separator {
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  display: block;
+  height: 1.15rem;
+  margin: 0.2rem 0;
+  padding: 0;
+  position: relative;
+  width: 100%;
+
+  &__line {
+    border-top: 1px solid var(--bs-gray-200);
+    left: 0;
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    transition: border-color 120ms ease-in-out;
+  }
+
+  &__plus {
+    background-color: white;
+    border: 1px solid var(--bs-gray-300);
+    border-radius: 999px;
+    color: var(--bs-gray-600);
+    font-size: 0.95rem;
+    height: 1.15rem;
+    left: 50%;
+    line-height: 1;
+    position: absolute;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    transition: border-color 120ms ease-in-out, color 120ms ease-in-out;
+    width: 1.15rem;
+  }
+
+  &:hover,
+  &:focus-visible {
+    .split-condition-separator__line {
+      border-color: var(--bs-gray-400);
+    }
+
+    .split-condition-separator__plus {
+      border-color: var(--bs-gray-500);
+      color: var(--bs-gray-800);
+    }
+  }
 }
 </style>
