@@ -196,6 +196,11 @@ h5, .h5 {
   }
 }
 
+.btn-link {
+  text-decoration: none;
+  --bs-btn-hover-bg: rgb(52, 64, 84, 0.1);
+}
+
 .bg-lookup {
   background-color: #00b0b0 !important;
 }
@@ -341,4 +346,24 @@ h5, .h5 {
 .basic-box-grid__item {
   max-width: 25rem;
   width: 100%;
+}
+
+.bg-grid-effect {
+  bottom: 0;
+  height: 100%;
+  max-width: 22rem;
+  object-fit: cover;
+  position: absolute;
+  pointer-events: none;
+  left: 0;
+  top: 0;
+  width: 100%;
+  z-index: 0;
+}
+
+@supports (mix-blend-mode: plus-lighter) {
+  .bg-grid-effect {
+    mix-blend-mode: plus-lighter;
+    opacity: 0.325;
+  }
 }

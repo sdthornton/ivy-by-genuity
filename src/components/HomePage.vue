@@ -75,7 +75,7 @@ const chatBox = useTemplateRef('chatBox');
             <img src="../assets/nav-prompt-library.svg" width="16" height="16" class="invert-to-white">
           </div>
           <div class="position-relative mt-auto">
-            <h6 class="fw-bold mb-0">
+            <h6 class="fw-semibold mb-0">
               Show me any underused or unused licenses.
             </h6>
             <!-- <p class="mb-0 true-small text-dark pretty-overflow">
@@ -90,7 +90,7 @@ const chatBox = useTemplateRef('chatBox');
             <img src="../assets/nav-resources.svg" width="16" height="16" class="invert-to-white">
           </div>
           <div class="position-relative mt-auto">
-            <h6 class="fw-bold mb-0">
+            <h6 class="fw-semibold mb-0">
               Run "Daily IT Health Check."
             </h6>
             <!-- <p class="mb-0 true-small text-dark pretty-overflow">
@@ -107,7 +107,7 @@ const chatBox = useTemplateRef('chatBox');
             <img src="../assets/history.svg" width="16" height="16">
           </div>
           <div class="position-relative">
-            <div class="fw-bold mb-0 reduced">
+            <div class="fw-semibold mb-0 reduced">
               Cloud-Based Savings
             </div>
             <div class="smallest text-muted">
@@ -122,7 +122,7 @@ const chatBox = useTemplateRef('chatBox');
             <img src="../assets/history.svg" width="16" height="16">
           </div>
           <div class="position-relative">
-            <div class="fw-bold mb-0 reduced">
+            <div class="fw-semibold mb-0 reduced">
               IT Environment Report
             </div>
             <div class="smallest text-muted">
@@ -137,7 +137,7 @@ const chatBox = useTemplateRef('chatBox');
             <img src="../assets/history.svg" width="16" height="16">
           </div>
           <div class="position-relative">
-            <div class="fw-bold mb-0 reduced">
+            <div class="fw-semibold mb-0 reduced">
               New Security Risks
             </div>
             <div class="smallest text-muted">

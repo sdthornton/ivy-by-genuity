@@ -1,23 +1,43 @@
-function getElementLocalMetrics(element, rootRect, zoom = 1) {
-  if (
-    !(element instanceof HTMLElement)
-    || !rootRect
-    || typeof rootRect.left !== "number"
-    || typeof rootRect.top !== "number"
-  ) {
+function getSafeZoom(zoomLevel = 1) {
+  const parsedZoom = Number(zoomLevel);
+  return parsedZoom > 0 ? parsedZoom : 1;
+}
+
+function getBuilderRoot(canvasEl) {
+  if (!(canvasEl instanceof HTMLElement)) {
     return null;
   }
 
-  const safeZoom = Number(zoom) > 0 ? Number(zoom) : 1;
+  const builderScaleEl = canvasEl.querySelector(".assistant-builder-builder-scale");
+  return builderScaleEl instanceof HTMLElement ? builderScaleEl : null;
+}
+
+function getLayoutContext(canvasEl, zoomLevel = 1) {
+  const builderRootEl = getBuilderRoot(canvasEl);
+  if (!builderRootEl) {
+    return null;
+  }
+
+  return {
+    canvasEl,
+    zoomLevel: getSafeZoom(zoomLevel),
+    rootRect: builderRootEl.getBoundingClientRect(),
+  };
+}
+
+function getElementLocalMetrics(element, context) {
+  if (!(element instanceof HTMLElement) || !context?.rootRect) {
+    return null;
+  }
+
   const rect = element.getBoundingClientRect();
-  if (!rect || typeof rect.left !== "number" || typeof rect.top !== "number") {
-    return null;
-  }
+  const { left: rootLeft, top: rootTop } = context.rootRect;
+  const zoom = context.zoomLevel;
 
-  const left = (rect.left - rootRect.left) / safeZoom;
-  const top = (rect.top - rootRect.top) / safeZoom;
-  const width = rect.width / safeZoom;
-  const height = rect.height / safeZoom;
+  const left = (rect.left - rootLeft) / zoom;
+  const top = (rect.top - rootTop) / zoom;
+  const width = rect.width / zoom;
+  const height = rect.height / zoom;
 
   return {
     left,
@@ -31,17 +51,43 @@ function getElementLocalMetrics(element, rootRect, zoom = 1) {
   };
 }
 
-function getSceneRoot(canvasEl) {
-  if (!(canvasEl instanceof HTMLElement)) {
+function createCachedMeasurer(context) {
+  const cache = new WeakMap();
+
+  return (element) => {
+    if (!(element instanceof HTMLElement)) {
+      return null;
+    }
+
+    if (cache.has(element)) {
+      return cache.get(element);
+    }
+
+    const metrics = getElementLocalMetrics(element, context);
+    cache.set(element, metrics);
+    return metrics;
+  };
+}
+
+function getStepElement(canvasEl, nodeId) {
+  const stepEl = canvasEl?.querySelector?.(`.assistant-step[data-step-id="${String(nodeId)}"]`);
+  return stepEl instanceof HTMLElement ? stepEl : null;
+}
+
+function getBranchAnchorElement(stepEl, connectorKind) {
+  if (!(stepEl instanceof HTMLElement)) {
     return null;
   }
 
-  const sceneScaleEl = canvasEl.querySelector(".assistant-builder-scene-scale");
-  if (!(sceneScaleEl instanceof HTMLElement)) {
-    return null;
+  const connectorSelector = `.assistant-step-connector[data-connector-kind="${String(connectorKind)}"]`;
+  const connectorEl = stepEl.querySelector(connectorSelector);
+  if (connectorEl instanceof HTMLElement) {
+    return connectorEl;
   }
 
-  return sceneScaleEl;
+  const fallbackSelector = `[data-connector-kind="${String(connectorKind)}"].assistant-step-branch-anchor`;
+  const fallbackEl = stepEl.querySelector(fallbackSelector);
+  return fallbackEl instanceof HTMLElement ? fallbackEl : null;
 }
 
 export function getBranchConnectorCenterInCanvas({
@@ -51,38 +97,26 @@ export function getBranchConnectorCenterInCanvas({
   isBranchConnectorKind,
   zoomLevel = 1,
 } = {}) {
-  
-  console.log(isBranchConnectorKind(connectorKind));
-
   if (typeof isBranchConnectorKind !== "function" || !isBranchConnectorKind(connectorKind)) {
     return null;
   }
 
-  const sceneScaleEl = getSceneRoot(canvasEl);
-  if (!sceneScaleEl) {
-    return null;
-  }
-  const sceneRect = sceneScaleEl.getBoundingClientRect();
-  console.log(sceneScaleEl);
-  console.log(sceneRect);
-
-  const sourceEl = canvasEl.querySelector(`.assistant-step[data-step-id="${String(nodeId)}"]`);
-  if (!(sourceEl instanceof HTMLElement)) {
+  const context = getLayoutContext(canvasEl, zoomLevel);
+  if (!context) {
     return null;
   }
 
-  const connectorEl = sourceEl.querySelector(
-    `.assistant-step-connector[data-connector-kind="${String(connectorKind)}"]`,
-  );
-  const fallbackAnchorEl = sourceEl.querySelector(
-    `[data-connector-kind="${String(connectorKind)}"].assistant-step-branch-anchor`,
-  );
-  const resolvedEl = connectorEl instanceof HTMLElement ? connectorEl : fallbackAnchorEl;
-  if (!(resolvedEl instanceof HTMLElement)) {
+  const stepEl = getStepElement(canvasEl, nodeId);
+  if (!stepEl) {
     return null;
   }
 
-  const metrics = getElementLocalMetrics(resolvedEl, sceneRect, zoomLevel);
+  const branchAnchorEl = getBranchAnchorElement(stepEl, connectorKind);
+  if (!branchAnchorEl) {
+    return null;
+  }
+
+  const metrics = getElementLocalMetrics(branchAnchorEl, context);
   if (!metrics) {
     return null;
   }
@@ -91,6 +125,24 @@ export function getBranchConnectorCenterInCanvas({
     x: metrics.centerX,
     y: metrics.centerY,
   };
+}
+
+export function getNodeMetricsInCanvas({
+  canvasEl,
+  nodeId,
+  zoomLevel = 1,
+} = {}) {
+  const context = getLayoutContext(canvasEl, zoomLevel);
+  if (!context) {
+    return null;
+  }
+
+  const nodeEl = getStepElement(canvasEl, nodeId);
+  if (!nodeEl) {
+    return null;
+  }
+
+  return getElementLocalMetrics(nodeEl, context);
 }
 
 export function getNodeHeightInCanvas({
@@ -103,6 +155,7 @@ export function getNodeHeightInCanvas({
     nodeId,
     zoomLevel,
   });
+
   return metrics ? metrics.height : null;
 }
 
@@ -116,46 +169,26 @@ export function getNodeWidthInCanvas({
     nodeId,
     zoomLevel,
   });
+
   return metrics ? metrics.width : null;
-}
-
-export function getNodeMetricsInCanvas({
-  canvasEl,
-  nodeId,
-  zoomLevel = 1,
-} = {}) {
-  const sceneScaleEl = getSceneRoot(canvasEl);
-  if (!sceneScaleEl) {
-    return null;
-  }
-
-  const sceneRect = sceneScaleEl.getBoundingClientRect();
-  const nodeEl = canvasEl.querySelector(`.assistant-step[data-step-id="${String(nodeId)}"]`);
-  if (!(nodeEl instanceof HTMLElement)) {
-    return null;
-  }
-
-  return getElementLocalMetrics(nodeEl, sceneRect, zoomLevel);
 }
 
 function collectAnchors({
   canvasEl,
-  nodes,
   findNodeById,
-  sceneRect,
-  zoomLevel,
+  measureElementLocal,
 } = {}) {
   const anchors = new Map();
   const branchAnchors = new Map();
   const nodeEls = Array.from(canvasEl.querySelectorAll(".assistant-step[data-step-id]"));
 
-  nodeEls.forEach((el) => {
-    const nodeId = String(el.dataset.stepId || "");
+  nodeEls.forEach((nodeEl) => {
+    const nodeId = String(nodeEl.dataset.stepId || "");
     if (!nodeId || !findNodeById(nodeId)) {
       return;
     }
 
-    const nodeMetrics = getElementLocalMetrics(el, sceneRect, zoomLevel);
+    const nodeMetrics = measureElementLocal(nodeEl);
     if (!nodeMetrics) {
       return;
     }
@@ -166,51 +199,49 @@ function collectAnchors({
       bottomY: nodeMetrics.bottom,
     });
 
-    const connectorEls = Array.from(
-      el.querySelectorAll('.assistant-step-connector[data-connector-kind^="branch:"]'),
+    const bestByConnectorKind = new Map();
+    const branchElements = Array.from(
+      nodeEl.querySelectorAll('[data-connector-kind^="branch:"]'),
     );
-    connectorEls.forEach((connectorEl) => {
-      if (!(connectorEl instanceof HTMLElement)) {
+
+    branchElements.forEach((branchElement) => {
+      if (!(branchElement instanceof HTMLElement)) {
         return;
       }
 
-      const connectorKind = String(connectorEl.dataset.connectorKind || "");
-      if (!connectorKind || branchAnchors.has(`${nodeId}|${connectorKind}`)) {
+      const connectorKind = String(branchElement.dataset.connectorKind || "");
+      if (!connectorKind) {
         return;
       }
 
-      const connectorMetrics = getElementLocalMetrics(connectorEl, sceneRect, zoomLevel);
-      if (!connectorMetrics) {
+      const isConnectorNode = branchElement.classList.contains("assistant-step-connector");
+      const isFallbackAnchor = branchElement.classList.contains("assistant-step-branch-anchor");
+      if (!isConnectorNode && !isFallbackAnchor) {
         return;
       }
 
-      branchAnchors.set(`${nodeId}|${connectorKind}`, {
-        x: connectorMetrics.centerX,
-        y: connectorMetrics.centerY,
+      const priority = isConnectorNode ? 1 : 2;
+      const currentBest = bestByConnectorKind.get(connectorKind);
+      if (currentBest && currentBest.priority <= priority) {
+        return;
+      }
+
+      const metrics = measureElementLocal(branchElement);
+      if (!metrics) {
+        return;
+      }
+
+      bestByConnectorKind.set(connectorKind, {
+        priority,
+        x: metrics.centerX,
+        y: metrics.centerY,
       });
     });
 
-    const branchAnchorEls = Array.from(
-      el.querySelectorAll('[data-connector-kind^="branch:"].assistant-step-branch-anchor'),
-    );
-    branchAnchorEls.forEach((anchorEl) => {
-      if (!(anchorEl instanceof HTMLElement)) {
-        return;
-      }
-
-      const connectorKind = String(anchorEl.dataset.connectorKind || "");
-      if (!connectorKind || branchAnchors.has(`${nodeId}|${connectorKind}`)) {
-        return;
-      }
-
-      const anchorMetrics = getElementLocalMetrics(anchorEl, sceneRect, zoomLevel);
-      if (!anchorMetrics) {
-        return;
-      }
-
+    bestByConnectorKind.forEach((anchor, connectorKind) => {
       branchAnchors.set(`${nodeId}|${connectorKind}`, {
-        x: anchorMetrics.centerX,
-        y: anchorMetrics.centerY,
+        x: anchor.x,
+        y: anchor.y,
       });
     });
   });
@@ -340,18 +371,16 @@ export function computeBuilderConnectionLayout({
   getConnectionLineKey,
   defaultTerminalSegmentLength = 42,
 } = {}) {
-  const sceneScaleEl = getSceneRoot(canvasEl);
-  if (!sceneScaleEl) {
+  const context = getLayoutContext(canvasEl, zoomLevel);
+  if (!context) {
     return null;
   }
 
-  const sceneRect = sceneScaleEl.getBoundingClientRect();
+  const measureElementLocal = createCachedMeasurer(context);
   const { anchors, branchAnchors } = collectAnchors({
     canvasEl,
-    nodes,
     findNodeById,
-    sceneRect,
-    zoomLevel,
+    measureElementLocal,
   });
 
   const connectionLines = buildConnectionLines({

@@ -94,11 +94,11 @@ const canvasPanStyle = computed(() => ({
   backgroundPosition: `${panOffset.x + 2}px ${panOffset.y + 4}px`,
 }));
 
-const sceneTranslateStyle = computed(() => ({
+const builderTranslateStyle = computed(() => ({
   transform: `translate3d(${panOffset.x}px, ${panOffset.y}px, 0)`,
 }));
 
-const sceneScaleStyle = computed(() => ({
+const builderScaleStyle = computed(() => ({
   transform: `scale(${zoomLevel.value})`,
 }));
 
@@ -392,6 +392,15 @@ function handleAddStepMenuSelection(selectionPayload) {
       nodeId: context.sourceId,
       connectorKind: context.sourceConnectorKind,
       item,
+      connectorCenterOverride: (
+        Number.isFinite(Number(context.sourceConnectorX))
+        && Number.isFinite(Number(context.sourceConnectorY))
+      )
+        ? {
+          x: Number(context.sourceConnectorX),
+          y: Number(context.sourceConnectorY),
+        }
+        : null,
     });
     return;
   }
@@ -411,14 +420,18 @@ function handleAddStepMenuSelection(selectionPayload) {
   }
 
   let wasInserted = false;
+  let insertionSourceId = null;
   if (context.placement === "between" && context.sourceId && context.targetId) {
     const sourceNode = findNodeById(context.sourceId);
+    insertionSourceId = sourceNode?.id || null;
     wasInserted = insertNodeAfter(sourceNode, nextNode, context.targetId);
   } else if (context.placement === "after" && context.sourceId) {
     const sourceNode = findNodeById(context.sourceId);
+    insertionSourceId = sourceNode?.id || null;
     wasInserted = insertNodeAfter(sourceNode, nextNode);
   } else {
     const sourceNode = getFloatingInsertionSourceNode();
+    insertionSourceId = sourceNode?.id || null;
     wasInserted = insertNodeAfter(sourceNode, nextNode);
   }
 
@@ -429,7 +442,14 @@ function handleAddStepMenuSelection(selectionPayload) {
   setLiveSidebarSteps(nodes);
   emitCurrentNodeIds();
   toggleSidebar(nextNode.id);
-  nextTick(() => scheduleConnectionLineUpdate());
+  nextTick(() => {
+    if (wasInserted && insertionSourceId) {
+      alignNodeToSourceBottomConnector(insertionSourceId, nextNode.id);
+    }
+
+    scheduleConnectionLineUpdate();
+    requestAnimationFrame(() => scheduleConnectionLineUpdate());
+  });
 }
 
 function handleUndoClick() {
@@ -913,7 +933,57 @@ function getNodeLocalMetrics(nodeId) {
   });
 }
 
-function addBranchStepForNode({ nodeId, connectorKind, item } = {}) {
+function alignNodeToSourceBottomConnector(sourceNodeId, insertedNodeId) {
+  const sourceMetrics = getNodeLocalMetrics(sourceNodeId);
+  const insertedMetrics = getNodeLocalMetrics(insertedNodeId);
+  const insertedNode = findNodeById(insertedNodeId);
+  if (!sourceMetrics || !insertedMetrics || !insertedNode) {
+    return;
+  }
+
+  insertedNode.x += sourceMetrics.centerX - insertedMetrics.centerX;
+}
+
+function alignBranchInsertedNodeToConnector({
+  sourceNodeId,
+  connectorKind,
+  insertedNodeId,
+  verticalOffset = BRANCH_INSERT_SEGMENT_LENGTH,
+} = {}) {
+  const insertedMetrics = getNodeLocalMetrics(insertedNodeId);
+  const insertedNode = findNodeById(insertedNodeId);
+  if (!insertedMetrics || !insertedNode) {
+    return false;
+  }
+
+  const connectorCenter = getBranchConnectorCenter(sourceNodeId, connectorKind);
+  const sourceX = Number(connectorCenter?.x);
+  const sourceY = Number(connectorCenter?.y);
+  if (!Number.isFinite(sourceX) || !Number.isFinite(sourceY)) {
+    return false;
+  }
+
+  const deltaX = sourceX - insertedMetrics.centerX;
+  const deltaY = (sourceY + verticalOffset) - insertedMetrics.top;
+
+  if (Math.abs(deltaX) > 0.1) {
+    insertedNode.x += deltaX;
+  }
+
+  if (Math.abs(deltaY) > 0.1) {
+    insertedNode.y += deltaY;
+  }
+
+  return true;
+}
+
+function addBranchStepForNode({
+  nodeId,
+  connectorKind,
+  item,
+  connectorCenterOverride = null,
+  connectorCenterClient = null,
+} = {}) {
   const sourceNode = findNodeById(nodeId);
   if (!sourceNode || !isBranchConnectorKind(connectorKind) || !isBranchContainerNodeType(sourceNode.type)) {
     return;
@@ -932,9 +1002,9 @@ function addBranchStepForNode({ nodeId, connectorKind, item } = {}) {
     ? existingTargetNode.id
     : null;
 
-  const sourceNodeHeight = getNodeLocalHeight(sourceNode.id) || INSERT_NODE_Y_SPACING;
+  const fallbackSourceNodeHeight = getNodeLocalHeight(sourceNode.id) || INSERT_NODE_Y_SPACING;
   nextNode.x = Number(sourceNode.x) || 0;
-  nextNode.y = (Number(sourceNode.y) || 0) + sourceNodeHeight + BRANCH_INSERT_SEGMENT_LENGTH;
+  nextNode.y = (Number(sourceNode.y) || 0) + fallbackSourceNodeHeight + BRANCH_INSERT_SEGMENT_LENGTH;
 
   nextNode.connections = [];
   if (existingTargetId) {
@@ -950,14 +1020,22 @@ function addBranchStepForNode({ nodeId, connectorKind, item } = {}) {
   setLiveSidebarSteps(nodes);
   emitCurrentNodeIds();
   toggleSidebar(nextNode.id);
+  scheduleConnectionLineUpdate();
 
-  nextTick(() => {
-    const refreshedConnectorCenter = getBranchConnectorCenter(sourceNode.id, connectorKind);
-    const insertedMetrics = getNodeLocalMetrics(nextNode.id);
-    if (refreshedConnectorCenter && insertedMetrics) {
-      const desiredTopY = refreshedConnectorCenter.y + BRANCH_INSERT_SEGMENT_LENGTH;
-      nextNode.x += refreshedConnectorCenter.x - insertedMetrics.centerX;
-      nextNode.y += desiredTopY - insertedMetrics.top;
+  const alignBranchInsertedNode = (attempt = 0) => {
+    const aligned = alignBranchInsertedNodeToConnector({
+      sourceNodeId: sourceNode.id,
+      connectorKind,
+      insertedNodeId: nextNode.id,
+      verticalOffset: BRANCH_INSERT_SEGMENT_LENGTH,
+    });
+
+    if (!aligned && attempt < 6) {
+      requestAnimationFrame(() => {
+        scheduleConnectionLineUpdate();
+        alignBranchInsertedNode(attempt + 1);
+      });
+      return;
     }
 
     if (existingTargetId) {
@@ -978,6 +1056,10 @@ function addBranchStepForNode({ nodeId, connectorKind, item } = {}) {
     scheduleConnectionLineUpdate();
     requestAnimationFrame(() => scheduleConnectionLineUpdate());
     window.setTimeout(() => scheduleConnectionLineUpdate(), 220);
+  };
+
+  nextTick(() => {
+    alignBranchInsertedNode();
   });
 }
 
@@ -1134,11 +1216,11 @@ onBeforeUnmount(() => {
     @pointercancel="endCanvasPan"
   >
     <div
-      class="assistant-builder-scene"
-      :class="{ 'assistant-builder-scene--recentering': isRecentering }"
-      :style="sceneTranslateStyle"
+      class="assistant-builder-builder"
+      :class="{ 'assistant-builder-builder--recentering': isRecentering }"
+      :style="builderTranslateStyle"
     >
-      <div class="assistant-builder-scene-scale" :style="sceneScaleStyle">
+      <div class="assistant-builder-builder-scale" :style="builderScaleStyle">
         <BuilderConnectionsLayer
           :viewport-size="viewportSize"
           :reorder-drag="reorderDrag"
@@ -1265,16 +1347,16 @@ onBeforeUnmount(() => {
   transition: background-position 0.16s ease-in-out;
 }
 
-.assistant-builder-scene {
+.assistant-builder-builder {
   inset: 0;
   position: absolute;
 }
 
-.assistant-builder-scene--recentering {
+.assistant-builder-builder--recentering {
   transition: transform 0.16s ease-in-out;
 }
 
-.assistant-builder-scene-scale {
+.assistant-builder-builder-scale {
   inset: 0;
   position: absolute;
   transform-origin: center top;

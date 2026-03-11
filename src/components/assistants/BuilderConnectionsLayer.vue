@@ -226,6 +226,8 @@ const branchConnectionLines = computed(() => (
           sourceId: line.sourceId,
           targetId: line.targetId,
           sourceConnectorKind: line.sourceConnectorKind,
+          sourceConnectorX: line.x1,
+          sourceConnectorY: line.y1,
         })"
       />
     </template>

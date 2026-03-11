@@ -1,6 +1,7 @@
 <script setup>
 import { computed, nextTick, ref } from "vue";
 import StepOptionsDropdown from "../shared/StepOptionsDropdown.vue";
+import CategoryPillDropdown from "./shared/CategoryPillDropdown.vue";
 import iconClock from "../../assets/clock.svg";
 import iconEyeOpen from "../../assets/eye-open.svg";
 import iconEdit from "../../assets/edit.svg";
@@ -41,17 +42,6 @@ const props = defineProps({
 
 const emit = defineEmits(["close", "select-trigger"]);
 const titleInput = ref(null);
-const categoryOptions = [
-  "security",
-  "threats",
-  "activity",
-  "monitoring",
-  "backup",
-  "sync",
-  "operations",
-  "compliance",
-  "access",
-];
 const permissionAccessOptions = [
   "Read Only",
   "Read/Write",
@@ -185,19 +175,6 @@ function toInitials(value, fallback) {
     .slice(0, 2)
     .map((word) => word[0]?.toUpperCase() || "")
     .join("");
-}
-
-function formatCategoryLabel(value) {
-  return String(value || "")
-    .split("-")
-    .filter(Boolean)
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
-}
-
-function selectCategory(category, close) {
-  props.settings.category = category;
-  close();
 }
 
 function ensurePermissionEntries() {
@@ -343,43 +320,11 @@ defineExpose({
             <span>{{ settings.updatedAt }}</span>
           </div>
           <span class="text-body-tertiary smallest mx-1">&bullet;</span>
-          <StepOptionsDropdown placement="bottom-start" menu-class="assistant-category-menu">
-            <template #trigger>
-              <div 
-                v-tooltip="{ content: 'Category.', placement: 'top' }"
-                class="fw-medium true-small text-black text-capitalize rounded-pill px-2 d-inline-flex"
-                :class="`bg-category-${settings.category}`"
-              >
-                <div class="category-pill-content d-flex align-items-center">
-                  <span>{{ formatCategoryLabel(settings.category) }}</span>
-                  <img src="../../assets/dropdown.svg" height="12" width="12" class="ms-2 opacity-75">
-                </div>
-              </div>
-            </template>
-            <template #menu="{ close }">
-              <button
-                v-for="category in categoryOptions"
-                :key="category"
-                type="button"
-                class="dropdown-item d-flex align-items-center justify-content-between gap-3 text-start assistant-category-menu__item"
-                @click="selectCategory(category, close)"
-              >
-                <span class="d-inline-flex align-items-center gap-2">
-                  <span
-                    class="assistant-category-menu__swatch rounded-pill"
-                    :class="`bg-category-${category}`"
-                  />
-                  <span>{{ formatCategoryLabel(category) }}</span>
-                </span>
-                <span
-                  v-if="settings.category === category"
-                  class="assistant-category-menu__selected text-body-secondary"
-                >
-                  Current
-                </span>
-              </button>
-            </template>
-          </StepOptionsDropdown>
+          <CategoryPillDropdown
+            v-model="settings.category"
+            tooltip="Category."
+            placement="bottom-start"
+          />
         </div>
 
         <div class="mb-4 me-5">
@@ -721,32 +666,6 @@ defineExpose({
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-.category-pill-content {
-  mix-blend-mode: darken;
-  opacity: 0.65;
-}
-
-.assistant-category-menu__item {
-  background: transparent;
-  border: 0;
-  width: 100%;
-}
-
-.assistant-category-menu__selected {
-  font-size: 0.75rem;
-}
-
-.assistant-category-menu__swatch {
-  display: inline-block;
-  height: 0.875rem;
-  width: 1.5rem;
-}
-
-:deep(.assistant-category-menu) {
-  min-width: 12rem;
-  padding: 0.35rem 0;
 }
 
 .assistant-permissions-menu__item {

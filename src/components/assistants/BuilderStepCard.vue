@@ -217,10 +217,23 @@ function handleContainerAddSelection(item, close) {
 }
 
 function handleSplitBranchAddSelection(connectorKind, item, close) {
+  const connectorEl = document.querySelector(
+    `.assistant-step-connector[data-step-id="${String(props.node.id)}"][data-connector-kind="${String(connectorKind)}"]`,
+  );
+  const connectorRect = connectorEl instanceof HTMLElement
+    ? connectorEl.getBoundingClientRect()
+    : null;
+
   emit("add-branch-step", {
     nodeId: props.node.id,
     connectorKind,
     item,
+    connectorCenterClient: connectorRect
+      ? {
+        x: connectorRect.left + (connectorRect.width / 2),
+        y: connectorRect.top + (connectorRect.height / 2),
+      }
+      : null,
   });
   close();
 }
@@ -374,7 +387,7 @@ function handleSplitBranchAddSelection(connectorKind, item, close) {
                 class="d-block me-1"
                 :class="{ 'invert-to-white': node.typeMeta.iconInvert }"
               >
-              <span>{{ node.typeMeta.label }}</span>
+              <span>{{ node.title || node.typeMeta.label }}</span>
               <img src="../../assets/dropdown.svg" width="11" height="11" class="assistant-step-start-switcher__caret ms-3">
             </span>
           </button>
@@ -402,7 +415,7 @@ function handleSplitBranchAddSelection(connectorKind, item, close) {
         </template>
       </StepOptionsDropdown>
 
-      <h6 v-if="!node.isStartBlock || node.type !== 'start'" class="mb-0 me-2">
+      <h6 v-if="!node.isStartBlock" class="mb-0 me-2">
         {{ node.title }}
       </h6>
 

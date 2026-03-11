@@ -223,7 +223,8 @@ body {
   height: calc(100vh - #{$content-inset * 2});
   inset: $content-inset;
   left: $left-nav-closed-width;
-  overflow: scroll;
+  overflow-y: scroll;
+  overflow-x: hidden;
   padding-left: 3rem;
   padding-right: 3rem;
   position: fixed;
