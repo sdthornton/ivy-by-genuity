@@ -1,6 +1,7 @@
 <script setup>
-import { ref } from "vue";
+import { computed, ref } from "vue";
 import StepOptionsDropdown from "../../shared/StepOptionsDropdown.vue";
+import sharepointLogo from "../../../assets/sharepoint.png";
 
 const props = defineProps({
   activeStep: {
@@ -20,6 +21,76 @@ const props = defineProps({
 const emit = defineEmits(["close", "select-start-block"]);
 
 const sourceSearch = ref("");
+const isLookupStep = computed(() => props.activeStep?.type === "lookup");
+const displayedSources = computed(() => {
+  const explicitSources = Array.isArray(props.activeStep?.sources)
+    ? props.activeStep.sources.filter((source) => source?.label)
+    : [];
+  if (explicitSources.length) {
+    return explicitSources;
+  }
+
+  if (!isLookupStep.value) {
+    return [];
+  }
+
+  const selectedSource = String(props.activeStep?.data?.source || "").trim();
+  if (!selectedSource) {
+    return [];
+  }
+
+  return [{
+    label: selectedSource,
+    icon: resolveSourceIcon(selectedSource),
+  }];
+});
+const hasSourceSection = computed(() => (
+  isLookupStep.value || displayedSources.value.length > 0
+));
+const filteredSourceOptions = computed(() => {
+  const query = sourceSearch.value.trim().toLowerCase();
+  if (!query) {
+    return props.sourceOptions;
+  }
+
+  return props.sourceOptions.filter((source) => (
+    String(source).toLowerCase().includes(query)
+  ));
+});
+
+function resolveSourceIcon(sourceLabel) {
+  if (String(sourceLabel || "").trim().toLowerCase() === "sharepoint") {
+    return sharepointLogo;
+  }
+
+  return null;
+}
+
+function selectSource(source, close) {
+  if (props.activeStep?.data && typeof props.activeStep.data === "object") {
+    props.activeStep.data.source = source;
+  }
+
+  if (!Array.isArray(props.activeStep?.sources)) {
+    props.activeStep.sources = [];
+  }
+
+  const existingSource = props.activeStep.sources.find((entry) => (
+    String(entry?.label || "").trim().toLowerCase() === String(source).trim().toLowerCase()
+  ));
+
+  if (!existingSource) {
+    props.activeStep.sources.push({
+      label: source,
+      icon: resolveSourceIcon(source),
+    });
+  } else if (!existingSource.icon) {
+    existingSource.icon = resolveSourceIcon(source);
+  }
+
+  sourceSearch.value = "";
+  close?.();
+}
 </script>
 
 <template>
@@ -83,15 +154,16 @@ const sourceSearch = ref("");
           <img src="../../../assets/edit.svg" height="12" width="12" class="opacity-50">
         </div>
 
-        <div v-if="activeStep.sources.length" class="mt-4 w-100">
+        <div v-if="hasSourceSection" class="mt-4 w-100">
           <h6 class="fw-medium mb-1">Source(s)</h6>
           <div class="d-flex align-items-center">
             <div
-              v-for="source in activeStep.sources"
+              v-for="source in displayedSources"
               :key="source.label"
               class="rounded-circle bg-secondary-subtle d-flex align-items-center justify-content-center px-2.5 py-2.5 me-2"
             >
-              <img :src="source.icon" height="20" width="20">
+              <img v-if="source.icon" :src="source.icon" height="20" width="20" :alt="source.label">
+              <span v-else class="source-fallback-label true-small text-muted">{{ source.label.slice(0, 2).toUpperCase() }}</span>
             </div>
             <StepOptionsDropdown
               placement="bottom-end"
@@ -106,7 +178,7 @@ const sourceSearch = ref("");
                   <img src="../../../assets/plus-round.svg" height="14" width="14">
                 </button>
               </template>
-              <template #menu>
+              <template #menu="{ close }">
                 <div class="source-picker-title true-small text-muted">Your sources.</div>
                 <input
                   v-model="sourceSearch"
@@ -116,10 +188,11 @@ const sourceSearch = ref("");
                 >
                 <div class="source-picker-grid">
                   <button
-                    v-for="source in sourceOptions"
+                    v-for="source in filteredSourceOptions"
                     :key="source"
                     type="button"
                     class="source-picker-item true-small"
+                    @click.stop="selectSource(source, close)"
                   >
                     {{ source }}
                   </button>
@@ -214,6 +287,10 @@ const sourceSearch = ref("");
 
 .source-picker-trigger {
   border-color: var(--bs-gray-300) !important;
+}
+
+.source-fallback-label {
+  letter-spacing: 0.02em;
 }
 
 :deep(.source-picker-menu) {
