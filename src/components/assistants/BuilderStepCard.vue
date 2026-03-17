@@ -4,8 +4,8 @@ import BasicDropdown from "../shared/BasicDropdown.vue";
 import AddStepMenuContent from "./AddStepMenuContent.vue";
 import { resolveSourceIcon } from "../shared/sourceCatalog";
 import {
-  getBranchConnections,
   getAddStepMenuGroups,
+  getBranchConnections,
   getContainerInnerSections,
   getSplitConditionSections,
   getVisibleStepRows,
@@ -72,7 +72,6 @@ const emit = defineEmits([
   "remove-connections",
   "delete-step",
   "select-start-block",
-  "add-split-else-if",
   "add-branch-step",
   "set-inner-step",
   "add-inner-step",
@@ -91,18 +90,16 @@ const isSplitContainerStep = computed(() => props.node.type === "split");
 const hasBranchContainer = computed(() => isContainerStep.value || isSplitContainerStep.value);
 const splitBranchConnections = computed(() => (
   isSplitContainerStep.value
-    ? getBranchConnections(props.node?.data, props.node?.type)
+    ? getBranchConnections(props.node.data, props.node.type)
     : {}
 ));
 const sourceRowItems = computed(() => {
-  const explicitSources = Array.isArray(props.node?.sources)
-    ? props.node.sources
-    : [];
+  const explicitSources = props.node.sources;
   const normalizedSources = [];
   const seenLabels = new Set();
 
   explicitSources.forEach((source) => {
-    const label = String(source?.label || source || "").trim();
+    const label = String(source.label || source).trim();
     if (!label) {
       return;
     }
@@ -115,7 +112,7 @@ const sourceRowItems = computed(() => {
     seenLabels.add(normalizedLabel);
     normalizedSources.push({
       label,
-      icon: source?.icon || resolveSourceIcon(label),
+      icon: source.icon || resolveSourceIcon(label),
     });
   });
 
@@ -123,7 +120,7 @@ const sourceRowItems = computed(() => {
     return normalizedSources;
   }
 
-  const selectedSource = String(props.node?.data?.source || "").trim();
+  const selectedSource = String(props.node.data.source || "").trim();
   if (!selectedSource) {
     return [];
   }
@@ -154,7 +151,7 @@ const containerInnerSections = computed(() => {
     return [];
   }
 
-  return getContainerInnerSections(props.node?.data, props.node.type);
+  return getContainerInnerSections(props.node.data, props.node.type);
 });
 
 watch(
@@ -175,28 +172,28 @@ function hasStepDetailValue(value) {
 }
 
 function isSourceRow(row) {
-  return row?.dataKey === "source";
+  return row.dataKey === "source";
 }
 
 function formatStepDetailValue(row) {
-  const value = props.node.data?.[row?.dataKey];
+  const value = props.node.data[row.dataKey];
   if (hasStepDetailValue(value)) {
     return String(value).trim();
   }
 
-  return row?.placeholder || "-";
+  return row.placeholder || "-";
 }
 
 function isPlaceholderStepDetailValue(row) {
-  return !hasStepDetailValue(props.node.data?.[row?.dataKey]);
+  return !hasStepDetailValue(props.node.data[row.dataKey]);
 }
 
 function shouldShowStepRowWarning(row) {
   return Boolean(
-    row?.isCode
-      && hasStepDetailValue(props.node.data?.[row.dataKey])
+    row.isCode
+      && hasStepDetailValue(props.node.data[row.dataKey])
       && isStepWarningVisible(
-        props.node.stateKey || props.node.id,
+        props.node.stateKey,
         row.dataKey,
         row.showWarning,
       ),
@@ -243,20 +240,20 @@ function handleStartBlockSelect(mode, close) {
 }
 
 function formatSplitConditionValue(section) {
-  const value = String(section?.value ?? "").trim();
+  const value = String(section.value ?? "").trim();
   if (value.length > 0) {
     return value;
   }
 
-  return section?.placeholder || "-";
+  return section.placeholder || "-";
 }
 
 function isSplitConditionPlaceholder(section) {
-  return String(section?.value ?? "").trim().length === 0;
+  return String(section.value ?? "").trim().length === 0;
 }
 
 function isSplitBranchConnected(connectorKind) {
-  return Boolean(splitBranchConnections.value?.[connectorKind]);
+  return Boolean(splitBranchConnections.value[connectorKind]);
 }
 
 function handleContainerSectionSelection(sectionIndex, item, close) {
@@ -366,11 +363,11 @@ function handleSplitBranchAddSelection(connectorKind, item, close) {
         v-if="!isComposerOpen"
         type="button"
         class="assistant-step-comment-add assistant-step-control d-flex align-items-center justify-content-center"
-        :class="{ 'assistant-step-comment-add--centered': node.comments?.length }"
+        :class="{ 'assistant-step-comment-add--centered': node.comments.length }"
         aria-label="Add comment"
         @click.stop="emit('open-comment-composer', node.id)"
       >
-        <img src="../../assets/comment.svg" width="13" height="13" class="d-block opacity-50">
+        <img src="../../assets/comment.svg" width="14" height="14" class="d-block opacity-80">
       </button>
     </div>
 
@@ -466,7 +463,7 @@ function handleSplitBranchAddSelection(connectorKind, item, close) {
         {{ node.title }}
       </h6>
 
-      <div class="assistant-step-header-actions ms-auto d-flex align-items-center">
+      <div class="ms-auto d-flex align-items-center">
         <button
           v-if="!hasBranchContainer"
           type="button"
@@ -516,7 +513,7 @@ function handleSplitBranchAddSelection(connectorKind, item, close) {
         <div v-if="isContainerStep" class="assistant-step-container-body d-flex flex-column">
           <table
             v-if="node.type === 'loop' && visibleRows.length"
-            class="assistant-step-container-details table table-borderless table-sm w-100"
+            class="table table-borderless table-sm w-100"
           >
             <tbody>
               <tr
@@ -642,7 +639,7 @@ function handleSplitBranchAddSelection(connectorKind, item, close) {
               v-for="section in branchConditionSections"
               :key="`${node.id}-split-${section.id}`"
             >
-              <section class="assistant-step-container-branch assistant-step-split-branch">
+              <section class="assistant-step-container-branch">
                 <span class="assistant-step-container-branch-pill assistant-step-container-branch-pill--split true-small fw-semibold rounded-pill px-2 py-0 d-inline-flex align-items-center">
                   {{ section.label }}
                 </span>
@@ -1329,15 +1326,15 @@ table {
 
 .assistant-step-comment-add {
   background-color: #fff;
-  border: 1px solid var(--bs-gray-300);
+  border: 0;
   border-radius: 999px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.18);
-  height: 1.5rem;
+  height: 2rem;
   opacity: 0;
   padding: 0;
   pointer-events: none;
   transition: opacity 120ms ease-in-out, background-color 120ms ease-in-out;
-  width: 1.5rem;
+  width: 2rem;
 }
 
 .assistant-step-comment-add:hover {

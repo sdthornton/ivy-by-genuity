@@ -85,7 +85,7 @@ function handleAddStepSelection(item) {
       @click.stop="emit('toggle-all-node-details')"
     >
       <img
-        src="../../assets/dropdown.svg"
+        src="../../assets/arrow-down-b.svg"
         width="14"
         height="14"
         class="d-block assistant-step-floating-mini-btn__icon"
@@ -97,6 +97,7 @@ function handleAddStepSelection(item) {
       <template #trigger="{ open }">
         <button
           v-tooltip="{ content: 'Add Step', placement: 'top', disabled: open }"
+          type="button"
           class="add-builder-node btn btn-dark rounded-circle d-flex align-items-center justify-content-center"
         >
           <img src="../../assets/plus-round.svg" width="20" height="20" class="d-block invert-to-white">
@@ -114,12 +115,18 @@ function handleAddStepSelection(item) {
 </template>
 
 <style lang="scss" scoped>
-.builder-zoom {
+.add-builder-node {
   box-shadow: 0 2px 2px 0 rgba(0,0,0,0.14), 0 3px 1px -2px rgba(0,0,0,0.12), 0 1px 5px 0 rgba(0,0,0,0.20);
+  height: 2.7rem;
+  padding: 0;
+  width: 2.7rem;
+}
+
+.builder-zoom {
   border-radius: 0.5rem;
+  box-shadow: 0 2px 2px 0 rgba(0,0,0,0.14), 0 3px 1px -2px rgba(0,0,0,0.12), 0 1px 5px 0 rgba(0,0,0,0.20);
   display: flex;
   flex-direction: column;
-  overflow: visible;
   position: absolute;
   right: 2.25rem;
   top: 1.5rem;
@@ -163,13 +170,6 @@ function handleAddStepSelection(item) {
 }
 
 .assistant-step-floating-mini-btn__icon--collapsed {
-  transform: rotate(180deg);
-}
-
-.add-builder-node {
-  box-shadow: 0 2px 2px 0 rgba(0,0,0,0.14), 0 3px 1px -2px rgba(0,0,0,0.12), 0 1px 5px 0 rgba(0,0,0,0.20);
-  height: 2.7rem;
-  padding: 0;
-  width: 2.7rem;
+  transform: rotate(-90deg);
 }
 </style>

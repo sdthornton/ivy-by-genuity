@@ -1,7 +1,6 @@
 <script setup>
-
 import interact from "interactjs";
-import { onMounted, onBeforeUnmount, reactive, watch, ref, nextTick, computed } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
 import BasicDropdown from "../shared/BasicDropdown.vue";
 import AddStepMenuContent from "./AddStepMenuContent.vue";
 import BuilderConnectionsLayer from "./BuilderConnectionsLayer.vue";
@@ -139,10 +138,10 @@ const areAllDetailsCollapsed = computed(() => (
 const addStepMenuGroups = computed(() => getAddStepMenuGroups());
 const startBlockOptions = computed(() => getStartBlockOptions());
 const shouldShowFullTerminalAddCard = computed(() => (
-  nodes.length === 1 && Boolean(nodes[0]?.isStartBlock)
+  nodes.length === 1 && nodes[0].isStartBlock
 ));
 const singleStartTerminalAddControl = computed(() => (
-  shouldShowFullTerminalAddCard.value ? terminalAddControls.value[0] || null : null
+  shouldShowFullTerminalAddCard.value ? terminalAddControls.value[0] : null
 ));
 
 const highlightedConnectionKey = computed(() => {
@@ -588,12 +587,23 @@ function zoomOut() {
   setZoom(zoomLevel.value - ZOOM_STEP);
 }
 
+const PAN_BLOCKED_SELECTOR = ".assistant-step, .assistant-step-control, .assistant-step-connection-hit-area, .basic-dropdown, .builder-zoom, .assistant-step-floating-controls, .assistant-step-connection-menu";
+
 function canStartCanvasPan(target) {
   if (!(target instanceof Element)) {
     return true;
   }
 
-  return !target.closest(".assistant-step, .assistant-step-control, .assistant-step-connection-hit-area, .basic-dropdown, .builder-zoom, .assistant-step-floating-controls, .assistant-step-connection-menu");
+  return !target.closest(PAN_BLOCKED_SELECTOR);
+}
+
+function clearRecenteringState() {
+  if (recenterTimer) {
+    window.clearTimeout(recenterTimer);
+    recenterTimer = 0;
+  }
+
+  isRecentering.value = false;
 }
 
 function startCanvasPan(event) {
@@ -605,11 +615,7 @@ function startCanvasPan(event) {
     return;
   }
 
-  if (recenterTimer) {
-    window.clearTimeout(recenterTimer);
-    recenterTimer = 0;
-  }
-  isRecentering.value = false;
+  clearRecenteringState();
   isPanning.value = true;
   panState.startX = event.clientX;
   panState.startY = event.clientY;
@@ -638,6 +644,33 @@ function endCanvasPan(event) {
   if (canvas.value?.hasPointerCapture?.(event.pointerId)) {
     canvas.value.releasePointerCapture(event.pointerId);
   }
+}
+
+function getNormalizedWheelDelta(event) {
+  const LINE_HEIGHT_PX = 16;
+  const PAGE_HEIGHT_PX = window.innerHeight || 800;
+  const multiplier = event.deltaMode === 1
+    ? LINE_HEIGHT_PX
+    : event.deltaMode === 2
+      ? PAGE_HEIGHT_PX
+      : 1;
+
+  return {
+    x: event.deltaX * multiplier,
+    y: event.deltaY * multiplier,
+  };
+}
+
+function handleCanvasWheel(event) {
+  if (event.ctrlKey) {
+    return;
+  }
+
+  clearRecenteringState();
+
+  const delta = getNormalizedWheelDelta(event);
+  panOffset.x -= delta.x;
+  panOffset.y -= delta.y;
 }
 
 function handleCardCommentKeydown({ event, nodeId }) {
@@ -676,7 +709,7 @@ function updateConnectionLines() {
 }
 
 function handleBuilderScaleTransitionEnd(event) {
-  if (event?.target !== builderScale.value || event?.propertyName !== "transform") {
+  if (event.target !== builderScale.value || event.propertyName !== "transform") {
     return;
   }
 
@@ -1257,6 +1290,7 @@ onBeforeUnmount(() => {
     @pointermove="moveCanvasPan"
     @pointerup="endCanvasPan"
     @pointercancel="endCanvasPan"
+    @wheel.prevent.stop="handleCanvasWheel"
   >
     <div
       class="assistant-builder-builder"
@@ -1383,6 +1417,8 @@ onBeforeUnmount(() => {
   background-position: 2px 4px;
   cursor: grab;
   overflow: hidden;
+  overscroll-behavior: none;
+  overscroll-behavior-x: none;
   position: relative;
   touch-actions: none;
 }
