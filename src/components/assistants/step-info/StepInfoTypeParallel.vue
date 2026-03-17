@@ -1,7 +1,7 @@
 <script setup>
 import StepInfoTypeContainer from "./StepInfoTypeContainer.vue";
 
-const props = defineProps({
+defineProps({
   activeStep: {
     type: Object,
     required: true,
@@ -21,10 +21,10 @@ const emit = defineEmits(["close", "select-start-block"]);
 
 <template>
   <StepInfoTypeContainer
-    :active-step="props.activeStep"
-    :start-block-options="props.startBlockOptions"
-    :source-options="props.sourceOptions"
+    :active-step="activeStep"
+    :start-block-options="startBlockOptions"
+    :source-options="sourceOptions"
     @close="emit('close')"
-    @select-start-block="(mode) => emit('select-start-block', mode)"
+    @select-start-block="emit('select-start-block', $event)"
   />
 </template>

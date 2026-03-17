@@ -1,7 +1,8 @@
 <script setup>
 import { computed, nextTick, ref, watch } from "vue";
-import StepOptionsDropdown from "../shared/StepOptionsDropdown.vue";
+import BasicDropdown from "../shared/BasicDropdown.vue";
 import AddStepMenuContent from "./AddStepMenuContent.vue";
+import { resolveSourceIcon } from "../shared/sourceCatalog";
 import {
   getBranchConnections,
   getAddStepMenuGroups,
@@ -93,6 +94,61 @@ const splitBranchConnections = computed(() => (
     ? getBranchConnections(props.node?.data, props.node?.type)
     : {}
 ));
+const sourceRowItems = computed(() => {
+  const explicitSources = Array.isArray(props.node?.sources)
+    ? props.node.sources
+    : [];
+  const normalizedSources = [];
+  const seenLabels = new Set();
+
+  explicitSources.forEach((source) => {
+    const label = String(source?.label || source || "").trim();
+    if (!label) {
+      return;
+    }
+
+    const normalizedLabel = label.toLowerCase();
+    if (seenLabels.has(normalizedLabel)) {
+      return;
+    }
+
+    seenLabels.add(normalizedLabel);
+    normalizedSources.push({
+      label,
+      icon: source?.icon || resolveSourceIcon(label),
+    });
+  });
+
+  if (normalizedSources.length > 0) {
+    return normalizedSources;
+  }
+
+  const selectedSource = String(props.node?.data?.source || "").trim();
+  if (!selectedSource) {
+    return [];
+  }
+
+  return [{
+    label: selectedSource,
+    icon: resolveSourceIcon(selectedSource),
+  }];
+});
+const sourceRowDisplayItems = computed(() => {
+  if (sourceRowItems.value.length <= 3) {
+    return sourceRowItems.value;
+  }
+
+  return [
+    sourceRowItems.value[0],
+    sourceRowItems.value[1],
+    {
+      label: `+ ${sourceRowItems.value.length - 2} more`,
+      isSummary: true,
+      icon: null,
+    },
+  ];
+});
+const sourceRowTooltip = computed(() => sourceRowItems.value.map((source) => source.label).join(", "));
 const containerInnerSections = computed(() => {
   if (!isContainerStep.value) {
     return [];
@@ -116,6 +172,10 @@ watch(
 
 function hasStepDetailValue(value) {
   return String(value ?? "").trim().length > 0;
+}
+
+function isSourceRow(row) {
+  return row?.dataKey === "source";
 }
 
 function formatStepDetailValue(row) {
@@ -217,23 +277,10 @@ function handleContainerAddSelection(item, close) {
 }
 
 function handleSplitBranchAddSelection(connectorKind, item, close) {
-  const connectorEl = document.querySelector(
-    `.assistant-step-connector[data-step-id="${String(props.node.id)}"][data-connector-kind="${String(connectorKind)}"]`,
-  );
-  const connectorRect = connectorEl instanceof HTMLElement
-    ? connectorEl.getBoundingClientRect()
-    : null;
-
   emit("add-branch-step", {
     nodeId: props.node.id,
     connectorKind,
     item,
-    connectorCenterClient: connectorRect
-      ? {
-        x: connectorRect.left + (connectorRect.width / 2),
-        y: connectorRect.top + (connectorRect.height / 2),
-      }
-      : null,
   });
   close();
 }
@@ -366,7 +413,7 @@ function handleSplitBranchAddSelection(connectorKind, item, close) {
         >
       </div>
 
-      <StepOptionsDropdown
+      <BasicDropdown
         v-if="node.isStartBlock"
         class="assistant-step-start-switcher me-2"
         placement="bottom-start"
@@ -393,7 +440,7 @@ function handleSplitBranchAddSelection(connectorKind, item, close) {
           </button>
         </template>
         <template #menu="{ close }">
-          <div class="assistant-step-add-menu__label true-small text-muted px-2 pb-1">Starting Blocks</div>
+          <div class="label-spacing true-small text-muted px-2 pb-1">Starting Blocks</div>
           <button
             v-for="option in startBlockOptions"
             :key="option.key"
@@ -413,7 +460,7 @@ function handleSplitBranchAddSelection(connectorKind, item, close) {
             <span>{{ option.label }}</span>
           </button>
         </template>
-      </StepOptionsDropdown>
+      </BasicDropdown>
 
       <h6 v-if="!node.isStartBlock" class="mb-0 me-2">
         {{ node.title }}
@@ -436,7 +483,7 @@ function handleSplitBranchAddSelection(connectorKind, item, close) {
           >
         </button>
 
-        <StepOptionsDropdown
+        <BasicDropdown
           class="assistant-step-menu"
           placement="bottom-end"
           menu-class="assistant-step-menu-panel"
@@ -456,7 +503,7 @@ function handleSplitBranchAddSelection(connectorKind, item, close) {
             <button type="button" class="dropdown-item" @click.stop="emit('remove-connections', node.id); close()">Remove Connections</button>
             <button type="button" class="dropdown-item" @click.stop="emit('delete-step', node.id); close()">Delete Step</button>
           </template>
-        </StepOptionsDropdown>
+        </BasicDropdown>
       </div>
     </div>
 
@@ -505,7 +552,7 @@ function handleSplitBranchAddSelection(connectorKind, item, close) {
               :key="`${node.id}-container-${section.id}`"
               class="assistant-step-container-branch"
             >
-              <StepOptionsDropdown
+              <BasicDropdown
                 class="assistant-step-container-branch-selector"
                 placement="bottom-start"
                 menu-class="assistant-step-container-menu"
@@ -533,7 +580,7 @@ function handleSplitBranchAddSelection(connectorKind, item, close) {
                     @select="(item) => handleContainerSectionSelection(sectionIndex, item, close)"
                   />
                 </template>
-              </StepOptionsDropdown>
+              </BasicDropdown>
               <div
                 class="assistant-step-container-branch-value mt-2"
                 :class="{ 'assistant-step-container-branch-value--placeholder': !section.type }"
@@ -563,7 +610,7 @@ function handleSplitBranchAddSelection(connectorKind, item, close) {
               </div>
             </section>
 
-            <StepOptionsDropdown
+            <BasicDropdown
               class="assistant-step-parallel-add"
               placement="bottom-start"
               menu-class="assistant-step-container-menu"
@@ -585,7 +632,7 @@ function handleSplitBranchAddSelection(connectorKind, item, close) {
                   @select="(item) => handleContainerAddSelection(item, close)"
                 />
               </template>
-            </StepOptionsDropdown>
+            </BasicDropdown>
           </div>
         </div>
 
@@ -631,8 +678,26 @@ function handleSplitBranchAddSelection(connectorKind, item, close) {
                 </span>
               </td>
               <td class="assistant-step-detail__val">
+                <div v-if="isSourceRow(row) && sourceRowDisplayItems.length" class="assistant-step-source-list" v-tooltip="{ content: sourceRowTooltip, placement: 'right' }">
+                  <div
+                    v-for="source in sourceRowDisplayItems"
+                    :key="source.label"
+                    class="assistant-step-source-line"
+                    :class="{ 'assistant-step-source-line--summary': source.isSummary }"
+                  >
+                    <img
+                      v-if="source.icon"
+                      :src="source.icon"
+                      :alt="source.label"
+                      class="assistant-step-source-line__icon"
+                      width="16"
+                      height="16"
+                    >
+                    <span class="assistant-step-source-line__text">{{ source.label }}</span>
+                  </div>
+                </div>
                 <div
-                  v-if="isPlaceholderStepDetailValue(row)"
+                  v-else-if="isPlaceholderStepDetailValue(row)"
                   class="text-body-tertiary"
                 >
                   &dash;
@@ -678,7 +743,7 @@ function handleSplitBranchAddSelection(connectorKind, item, close) {
         />
         <div v-if="!isSplitBranchConnected(section.connectorKind)" class="assistant-step-split-branch-tail">
           <span class="assistant-step-split-branch-tail__line" />
-          <StepOptionsDropdown
+          <BasicDropdown
             class="assistant-step-split-branch-add"
             placement="bottom-start"
             menu-class="assistant-step-container-menu"
@@ -703,7 +768,7 @@ function handleSplitBranchAddSelection(connectorKind, item, close) {
                 @select="(item) => handleSplitBranchAddSelection(section.connectorKind, item, close)"
               />
             </template>
-          </StepOptionsDropdown>
+          </BasicDropdown>
         </div>
       </div>
     </div>
@@ -845,10 +910,6 @@ function handleSplitBranchAddSelection(connectorKind, item, close) {
   width: 1.25rem;
 }
 
-.assistant-step-add-menu__label {
-  letter-spacing: 0.01em;
-}
-
 .assistant-step-details {
   border-bottom-left-radius: 0.5rem;
   border-bottom-right-radius: 0.5rem;
@@ -866,7 +927,7 @@ function handleSplitBranchAddSelection(connectorKind, item, close) {
 
 .assistant-step-connector {
   background-color: var(--bs-dark);
-  border-radius: 0.3rem;
+  border-radius: 0.25rem;
   cursor: grab;
   height: var(--assistant-connector-node-height);
   left: 50%;
@@ -951,6 +1012,38 @@ table {
   text-overflow: ellipsis;
   white-space: normal;
   word-break: normal;
+}
+
+.assistant-step-source-list {
+  align-items: flex-start;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.assistant-step-source-line {
+  align-items: center;
+  display: flex;
+  gap: 0.35rem;
+  max-width: 100%;
+  min-width: 0;
+}
+
+.assistant-step-source-line--summary {
+  color: var(--bs-secondary-color);
+}
+
+.assistant-step-source-line__icon {
+  display: block;
+  flex: 0 0 auto;
+  object-fit: contain;
+}
+
+.assistant-step-source-line__text {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .assistant-step-split-sections {
@@ -1085,7 +1178,7 @@ table {
 }
 
 .assistant-step-connector--parallel-branch {
-  border-radius: 0.3rem;
+  border-radius: 0.25rem;
   bottom: -0.28rem;
   box-shadow: 0 6px 12px rgba(0, 0, 0, 0.22);
   height: var(--assistant-connector-node-height);
@@ -1097,7 +1190,7 @@ table {
 }
 
 .assistant-step-connector--split-branch {
-  border-radius: 0.3rem;
+  border-radius: 0.25rem;
   box-shadow: 0 6px 12px rgba(0, 0, 0, 0.22);
   pointer-events: auto;
   left: 50%;
@@ -1203,7 +1296,7 @@ table {
 }
 
 .assistant-step-comment-box__author {
-  margin-right: 0.2rem;
+  margin-right: 0.25rem;
 }
 
 .assistant-step-comment-box__body {

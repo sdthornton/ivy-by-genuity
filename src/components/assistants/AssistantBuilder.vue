@@ -2,7 +2,7 @@
 
 import interact from "interactjs";
 import { onMounted, onBeforeUnmount, reactive, watch, ref, nextTick, computed } from "vue";
-import StepOptionsDropdown from "../shared/StepOptionsDropdown.vue";
+import BasicDropdown from "../shared/BasicDropdown.vue";
 import AddStepMenuContent from "./AddStepMenuContent.vue";
 import BuilderConnectionsLayer from "./BuilderConnectionsLayer.vue";
 import BuilderFloatingControls from "./BuilderFloatingControls.vue";
@@ -68,6 +68,7 @@ const props = defineProps({
 });
 
 const canvas = ref(null);
+const builderScale = ref(null);
 const connectionLines = ref([]);
 const terminalAddControls = ref([]);
 const selectedNodeId = ref(null);
@@ -85,10 +86,12 @@ const ZOOM_STEP = 0.0625;
 const MIN_ZOOM = 0.5;
 const MAX_ZOOM = 2;
 const RECENTER_TRANSITION_MS = 160;
+const ZOOM_TRANSITION_MS = 200;
 const DEFAULT_TERMINAL_SEGMENT_LENGTH = 42;
 const START_LAYOUT_CENTERING_THRESHOLD = 1;
 const INSERT_NODE_Y_SPACING = 84;
 const BRANCH_INSERT_SEGMENT_LENGTH = DEFAULT_TERMINAL_SEGMENT_LENGTH;
+const isZoomTransitioning = ref(false);
 
 const canvasPanStyle = computed(() => ({
   backgroundPosition: `${panOffset.x + 2}px ${panOffset.y + 4}px`,
@@ -392,15 +395,6 @@ function handleAddStepMenuSelection(selectionPayload) {
       nodeId: context.sourceId,
       connectorKind: context.sourceConnectorKind,
       item,
-      connectorCenterOverride: (
-        Number.isFinite(Number(context.sourceConnectorX))
-        && Number.isFinite(Number(context.sourceConnectorY))
-      )
-        ? {
-          x: Number(context.sourceConnectorX),
-          y: Number(context.sourceConnectorY),
-        }
-        : null,
     });
     return;
   }
@@ -535,6 +529,7 @@ function resetCanvasToBasePoint() {
 }
 
 let recenterTimer = 0;
+let zoomTransitionTimer = 0;
 function beginRecenteringTransition() {
   if (recenterTimer) {
     window.clearTimeout(recenterTimer);
@@ -547,17 +542,42 @@ function beginRecenteringTransition() {
   }, RECENTER_TRANSITION_MS);
 }
 
+function finalizeZoomTransition() {
+  isZoomTransitioning.value = false;
+  scheduleConnectionLineUpdate();
+  requestAnimationFrame(() => scheduleConnectionLineUpdate());
+}
+
+function beginZoomTransition() {
+  isZoomTransitioning.value = true;
+  if (zoomTransitionTimer) {
+    window.clearTimeout(zoomTransitionTimer);
+  }
+
+  zoomTransitionTimer = window.setTimeout(() => {
+    zoomTransitionTimer = 0;
+    finalizeZoomTransition();
+  }, ZOOM_TRANSITION_MS + 40);
+}
+
 function recenterCanvas() {
   beginRecenteringTransition();
   resetCanvasToBasePoint();
-  zoomLevel.value = DEFAULT_ZOOM;
-  scheduleConnectionLineUpdate();
+  if (zoomLevel.value !== DEFAULT_ZOOM) {
+    zoomLevel.value = DEFAULT_ZOOM;
+    beginZoomTransition();
+  }
   scheduleSingleStartLayoutCentering();
 }
 
 function setZoom(nextZoom) {
-  zoomLevel.value = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, nextZoom));
-  scheduleConnectionLineUpdate();
+  const normalizedZoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, nextZoom));
+  if (normalizedZoom === zoomLevel.value) {
+    return;
+  }
+
+  zoomLevel.value = normalizedZoom;
+  beginZoomTransition();
 }
 
 function zoomIn() {
@@ -573,7 +593,7 @@ function canStartCanvasPan(target) {
     return true;
   }
 
-  return !target.closest(".assistant-step, .assistant-step-control, .assistant-step-connection-hit-area, .step-options-dropdown, .builder-zoom, .assistant-step-floating-controls, .assistant-step-connection-menu");
+  return !target.closest(".assistant-step, .assistant-step-control, .assistant-step-connection-hit-area, .basic-dropdown, .builder-zoom, .assistant-step-floating-controls, .assistant-step-connection-menu");
 }
 
 function startCanvasPan(event) {
@@ -625,6 +645,10 @@ function handleCardCommentKeydown({ event, nodeId }) {
 }
 
 function updateConnectionLines() {
+  if (isZoomTransitioning.value) {
+    return;
+  }
+
   const canvasEl = canvas.value;
   if (!canvasEl) {
     return;
@@ -649,6 +673,23 @@ function updateConnectionLines() {
   canvasSize.height = nextLayout.canvasHeight;
   connectionLines.value = nextLayout.connectionLines;
   terminalAddControls.value = nextLayout.terminalAddControls;
+}
+
+function handleBuilderScaleTransitionEnd(event) {
+  if (event?.target !== builderScale.value || event?.propertyName !== "transform") {
+    return;
+  }
+
+  if (!isZoomTransitioning.value) {
+    return;
+  }
+
+  if (zoomTransitionTimer) {
+    window.clearTimeout(zoomTransitionTimer);
+    zoomTransitionTimer = 0;
+  }
+
+  finalizeZoomTransition();
 }
 
 function centerSingleStartBlankLayout() {
@@ -981,8 +1022,6 @@ function addBranchStepForNode({
   nodeId,
   connectorKind,
   item,
-  connectorCenterOverride = null,
-  connectorCenterClient = null,
 } = {}) {
   const sourceNode = findNodeById(nodeId);
   if (!sourceNode || !isBranchConnectorKind(connectorKind) || !isBranchContainerNodeType(sourceNode.type)) {
@@ -1193,6 +1232,10 @@ onBeforeUnmount(() => {
   cleanupConnectionInteractions();
   if (lineRaf) cancelAnimationFrame(lineRaf);
   lineRaf = 0;
+  if (zoomTransitionTimer) {
+    window.clearTimeout(zoomTransitionTimer);
+    zoomTransitionTimer = 0;
+  }
   if (recenterTimer) {
     window.clearTimeout(recenterTimer);
     recenterTimer = 0;
@@ -1220,7 +1263,12 @@ onBeforeUnmount(() => {
       :class="{ 'assistant-builder-builder--recentering': isRecentering }"
       :style="builderTranslateStyle"
     >
-      <div class="assistant-builder-builder-scale" :style="builderScaleStyle">
+      <div
+        ref="builderScale"
+        class="assistant-builder-builder-scale"
+        :style="builderScaleStyle"
+        @transitionend="handleBuilderScaleTransitionEnd"
+      >
         <BuilderConnectionsLayer
           :viewport-size="viewportSize"
           :reorder-drag="reorderDrag"
@@ -1292,7 +1340,7 @@ onBeforeUnmount(() => {
           />
         </TransitionGroup>
 
-        <StepOptionsDropdown
+        <BasicDropdown
           v-if="!nodes.length"
           class="assistant-step assistant-step--add"
         >
@@ -1309,7 +1357,7 @@ onBeforeUnmount(() => {
               @select="handleAddStepMenuSelection"
             />
           </template>
-        </StepOptionsDropdown>
+        </BasicDropdown>
       </div>
     </div>
 

@@ -12,6 +12,67 @@ const sleep = (ms, signal) =>
   });
 
 const rand = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+const toNonNegativeNumber = (value, fallback) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : fallback;
+};
+const DEFAULT_TIMING = {
+  startDelay: 150,
+  minDelay: 0,
+  maxDelay: 3,
+  whitespaceMinDelay: 0,
+  whitespaceMaxDelay: 6,
+};
+
+const getSpeedFactor = (speed) => {
+  if (typeof speed === "number" && Number.isFinite(speed) && speed > 0) {
+    return speed;
+  }
+
+  return 1;
+};
+
+const applySpeedFactor = (timing, speedFactor) => {
+  if (speedFactor === 1) {
+    return timing;
+  }
+
+  return {
+    startDelay: Math.round(timing.startDelay / speedFactor),
+    minDelay: Math.round(timing.minDelay / speedFactor),
+    maxDelay: Math.round(timing.maxDelay / speedFactor),
+    whitespaceMinDelay: Math.round(timing.whitespaceMinDelay / speedFactor),
+    whitespaceMaxDelay: Math.round(timing.whitespaceMaxDelay / speedFactor),
+  };
+};
+
+const normalizeTimingRange = (timing) => {
+  const minDelay = toNonNegativeNumber(timing.minDelay, 0);
+  const maxDelay = Math.max(minDelay, toNonNegativeNumber(timing.maxDelay, minDelay));
+  const whitespaceMinDelay = toNonNegativeNumber(timing.whitespaceMinDelay, 0);
+  const whitespaceMaxDelay = Math.max(
+    whitespaceMinDelay,
+    toNonNegativeNumber(timing.whitespaceMaxDelay, whitespaceMinDelay),
+  );
+
+  return {
+    startDelay: toNonNegativeNumber(timing.startDelay, 0),
+    minDelay,
+    maxDelay,
+    whitespaceMinDelay,
+    whitespaceMaxDelay,
+  };
+};
+
+const resolveTimingOptions = ({ timing = {}, speed = 1 } = {}) => {
+  const mergedTiming = {
+    ...DEFAULT_TIMING,
+    ...timing,
+  };
+  const speedFactor = getSpeedFactor(speed);
+  const scaledTiming = applySpeedFactor(mergedTiming, speedFactor);
+  return normalizeTimingRange(scaledTiming);
+};
 
 // elementContentRef assumes the element is an input or textarea. Pass 'innerHTML' for other elements.
 const typeCharacter = async (
@@ -36,15 +97,14 @@ const typewriterText = async (
   text,
   elementContentRef = "value",
   {
-    startDelay = 150,
     minDelay = 0,
     maxDelay = 3,
+    whitespaceMinDelay = 0,
+    whitespaceMaxDelay = 6,
     onUpdate,
     signal,
   } = {}
 ) => {
-  if (startDelay) await sleep(startDelay, signal);
-
   for (let i = 0; i < text.length; i++) {
     await typeCharacter(element, text[i], elementContentRef, {
       minDelay,
@@ -55,7 +115,7 @@ const typewriterText = async (
 
     // Optional tiny pause after whitespace to make it feel more human
     if (/\s/.test(text[i])) {
-      await sleep(rand(0, 6), signal);
+      await sleep(rand(whitespaceMinDelay, whitespaceMaxDelay), signal);
     }
   }
 };
@@ -85,10 +145,7 @@ const runTypewriterPerTag = async (element, markup, options) => {
 
     if (node.nodeType === Node.TEXT_NODE) {
       // Type text exactly, preserving whitespace
-      await typewriterText(element, node.textContent || "", "innerHTML", {
-        ...options,
-        startDelay: 0,
-      });
+      await typewriterText(element, node.textContent || "", "innerHTML", options);
     } else if (node.nodeType === Node.ELEMENT_NODE) {
       const newElement = document.createElement(node.nodeName.toLowerCase());
       copyAttributes(node, newElement);
@@ -112,31 +169,35 @@ const runTypewriterPerTag = async (element, markup, options) => {
  * @param {string} markup
  * @param {Object} options
  * @param {boolean} [options.clearElementFirst=false]
- * @param {number} [options.startDelay=150]
- * @param {number} [options.minDelay=0]
- * @param {number} [options.maxDelay=3]
+ * @param {number} [options.speed=1] Numeric multiplier (2 = faster, 0.5 = slower).
+ * @param {Object} [options.timing] Optional timing overrides.
+ * @param {number} [options.timing.startDelay]
+ * @param {number} [options.timing.minDelay]
+ * @param {number} [options.timing.maxDelay]
+ * @param {number} [options.timing.whitespaceMinDelay]
+ * @param {number} [options.timing.whitespaceMaxDelay]
  * @param {(info: {element: HTMLElement, char: string}) => void} [options.onUpdate]
  * @param {AbortSignal} [options.signal]
  */
 const typewriter = async (element, markup, options = {}) => {
   const {
     clearElementFirst = false,
-    startDelay = 150,
-    minDelay = 0,
-    maxDelay = 3,
     onUpdate,
     signal,
   } = options;
+  const timing = resolveTimingOptions(options);
 
   if (clearElementFirst) {
     if (element.tagName === "INPUT" || element.tagName === "TEXTAREA") element.value = "";
     else element.innerHTML = "";
   }
 
+  if (timing.startDelay > 0) {
+    await sleep(timing.startDelay, signal);
+  }
+
   await runTypewriterPerTag(element, markup, {
-    startDelay,
-    minDelay,
-    maxDelay,
+    ...timing,
     onUpdate,
     signal,
   });

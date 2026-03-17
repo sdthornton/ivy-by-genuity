@@ -135,7 +135,7 @@ function fixQueryWarning() {
 .query-key-label {
   align-items: center;
   display: inline-flex;
-  gap: 0.3rem;
+  gap: 0.25rem;
 }
 
 .query-warning-wrap {
@@ -153,11 +153,11 @@ function fixQueryWarning() {
 
 .query-warning-tooltip {
   background-color: #1b2434;
-  border-radius: 0.35rem;
+  border-radius: 0.375rem;
   color: #fff;
   line-height: 1.3;
   min-width: 13.5rem;
-  padding: 0.35rem 0.5rem;
+  padding: 0.375rem 0.5rem;
   white-space: normal;
 }
 
@@ -168,7 +168,7 @@ function fixQueryWarning() {
 
 .query-warning-actions {
   display: flex;
-  gap: 0.35rem;
+  gap: 0.375rem;
   justify-content: flex-end;
 }
 
@@ -179,7 +179,7 @@ function fixQueryWarning() {
   color: #fff;
   font-size: 0.625rem;
   line-height: 1;
-  padding: 0.2rem 0.45rem;
+  padding: 0.25rem 0.5rem;
 }
 
 .query-warning-action-fix {

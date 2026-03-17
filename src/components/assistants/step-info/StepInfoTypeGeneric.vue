@@ -26,7 +26,7 @@ const emit = defineEmits(["close", "select-start-block"]);
     :start-block-options="startBlockOptions"
     :source-options="sourceOptions"
     @close="emit('close')"
-    @select-start-block="(mode) => emit('select-start-block', mode)"
+    @select-start-block="emit('select-start-block', $event)"
   >
     <template #details>
       <StepInfoDetailsTable :step="activeStep" />

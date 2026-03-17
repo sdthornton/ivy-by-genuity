@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from "vue";
-import StepOptionsDropdown from "../../shared/StepOptionsDropdown.vue";
+import BasicDropdown from "../../shared/BasicDropdown.vue";
 import AddStepMenuContent from "../AddStepMenuContent.vue";
 import {
   addContainerInnerStepSelection,
@@ -54,7 +54,7 @@ function handleContainerAddSelect(item, close) {
     :start-block-options="startBlockOptions"
     :source-options="sourceOptions"
     @close="emit('close')"
-    @select-start-block="(mode) => emit('select-start-block', mode)"
+    @select-start-block="emit('select-start-block', $event)"
   >
     <template #details>
       <div class="mt-4 w-100">
@@ -65,7 +65,7 @@ function handleContainerAddSelect(item, close) {
             :key="section.id"
             class="container-inner-box border rounded-sm p-2"
           >
-            <StepOptionsDropdown
+            <BasicDropdown
               placement="bottom-start"
               menu-class="container-inner-box__menu"
             >
@@ -91,10 +91,10 @@ function handleContainerAddSelect(item, close) {
                   @select="(item) => handleContainerSectionSelect(sectionIndex, item, close)"
                 />
               </template>
-            </StepOptionsDropdown>
+            </BasicDropdown>
           </section>
 
-          <StepOptionsDropdown
+          <BasicDropdown
             class="container-inner-add"
             placement="bottom-start"
             menu-class="container-inner-box__menu"
@@ -115,7 +115,7 @@ function handleContainerAddSelect(item, close) {
                 @select="(item) => handleContainerAddSelect(item, close)"
               />
             </template>
-          </StepOptionsDropdown>
+          </BasicDropdown>
         </div>
       </div>
 

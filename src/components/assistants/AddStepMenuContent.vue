@@ -24,7 +24,7 @@ function handleSelect(item) {
 <template>
   <template v-for="(group, groupIndex) in groups" :key="group.key">
     <div v-if="groupIndex > 0" class="dropdown-divider my-2 mx-1 border-top border-body-subtle opacity-100" />
-    <div class="assistant-step-add-menu__label true-small text-muted px-2 pb-1">{{ group.label }}</div>
+    <div class="label-spacing true-small text-muted px-2 pb-1">{{ group.label }}</div>
     <button
       v-for="item in group.items"
       :key="item.key"
@@ -50,9 +50,5 @@ function handleSelect(item) {
 .assistant-step-menu-item__icon {
   height: 1.25rem;
   width: 1.25rem;
-}
-
-.assistant-step-add-menu__label {
-  letter-spacing: 0.01em;
 }
 </style>

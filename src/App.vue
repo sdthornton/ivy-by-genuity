@@ -1,16 +1,57 @@
 <script setup>
+import { computed, watch } from "vue";
+import { useRoute } from "vue-router";
 import LeftNav from "./components/LeftNav.vue";
+import { resetOnboardingNavigationRevealState, useAppLayoutState } from "./composables/useAppLayoutState";
+
+const route = useRoute();
+const { onboardingNavStage } = useAppLayoutState();
+
+const isOnboardingRoute = computed(() => route.name === "Onboarding");
+const hideLeftNav = computed(() => {
+  if (isOnboardingRoute.value && route.meta?.hideLeftNav) {
+    return onboardingNavStage.value === "hidden";
+  }
+
+  return Boolean(route.meta?.hideLeftNav);
+});
+const isSplitContent = computed(() => Boolean(route.meta?.splitContent));
+const isHomePage = computed(() => route.name === "Home");
+
+watch(
+  () => route.name,
+  (routeName) => {
+    if (routeName !== "Onboarding") {
+      resetOnboardingNavigationRevealState();
+    }
+  },
+  { immediate: true },
+);
+
+watch(
+  hideLeftNav,
+  (hidden) => {
+    if (hidden) {
+      document.body.classList.remove("left-nav-open");
+      document.body.classList.remove("split-content-page");
+    }
+  },
+  { immediate: true },
+);
 </script>
 
 <template>
-  <LeftNav />  
+  <LeftNav v-if="!hideLeftNav" />
   <div 
     class="content-container d-flex justify-content-center bg-titan-white"
-    :class="{ 'px-0': $route.meta.splitContent }"
+    :class="{
+      'px-0': isSplitContent,
+      'content-container--standalone': hideLeftNav,
+    }"
   >
     <main 
       class="page-content"
-      :class="$route.name === 'Home' ? 'my-auto text-content-wrap' : 'w-100'"
+      :class="isHomePage ? 'my-auto text-content-wrap' : 'w-100'"
     >
       <RouterView />
     </main>
@@ -232,6 +273,10 @@ body {
 
   .left-nav-open & {
     left: $left-nav-open-width;
+  }
+
+  &.content-container--standalone {
+    left: $content-inset;
   }
 
   // &:before {

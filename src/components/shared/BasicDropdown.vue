@@ -27,7 +27,7 @@ const menuEl = ref(null);
 const menuStyle = ref({});
 
 const menuClasses = computed(() => [
-  "step-options-menu",
+  "basic-dropdown-menu",
   "dropdown-menu",
   "show",
   props.menuClass,
@@ -145,8 +145,8 @@ onBeforeUnmount(() => {
 <template>
   <div
     ref="rootEl"
-    class="step-options-dropdown"
-    :class="{ 'step-options-dropdown--open': isOpen }"
+    class="basic-dropdown"
+    :class="{ 'basic-dropdown--open': isOpen }"
   >
     <div
       ref="triggerEl"
@@ -173,15 +173,15 @@ onBeforeUnmount(() => {
 </template>
 
 <style lang="scss" scoped>
-.step-options-dropdown {
+.basic-dropdown {
   display: inline-block;
 }
 
-.step-options-dropdown--open {
+.basic-dropdown--open {
   z-index: 300;
 }
 
-.step-options-menu {
+.basic-dropdown-menu {
   display: block;
   min-width: 12rem;
   z-index: 1200;

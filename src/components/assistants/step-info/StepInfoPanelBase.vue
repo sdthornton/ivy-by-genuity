@@ -1,7 +1,8 @@
 <script setup>
-import { computed, ref } from "vue";
-import StepOptionsDropdown from "../../shared/StepOptionsDropdown.vue";
-import sharepointLogo from "../../../assets/sharepoint.png";
+import { computed } from "vue";
+import BasicDropdown from "../../shared/BasicDropdown.vue";
+import SourceSelectorDropdown from "../../shared/SourceSelectorDropdown.vue";
+import { resolveSourceIcon } from "../../shared/sourceCatalog";
 
 const props = defineProps({
   activeStep: {
@@ -20,7 +21,6 @@ const props = defineProps({
 
 const emit = defineEmits(["close", "select-start-block"]);
 
-const sourceSearch = ref("");
 const isLookupStep = computed(() => props.activeStep?.type === "lookup");
 const displayedSources = computed(() => {
   const explicitSources = Array.isArray(props.activeStep?.sources)
@@ -39,34 +39,12 @@ const displayedSources = computed(() => {
     return [];
   }
 
-  return [{
-    label: selectedSource,
-    icon: resolveSourceIcon(selectedSource),
-  }];
-});
-const hasSourceSection = computed(() => (
-  isLookupStep.value || displayedSources.value.length > 0
-));
-const filteredSourceOptions = computed(() => {
-  const query = sourceSearch.value.trim().toLowerCase();
-  if (!query) {
-    return props.sourceOptions;
-  }
-
-  return props.sourceOptions.filter((source) => (
-    String(source).toLowerCase().includes(query)
-  ));
+  return [{ label: selectedSource, icon: resolveSourceIcon(selectedSource) }];
 });
 
-function resolveSourceIcon(sourceLabel) {
-  if (String(sourceLabel || "").trim().toLowerCase() === "sharepoint") {
-    return sharepointLogo;
-  }
+const hasSourceSection = computed(() => isLookupStep.value || displayedSources.value.length > 0);
 
-  return null;
-}
-
-function selectSource(source, close) {
+function selectSource(source) {
   if (props.activeStep?.data && typeof props.activeStep.data === "object") {
     props.activeStep.data.source = source;
   }
@@ -87,9 +65,10 @@ function selectSource(source, close) {
   } else if (!existingSource.icon) {
     existingSource.icon = resolveSourceIcon(source);
   }
+}
 
-  sourceSearch.value = "";
-  close?.();
+function connectSource() {
+  alert('Normally this would show the connector modal, possibly with a note that "You will need to connect or reactivate this app before using it as a data source."');
 }
 </script>
 
@@ -106,7 +85,7 @@ function selectSource(source, close) {
 
     <div class="step-info-top d-flex flex-column">
       <div class="side-content-scroll d-flex flex-column align-items-start">
-        <StepOptionsDropdown
+        <BasicDropdown
           v-if="activeStep.isStartBlock"
           placement="bottom-start"
           @click.stop
@@ -119,7 +98,7 @@ function selectSource(source, close) {
             </div>
           </template>
           <template #menu="{ close }">
-            <div class="assistant-step-add-menu__label true-small text-muted px-2 pb-1">Starting Blocks</div>
+            <div class="label-spacing true-small text-muted px-2 pb-1">Starting Blocks</div>
             <button
               v-for="option in startBlockOptions"
               :key="option.key"
@@ -139,7 +118,7 @@ function selectSource(source, close) {
               <span>{{ option.label }}</span>
             </button>
           </template>
-        </StepOptionsDropdown>
+        </BasicDropdown>
         <div
           v-else
           class="step-type-pill true-small fw-medium text-white d-inline-flex align-items-center rounded-pill px-2 py-0"
@@ -160,45 +139,22 @@ function selectSource(source, close) {
             <div
               v-for="source in displayedSources"
               :key="source.label"
-              class="rounded-circle bg-secondary-subtle d-flex align-items-center justify-content-center px-2.5 py-2.5 me-2"
+              class="d-flex align-items-center justify-content-center me-2"
             >
-              <img v-if="source.icon" :src="source.icon" height="20" width="20" :alt="source.label">
-              <span v-else class="source-fallback-label true-small text-muted">{{ source.label.slice(0, 2).toUpperCase() }}</span>
+              <img 
+                v-if="source.icon" 
+                v-tooltip="source.label"
+                :src="source.icon" 
+                height="48" 
+                width="48" 
+                :alt="source.label"
+              >
             </div>
-            <StepOptionsDropdown
-              placement="bottom-end"
-              menu-class="source-picker-menu"
-            >
-              <template #trigger>
-                <button
-                  type="button"
-                  class="source-picker-trigger rounded-circle bg-white border d-flex align-items-center justify-content-center p-3 text-white fw-bold"
-                  aria-label="Add source"
-                >
-                  <img src="../../../assets/plus-round.svg" height="14" width="14">
-                </button>
-              </template>
-              <template #menu="{ close }">
-                <div class="source-picker-title true-small text-muted">Your sources.</div>
-                <input
-                  v-model="sourceSearch"
-                  type="text"
-                  class="source-picker-search form-control form-control-sm true-small"
-                  placeholder="search sources"
-                >
-                <div class="source-picker-grid">
-                  <button
-                    v-for="source in filteredSourceOptions"
-                    :key="source"
-                    type="button"
-                    class="source-picker-item true-small"
-                    @click.stop="selectSource(source, close)"
-                  >
-                    {{ source }}
-                  </button>
-                </div>
-              </template>
-            </StepOptionsDropdown>
+            <SourceSelectorDropdown
+              :source-options="sourceOptions"
+              @select-source="selectSource"
+              @connect-source="connectSource"
+            />
           </div>
         </div>
 
@@ -281,53 +237,6 @@ function selectSource(source, close) {
   opacity: 0.8;
 }
 
-.assistant-step-add-menu__label {
-  letter-spacing: 0.01em;
-}
-
-.source-picker-trigger {
-  border-color: var(--bs-gray-300) !important;
-}
-
-.source-fallback-label {
-  letter-spacing: 0.02em;
-}
-
-:deep(.source-picker-menu) {
-  display: block;
-  min-width: 18.5rem;
-  padding: 0.6rem;
-  z-index: 16;
-}
-
-:deep(.source-picker-menu) .source-picker-title {
-  margin-bottom: 0.45rem;
-}
-
-:deep(.source-picker-menu) .source-picker-search {
-  font-size: 0.65rem;
-  margin-bottom: 0.5rem;
-}
-
-:deep(.source-picker-menu) .source-picker-grid {
-  display: grid;
-  gap: 0.2rem 0.45rem;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-}
-
-:deep(.source-picker-menu) .source-picker-item {
-  background: transparent;
-  border: 0;
-  color: var(--bs-gray-600);
-  line-height: 1.25;
-  padding: 0.12rem 0;
-  text-align: left;
-}
-
-:deep(.source-picker-menu) .source-picker-item:hover {
-  color: var(--bs-gray-900);
-}
-
 .comments-stack {
   width: 100%;
 }
@@ -353,7 +262,7 @@ function selectSource(source, close) {
   color: var(--bs-gray-500);
   font-size: 0.625rem;
   line-height: 1.1;
-  margin-top: 0.35rem;
+  margin-top: 0.375rem;
 }
 
 .ivy-says-shell {

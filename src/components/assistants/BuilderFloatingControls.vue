@@ -1,5 +1,5 @@
 <script setup>
-import StepOptionsDropdown from "../shared/StepOptionsDropdown.vue";
+import BasicDropdown from "../shared/BasicDropdown.vue";
 import AddStepMenuContent from "./AddStepMenuContent.vue";
 
 defineProps({
@@ -93,7 +93,7 @@ function handleAddStepSelection(item) {
         aria-hidden="true"
       >
     </button>
-    <StepOptionsDropdown placement="top-end">
+    <BasicDropdown placement="top-end">
       <template #trigger="{ open }">
         <button
           v-tooltip="{ content: 'Add Step', placement: 'top', disabled: open }"
@@ -109,7 +109,7 @@ function handleAddStepSelection(item) {
           @select="handleAddStepSelection"
         />
       </template>
-    </StepOptionsDropdown>
+    </BasicDropdown>
   </div>
 </template>
 

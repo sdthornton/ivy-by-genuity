@@ -6,7 +6,7 @@ import ChatBox from "./shared/ChatBox.vue";
 import StepInfo  from "./assistants/StepInfo.vue";
 import AssistantBuilder from "./assistants/AssistantBuilder.vue";
 import AssistantSettingsPanel from "./assistants/AssistantSettingsPanel.vue";
-import StepOptionsDropdown from "./shared/StepOptionsDropdown.vue";
+import BasicDropdown from "./shared/BasicDropdown.vue";
 import {
   applyMockFlowStepDataForBuildStep,
   createBuilderNodeTemplates,
@@ -57,13 +57,21 @@ const assistantSettings = reactive({
   },
 });
 const conversationContent = ref(null);
-const conversationScroller = ref(null);
+const leftContentEl = ref(null);
+const leftContentUserWidth = ref(null);
 const DEFAULT_TRIGGER_OPTION = { key: "weekdays", label: "Weekdays at 9:00 am", pillLabel: "Weekdays at 9:00am", icon: iconClock, iconClass: "opacity-50" };
 const NO_TRIGGER_OPTION = { key: "none", label: "No trigger", icon: iconStop, iconClass: "opacity-50" };
 const selectedHeaderTrigger = ref(null);
 const conversationStageIndex = ref(0);
 const isConversationBusy = ref(false);
 let activeTypewriterController = null;
+const leftContentResizeState = reactive({
+  active: false,
+  startX: 0,
+  startWidth: 0,
+});
+const LEFT_CONTENT_MIN_WIDTH = 280;
+const LEFT_CONTENT_MAX_MARGIN = 320;
 
 const headerTriggerOptions = [
   { key: "every-day", label: "Every day", pillLabel: "Every day at 9am", icon: iconClock, iconClass: "opacity-50" },
@@ -138,6 +146,15 @@ const settingsIvyContent = computed(() => {
 
   return { overview, issue };
 });
+const leftContentStyle = computed(() => {
+  if (!Number.isFinite(leftContentUserWidth.value)) {
+    return null;
+  }
+
+  return {
+    "--user-width": `${Math.round(leftContentUserWidth.value)}px`,
+  };
+});
 
 const updateSelectedTrigger = (option) => {
   selectedHeaderTrigger.value = option ? { ...option } : null;
@@ -181,6 +198,48 @@ const closeSettingsModal = () => {
 
 const openSettingsModalForTitleEdit = () => {
   openSettingsModal({ focusTitle: true });
+};
+
+const clampLeftContentWidth = (nextWidth) => {
+  const maxWidth = Math.max(LEFT_CONTENT_MIN_WIDTH, window.innerWidth - LEFT_CONTENT_MAX_MARGIN);
+  return Math.max(LEFT_CONTENT_MIN_WIDTH, Math.min(maxWidth, nextWidth));
+};
+
+const onLeftContentResizeMove = (event) => {
+  if (!leftContentResizeState.active) {
+    return;
+  }
+
+  const deltaX = event.clientX - leftContentResizeState.startX;
+  leftContentUserWidth.value = clampLeftContentWidth(leftContentResizeState.startWidth + deltaX);
+};
+
+const stopLeftContentResize = () => {
+  leftContentResizeState.active = false;
+  window.removeEventListener("pointermove", onLeftContentResizeMove);
+  window.removeEventListener("pointerup", stopLeftContentResize);
+  window.removeEventListener("pointercancel", stopLeftContentResize);
+};
+
+const startLeftContentResize = (event) => {
+  if (event.button !== 0) {
+    return;
+  }
+
+  const leftContentElement = leftContentEl.value;
+  if (!leftContentElement) {
+    return;
+  }
+
+  leftContentResizeState.active = true;
+  leftContentResizeState.startX = event.clientX;
+  leftContentResizeState.startWidth = leftContentElement.getBoundingClientRect().width;
+  leftContentUserWidth.value = leftContentResizeState.startWidth;
+
+  window.addEventListener("pointermove", onLeftContentResizeMove);
+  window.addEventListener("pointerup", stopLeftContentResize);
+  window.addEventListener("pointercancel", stopLeftContentResize);
+  event.preventDefault();
 };
 
 const INTRO_MESSAGE = `
@@ -249,15 +308,6 @@ const conversationStages = [
   },
 ];
 
-function scrollConversationToBottom() {
-  const scroller = conversationScroller.value;
-  if (!scroller) {
-    return;
-  }
-
-  scroller.scrollTop = scroller.scrollHeight;
-}
-
 function appendUserMessage(text) {
   const content = conversationContent.value;
   if (!content) {
@@ -268,7 +318,6 @@ function appendUserMessage(text) {
   article.className = "user-chat-bubble rounded bg-iceberg-blue px-3 py-2 mb-4";
   article.textContent = text;
   content.appendChild(article);
-  scrollConversationToBottom();
 }
 
 async function appendIvyMessage(markup) {
@@ -280,7 +329,6 @@ async function appendIvyMessage(markup) {
   const article = document.createElement("article");
   article.className = "assistant-chat-message mb-4";
   content.appendChild(article);
-  scrollConversationToBottom();
 
   const controller = new AbortController();
   activeTypewriterController?.abort();
@@ -289,7 +337,6 @@ async function appendIvyMessage(markup) {
   try {
     await typewriter(article, markup, {
       clearElementFirst: true,
-      onUpdate: scrollConversationToBottom,
       signal: controller.signal,
     });
   } catch (error) {
@@ -302,7 +349,6 @@ async function appendIvyMessage(markup) {
     }
   }
 
-  scrollConversationToBottom();
 }
 
 function applyConversationState(state = {}) {
@@ -368,6 +414,7 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
   activeTypewriterController?.abort();
+  stopLeftContentResize();
 });
 
 const onBuilderStepSelect = (nodeId) => {
@@ -390,15 +437,18 @@ const onBuilderNodesChange = (nodeIds = []) => {
 </script> 
 
 <template>
-  <section class="left-content d-flex flex-column">
+  <section
+    ref="leftContentEl"
+    class="left-content d-flex flex-column"
+    :style="leftContentStyle"
+  >
     <div class="small-chat-header border-bottom pe-4 mb-4">
-      <h5 class="mb-0 mr-2 d-flex align-items-center fw-normal lead">
-        <span class="me-2">Ivy Builder:</span>
-        <span class="fw-semibold me-2">{{ assistantTitle }}</span> 
+      <h5 class="mb-0 mr-2 d-flex align-items-center fw-medium lead">
+        Ivy Builder Chat
       </h5>
       <span class="ms-auto h4 mb-0 text-body-secondary fw-normal">&times;</span>
     </div>
-    <div class="conversation-outer-wrapper text-black px-4" ref="conversationScroller">
+    <div class="conversation-outer-wrapper text-black px-4">
       <div class="conversation-inner-wrapper px-2.5 pt-4" ref="conversationContent" />
     </div>
     <div class="chat-box-wrapper mt-auto">
@@ -408,6 +458,7 @@ const onBuilderNodesChange = (nodeIds = []) => {
         @click="advanceConversation"
       />
     </div>
+    <div class="left-content-resize" @pointerdown="startLeftContentResize" />
   </section>
   <section class="main-content d-flex flex-column">
     <ContentHeader class="assistant-page-header">
@@ -417,14 +468,14 @@ const onBuilderNodesChange = (nodeIds = []) => {
           <span class="assistant-header-title fw-medium text-truncate">{{ assistantTitle }}</span>
           <button
             type="button"
-            class="assistant-header-title-edit btn btn-link p-0 border-0 bg-transparent ms-2 opacity-25 flex-shrink-0 d-inline-flex align-items-center justify-content-center"
+            class="btn btn-link p-0 border-0 bg-transparent ms-2 opacity-25 flex-shrink-0 d-inline-flex align-items-center justify-content-center"
             aria-label="Edit assistant title"
             @click="openSettingsModalForTitleEdit"
           >
             <img src="../assets/edit.svg" height="12" width="12" alt="">
           </button>
         </div>
-        <StepOptionsDropdown class="assistant-header-trigger" placement="bottom-start" menu-class="header-trigger-menu">
+        <BasicDropdown class="assistant-header-trigger" placement="bottom-start" menu-class="header-trigger-menu">
           <template #trigger>
             <span
               class="header-trigger-pill rounded-sm true-small fw-normal d-inline-flex align-items-center justify-content-center"
@@ -467,7 +518,7 @@ const onBuilderNodesChange = (nodeIds = []) => {
               {{ option.label }}
             </button>
           </template>
-        </StepOptionsDropdown>
+        </BasicDropdown>
       </div>
       <div class="assistant-header-actions d-flex align-items-center flex-shrink-0">
         <button class="assistant-header-action-btn assistant-header-action-btn--test btn btn-sm btn-white border reduced px-2.5 rounded-sm me-2 d-inline-flex align-items-center">
@@ -506,7 +557,7 @@ const onBuilderNodesChange = (nodeIds = []) => {
         @select-start-block="selectStartBlock"
       />
       <article
-        class="assistant-sidebar-column px-0 side-content bg-white"
+        class="assistant-sidebar-column px-0 bg-white"
         :class="{ 'assistant-sidebar-column--open': showSidebar }"
         :aria-hidden="!showSidebar"
       >
@@ -575,16 +626,42 @@ const onBuilderNodesChange = (nodeIds = []) => {
 
 .left-content {
   background-color: white;
+  border-right: 1px solid var(--bs-gray-200);
   box-shadow: 0 0 18px -4px rgba(0,0,0,0.15);
+  display: flex;
+  flex-direction: row;
   height: 100%;
+  overflow: visible;
   position: relative;
+  width: var(--user-width, 24rem);
   z-index: 2;
 }
 
-.left-content {
-  border-right: 1px solid var(--bs-gray-200);
-  overflow: visible;
-  width: 24rem;
+.left-content-resize {
+  background: transparent;
+  bottom: 0;
+  cursor: col-resize;
+  touch-action: none;
+  position: absolute;
+  right: -4px;
+  top: 0;
+  width: 8px;
+
+  &:after {
+    background-color: rgba(0,0,0,0.25);
+    box-shadow: 0 0 8px -2px rgba(0,0,0,0.25);
+    content: "";
+    height: 100%;
+    opacity: 0;
+    position: absolute;
+    transition: opacity 0.1s ease-in-out;
+    width: 1px;
+    left: 3px;
+  }
+
+  &:hover:after {
+    opacity: 1;
+  }
 }
 
 .main-content {
@@ -636,34 +713,24 @@ const onBuilderNodesChange = (nodeIds = []) => {
   display: none;
 }
 
-.side-content {
-  box-shadow: 0 0 18px -4px rgba(0,0,0,0.15);
-  width: 22rem;
-  z-index: 3;
-}
-
-.side-content {
-  box-shadow: none;
+.assistant-sidebar-column {
   border-left: 1px solid var(--bs-gray-200);
   display: flex;
   flex-direction: column;
+  flex: 0 0 0;
   height: 100%;
   max-height: 100%;
   min-height: 0;
-  overflow: hidden;
-  position: relative;
-}
-
-.assistant-sidebar-column {
-  flex: 0 0 0;
   min-width: 0;
   opacity: 0;
   overflow: hidden;
   pointer-events: none;
+  position: relative;
   transform: translateX(100%);
   transition: all 0.2s ease-in-out;
   visibility: hidden;
   width: 0;
+  z-index: 3;
 }
 
 .assistant-sidebar-column--open {
@@ -675,31 +742,17 @@ const onBuilderNodesChange = (nodeIds = []) => {
   width: 22rem;
 }
 
-.user-chat-bubble {
-  background-color: var(--bs-gray-200);
-  background-color: $iceberg-blue;
-  margin-left: auto;
-  max-width: 84%;
-  width: fit-content;
-}
-
-// Below is css that is unique to this page, and should not be moved into the global split-content component
-
-.left-content {
-  display: flex;
-  flex-direction: row;
-}
-
 .small-chat-header {
   align-items: center;
   background-color: white;
   display: flex;
-  height: 3.25rem;
+  height: 3.5rem;
   left: 0;
   padding-left: 4rem;
   position: absolute;
   right: 0;
   top: 0;
+  z-index: 2;
 }
 
 .chat-box-wrapper {
@@ -715,6 +768,7 @@ const onBuilderNodesChange = (nodeIds = []) => {
   overflow: hidden scroll;
   padding-bottom: 6.625rem; // height of the chat box + some padding 
   padding-top: 3.5rem;
+  position: relative;
 
   article *:last-child {
     margin-bottom: 0;
@@ -724,7 +778,6 @@ const onBuilderNodesChange = (nodeIds = []) => {
 .conversation-outer-wrapper,
 .conversation-inner-wrapper {
   min-height: 100%;
-  scroll-behavior: smooth;
 }
 
 .header-trigger-pill {
@@ -757,11 +810,6 @@ const onBuilderNodesChange = (nodeIds = []) => {
   background: transparent;
   border: 0;
   width: 100%;
-}
-
-:deep(.page-header-more-menu) {
-  min-width: 12rem;
-  padding: 0.35rem 0;
 }
 
 .settings-modal-backdrop {
@@ -850,9 +898,10 @@ const onBuilderNodesChange = (nodeIds = []) => {
 
 @container (max-width: 56rem) {
   .header-trigger-pill {
+    border-radius: 0.25rem;
     font-size: 0.625rem;
     min-height: 1.5rem;
-    padding: 0.2rem 0.4rem;
+    padding: 0.25rem 0.5rem;
   }
 
   .assistant-header-trigger {
@@ -866,7 +915,7 @@ const onBuilderNodesChange = (nodeIds = []) => {
 
   .header-trigger-pill__arrow {
     height: 10px;
-    margin-left: 0.35rem !important;
+    margin-left: 0.375rem !important;
     width: 10px;
   }
 }

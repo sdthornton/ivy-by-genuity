@@ -1,14 +1,15 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, ref, watch } from "vue";
 import ContentHeader from "./shared/ContentHeader.vue";
-import CategoryPillDropdown from "./assistants/shared/CategoryPillDropdown.vue";
+import BasicDropdown from "./shared/BasicDropdown.vue";
+import { CATEGORY_OPTIONS, formatCategoryLabel } from "./assistants/shared/categoryOptions";
 import iconIvyCreator from "../assets/nav-resources-nav.svg";
-import iconClock from "../assets/clock.svg";
+import iconCalendar from "../assets/calendar.svg";
 import iconStop from "../assets/stop.svg";
 
 const DEFAULT_ASSISTANT_CREATOR = "Ivy";
 const IVY_CREATOR_NAME = "Ivy";
-const IVY_CREATOR_BG = "var(--bs-gray-300)";
+const IVY_CREATOR_BG = "var(--bs-gray-200)";
 const AVATAR_COLORS = [
   "#f44336",
   "#e91e63",
@@ -136,6 +137,7 @@ const createAssistantPromptExampleIndex = ref(0);
 const createAssistantPromptPlaceholder = computed(() => (
   createAssistantPromptExamples[createAssistantPromptExampleIndex.value] || ""
 ));
+const hasCreateAssistantPrompt = computed(() => createAssistantPrompt.value.length > 0);
 let createAssistantPlaceholderTimer = null;
 
 function rotateCreateAssistantPromptExample() {
@@ -253,7 +255,21 @@ function getAssistantSchedulePillClass(assistant) {
 }
 
 function getAssistantScheduleIcon(assistant) {
-  return isAssistantScheduled(assistant) ? iconClock : iconStop;
+  return isAssistantScheduled(assistant) ? iconCalendar : iconStop;
+}
+
+function getAssistantCategory(assistant) {
+  return String(assistant?.category || "").trim() || "security";
+}
+
+function selectAssistantCategory(assistant, category, close) {
+  if (!assistant) {
+    close();
+    return;
+  }
+
+  assistant.category = category;
+  close();
 }
 
 </script>
@@ -332,37 +348,56 @@ function getAssistantScheduleIcon(assistant) {
               20
             </h3>
             <div class="text-dark opacity-75 reduced">
-              Ran This Week
+              Run This Week
+            </div>
+          </a>
+        </div>
+        <div class="col">
+          <a
+            href="#"
+            class="btn btn-link d-block p-2 text-start"
+            @click.prevent=""
+          >
+            <h3 class="fw-bold mb-0 d-flex align-items-center gap-2">
+              <img src="../assets/ivy-basic-icon.svg" height="24" width="24">
+              <span>4</span>
+            </h3>
+            <div class="text-dark opacity-75 reduced">
+              Assistant Insights
             </div>
           </a>
         </div>
       </div>
     </div>
+
     <div class="border-start border-end border-bottom rounded-bottom p-3 bg-white">
       <div class="row">
         <div class="col-auto">
-          <input type="text" class="form-control rounded-sm py-2 px-3 reduced" placeholder="Search assistants by title, creator, category, etc..." style="min-width: 25rem;">
+          <div class="position-relative">
+            <img src="../assets/magnifying-glass.svg" height="14" width="14" class="position-absolute opacity-50 ms-3 top-50 start-0 translate-middle-y">
+            <input type="text" class="assistant-search form-control rounded-sm py-2 pe-3" placeholder="Search assistants by title, creator, category, etc...">
+          </div>
         </div>
         <div class="col-auto">
-          <div class="p-2 border reduced rounded-sm bg-white d-inline-flex align-items-center justify-content-center py-2 px-3">
+          <div class="p-2 border reduced rounded-sm bg-light d-inline-flex align-items-center justify-content-center py-2 px-3 reduced">
             <span>All Assistants</span>
             <img src="../assets/dropdown.svg" width="12" height="12" class="ms-3">
           </div>
         </div>
         <div class="col-auto">
-          <div class="p-2 border reduced rounded-sm bg-white d-inline-flex align-items-center justify-content-center py-2 px-3">
+          <div class="p-2 border reduced rounded-sm bg-light d-inline-flex align-items-center justify-content-center py-2 px-3 reduced">
             <span>Recent</span>
             <img src="../assets/dropdown.svg" width="12" height="12" class="ms-3">
           </div>
         </div>
         <div class="col-auto">
-          <div class="p-2 border reduced rounded-sm bg-white d-inline-flex align-items-center justify-content-center py-2 px-3">
+          <div class="p-2 border reduced rounded-sm bg-light d-inline-flex align-items-center justify-content-center py-2 px-3 reduced">
             <span>All Categories</span>
             <img src="../assets/dropdown.svg" width="12" height="12" class="ms-3">
           </div>
         </div>
         <div class="col-auto">
-          <div class="p-2 border reduced rounded-sm bg-white d-inline-flex align-items-center justify-content-center py-2 px-3">
+          <div class="p-2 border reduced rounded-sm bg-light d-inline-flex align-items-center justify-content-center py-2 px-3 reduced">
             <span>Any Creator</span>
             <img src="../assets/dropdown.svg" width="12" height="12" class="ms-3">
           </div>
@@ -370,56 +405,127 @@ function getAssistantScheduleIcon(assistant) {
       </div>
     </div>
 
-    <div class="basic-box-grid mt-4">
+    <div class="d-flex gap-2 mt-4 mb-3 align-items-start not-as-small fw-normal">
+      <span class="border-bottom border-primary-subtle fw-medium px-1" style="border-bottom-width: 2px !important;">
+        All Assistants
+      </span>
+      <span class="px-1">Active</span>
+      <span class="px-1">Inactive</span>
+      <span class="px-1">Drafts</span>
+      <span class="px-1">Scheduled</span>
+      <span class="px-1">Unscheduled</span>
+    </div>
+
+    <div class="basic-box-grid">
       <div
         v-for="assistant in mockAssistants"
         :key="assistant.id"
         class="basic-box-grid__item border bg-white pt-4 rounded d-flex flex-column overflow-hidden"
       >
         <div class="px-4 mb-4">
-          <h6 class="fw-medium mb-2 lead">
-            {{ assistant.title }}
-          </h6>
+          <div class="d-flex align-items-start gap-2 mb-2">
+            <h6 class="fw-medium mb-0 lead">
+              {{ assistant.title }}
+            </h6>
+            <div class="ms-auto d-flex gap-2 align-items-center" style="margin-top: -0.75rem; margin-right: -0.75rem;">
+              <div 
+                v-tooltip="'Last ran on March 10, at 4pm.'"
+                class="rounded-circle bg-secondary-subtle p-1 ms-auto" 
+              >
+                <img src="../assets/last-ran.svg" class="d-block" width="14" height="14">
+              </div>
+              <div class="dropdown">
+                <img src="../assets/ellipses.svg" class="d-block" height="16" width="16" style="transform: rotate(90deg);">
+              </div>
+            </div>
+          </div>
           <p class="text-secondary not-as-small mb-0">
             {{ assistant.description }}
           </p>
-          <div class="d-flex align-items-center true-small mt-3">
-            <CategoryPillDropdown
-              v-model="assistant.category"
-            />
-            <span
-              class="assistant-index-schedule-pill d-inline-flex align-items-center rounded-sm fw-normal ms-auto"
-              :class="getAssistantSchedulePillClass(assistant)"
-            >
-              <img
-                :src="getAssistantScheduleIcon(assistant)"
-                width="12"
-                height="12"
-                class="assistant-index-schedule-pill__icon"
-                :class="{ 'assistant-index-schedule-pill__icon--invert': isAssistantScheduled(assistant) }"
-                alt=""
-              >
-              <span>{{ getAssistantScheduleLabel(assistant) }}</span>
-            </span>
-          </div>
         </div>
-        <div class="mt-auto bg-light px-4 py-2 border-top not-as-small d-flex align-items-center gap-2">
+
+        <div class="d-flex align-items-center true-small gap-3 mt-auto mb-3 px-4">
+          <BasicDropdown menu-class="assistant-category-menu">
+            <template #trigger>
+              <div
+                class="assistant-category-pill fw-medium true-small text-black text-capitalize rounded-pill px-2 d-inline-flex"
+                :class="`bg-category-${getAssistantCategory(assistant)}`"
+              >
+                <div class="assistant-category-pill__content d-flex align-items-center">
+                  <span>{{ formatCategoryLabel(getAssistantCategory(assistant)) }}</span>
+                  <img src="../assets/dropdown.svg" height="10" width="10" class="ms-2 opacity-75">
+                </div>
+              </div>
+            </template>
+            <template #menu="{ close }">
+              <button
+                v-for="category in CATEGORY_OPTIONS"
+                :key="category"
+                type="button"
+                class="dropdown-item d-flex align-items-center justify-content-between gap-3 text-start assistant-category-menu__item"
+                @click="selectAssistantCategory(assistant, category, close)"
+              >
+                <span class="d-inline-flex align-items-center gap-2">
+                  <span
+                    class="assistant-category-menu__swatch rounded-pill"
+                    :class="`bg-category-${category}`"
+                  />
+                  <span>{{ formatCategoryLabel(category) }}</span>
+                </span>
+                <span
+                  v-if="getAssistantCategory(assistant) === category"
+                  class="assistant-category-menu__selected text-body-secondary"
+                >
+                  Current
+                </span>
+              </button>
+            </template>
+          </BasicDropdown>
           <span
-            class="text-avatar text-avatar--small text-white fw-semibold rounded-circle flex-shrink-0"
-            :style="getCreatorAvatarStyle(getCreatorName(assistant))"
+            v-tooltip="'This should show when or what triggers the assistant to run.'"
+            class="assistant-index-schedule-pill d-inline-flex align-items-center rounded-sm fw-normal ms-auto"
+            :class="getAssistantSchedulePillClass(assistant)"
           >
             <img
-              v-if="isIvyCreator(getCreatorName(assistant))"
-              :src="iconIvyCreator"
-              width="11"
-              height="11"
+              :src="getAssistantScheduleIcon(assistant)"
+              width="12"
+              height="12"
+              class="assistant-index-schedule-pill__icon"
+              :class="{ 'assistant-index-schedule-pill__icon--invert': isAssistantScheduled(assistant) }"
               alt=""
             >
-            <template v-else>
-              {{ getCreatorInitials(getCreatorName(assistant)) }}
-            </template>
+            <span>{{ getAssistantScheduleLabel(assistant) }}</span>
           </span>
-          <span class="text-body-secondary">{{ getCreatorName(assistant) }}</span>
+        </div>
+
+        <div class="bg-light px-3 py-2 border-top not-as-small d-flex align-items-center gap-3">
+          <div class="d-flex gap-2">
+            <span
+              class="text-avatar text-avatar--small text-white fw-semibold rounded-circle flex-shrink-0"
+              :style="getCreatorAvatarStyle(getCreatorName(assistant))"
+            >
+              <img
+                v-if="isIvyCreator(getCreatorName(assistant))"
+                :src="iconIvyCreator"
+                width="12"
+                height="12"
+              >
+              <template v-else>
+                {{ getCreatorInitials(getCreatorName(assistant)) }}
+              </template>
+            </span>
+            <span class="text-body-secondary">{{ getCreatorName(assistant) }}</span>
+          </div>
+          <div class="rounded-pill d-flex gap-2 align-items-center px-2 ms-auto" style="background-color: var(--bs-gray-150);">
+            <img 
+              src="../assets/globe.svg"
+              width="12"
+              height="12"
+            >
+            <span class="text-body-secondary">
+              Public
+            </span>
+          </div>
         </div>
       </div>
     </div>
@@ -456,15 +562,16 @@ function getAssistantScheduleIcon(assistant) {
           Describe any automated workflow and watch Ivy create your assistant in seconds.
         </p>
 
-        <div class="position-relative">
+        <div class="ivy-chat-highlight-shadow position-relative">
           <textarea
             ref="createAssistantPromptInput"
             v-model="createAssistantPrompt"
-            class="form-control reduced"
+            class="assistant-create-modal__prompt-input form-control reduced p-3"
             rows="4"
             placeholder=" "
           />
           <div
+            v-show="!hasCreateAssistantPrompt"
             class="assistant-create-modal__prompt-placeholder opacity-50 position-absolute start-0 top-0 d-flex align-items-start px-3 pt-3 pe-4 text-body-secondary reduced"
             @click="createAssistantPromptInput?.focus()"
           >
@@ -477,18 +584,20 @@ function getAssistantScheduleIcon(assistant) {
           </div>
         </div>
 
-        <div class="assistant-create-modal__or-divider position-relative my-4">
+        <div class="assistant-create-modal__or-divider position-relative my-4 py-2">
           <hr class="my-0">
           <span class="assistant-create-modal__or-label px-2 smallest text-body-tertiary bg-white">or</span>
         </div>
 
-        <button
-          type="button"
-          class="btn btn-outline-light text-dark w-100"
-          @click="closeCreateAssistantModal"
-        >
-          Build from Scratch
-        </button>
+        <div class="text-center">
+          <router-link
+            to="/assistants"
+            class="btn btn-outline-light border mx-auto d-inline-block text-dark px-5"
+            @click="closeCreateAssistantModal"
+          >
+            Build from Scratch
+        </router-link>
+        </div>
       </aside>
     </Transition>
   </Teleport>
@@ -507,7 +616,7 @@ function getAssistantScheduleIcon(assistant) {
 .assistant-create-modal {
   box-shadow: 0 24px 38px 3px rgba(0,0,0,0.14), 0 9px 46px 8px rgba(0,0,0,0.12), 0 11px 15px -7px rgba(0,0,0,0.20);
   left: 50%;
-  max-width: min(38rem, calc(100vw - 2rem));
+  max-width: min(42rem, calc(100vw - 2rem));
   position: fixed;
   top: 50%;
   transform: translate(-50%, -50%);
@@ -534,6 +643,7 @@ function getAssistantScheduleIcon(assistant) {
   width: 100%;
   overflow-wrap: break-word;
   word-break: normal;
+  z-index: 2;
 }
 
 .assistant-create-modal__prompt-input:not(:placeholder-shown) + .assistant-create-modal__prompt-placeholder {
@@ -549,7 +659,7 @@ function getAssistantScheduleIcon(assistant) {
 .assistant-create-placeholder-swap-enter-from,
 .assistant-create-placeholder-swap-leave-to {
   opacity: 0;
-  transform: translateY(0.2rem);
+  transform: translateY(0.25rem);
 }
 
 .assistant-create-placeholder-swap-enter-to,
@@ -599,9 +709,9 @@ function getAssistantScheduleIcon(assistant) {
 }
 
 .assistant-index-schedule-pill {
-  gap: 0.3rem;
-  min-height: 1.5rem;
-  padding: 0.2rem 0.5rem;
+  border-radius: 0.375rem;
+  gap: 0.25rem;
+  padding: 0 0.5rem;
 }
 
 .assistant-index-schedule-pill--scheduled {
@@ -614,5 +724,40 @@ function getAssistantScheduleIcon(assistant) {
 
 .assistant-index-schedule-pill__icon--invert {
   filter: brightness(0) invert(1);
+}
+
+.assistant-search {
+  min-width: 28rem;
+  padding-left: 2.5rem;
+}
+
+.assistant-category-pill {
+  text-transform: capitalize;
+}
+
+.assistant-category-pill__content {
+  mix-blend-mode: darken;
+  opacity: 0.65;
+}
+
+.assistant-category-menu__item {
+  background: transparent;
+  border: 0;
+  width: 100%;
+}
+
+.assistant-category-menu__selected {
+  font-size: 0.75rem;
+}
+
+.assistant-category-menu__swatch {
+  display: inline-block;
+  height: 0.875rem;
+  width: 1.5rem;
+}
+
+:deep(.assistant-category-menu) {
+  min-width: 12rem;
+  padding: 0.375rem 0;
 }
 </style>

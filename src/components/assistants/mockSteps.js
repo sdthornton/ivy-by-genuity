@@ -282,6 +282,12 @@ export function setLiveSidebarSteps(steps = []) {
     const resolvedRows = Array.isArray(step.rows) && step.rows.length
       ? step.rows
       : resolveStepRows(resolvedType);
+    const resolvedSources = Array.isArray(step.sources)
+      ? step.sources
+      : resolveStepSources(resolvedType, step.sources);
+    if (!Array.isArray(step.sources)) {
+      step.sources = resolvedSources;
+    }
 
     liveSidebarSteps[String(step.id)] = {
       ...step,
@@ -292,7 +298,7 @@ export function setLiveSidebarSteps(steps = []) {
       rows: resolvedRows,
       data: step.data || resolveStepBuilderData(resolvedType),
       comments: Array.isArray(step.comments) ? step.comments : [],
-      sources: resolveStepSources(resolvedType, step.sources),
+      sources: resolvedSources,
       ivySays: step.ivySays || resolveStepIvySays(resolvedType),
       isStartBlock: Boolean(step.isStartBlock),
       startBlockMode: step.startBlockMode || null,
@@ -354,6 +360,7 @@ export function createBuilderNodeTemplates(stepCount = MOCK_STEP_COUNT, options 
     typeMeta: step.typeMeta,
     title: step.builderTitle || step.title,
     comments: getSharedStepComments(step.stateKey),
+    sources: cloneSources(step.sources),
     rows: cloneRows(step.rows),
     data: getSharedStepData(step.stateKey),
     detailsCollapsed: Boolean(step.detailsCollapsed),

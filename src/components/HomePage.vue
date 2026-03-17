@@ -1,17 +1,83 @@
 <script setup>
-import { useTemplateRef } from 'vue';
-import typewriter from '../utils/typewriter';
-import ChatBox from './shared/ChatBox.vue';
+import { onBeforeUnmount, onMounted, ref, useTemplateRef } from "vue";
+import typewriter from "../utils/typewriter";
+import ChatBox from "./shared/ChatBox.vue";
 
-const chatBox = useTemplateRef('chatBox');
+const chatBox = useTemplateRef("chatBox");
+const greetingHeading = ref(null);
+const greetingSubheading = ref(null);
+
+const greetingHeadingText = "Good afternoon, Sarith";
+const greetingSubheadingText = "How can I help your IT work today?";
+
+let activeGreetingTypewriterController = null;
+
+async function runGreetingTypewriter() {
+  const headingEl = greetingHeading.value;
+  const subheadingEl = greetingSubheading.value;
+  if (!headingEl || !subheadingEl) {
+    return;
+  }
+
+  const controller = new AbortController();
+  activeGreetingTypewriterController?.abort();
+  activeGreetingTypewriterController = controller;
+
+  try {
+    await typewriter(headingEl, greetingHeadingText, {
+      clearElementFirst: true,
+      signal: controller.signal,
+      timing: {
+        minDelay: 24,
+        maxDelay: 24,
+        whitespaceMaxDelay: 0,
+        whitespaceMaxDelay: 0,
+      },
+    });
+    await typewriter(subheadingEl, greetingSubheadingText, {
+      clearElementFirst: true,
+      signal: controller.signal,
+      timing: {
+        startDelay: 300,
+        minDelay: 24,
+        maxDelay: 24,
+        whitespaceMaxDelay: 0,
+        whitespaceMaxDelay: 0,
+      },
+    });
+  } catch (error) {
+    if (error?.name !== "AbortError") {
+      throw error;
+    }
+  } finally {
+    if (activeGreetingTypewriterController === controller) {
+      activeGreetingTypewriterController = null;
+    }
+  }
+}
+
+onMounted(() => {
+  runGreetingTypewriter();
+});
+
+onBeforeUnmount(() => {
+  activeGreetingTypewriterController?.abort();
+  activeGreetingTypewriterController = null;
+});
 </script>
 
 <template>
   <section class="my-5 py-5">
-    <div class="text-center mb-4 pb-3">
+    <div class="text-center mb-5 pb-3">
       <!-- <img src="./assets/ivy-logo-no-padding.svg" width="160" height="160" class="mb-4"> -->
-      <h2 class="fw-bold mb-1">Good afternoon!</h2>
-      <h5 class="mb-0">How can I help your IT work today, Sarith?</h5>
+      <div class="position-relative">
+        <div class="h2 fw-semibold mb-1" style="color: transparent;">Good Afternoon, Sarith</div>
+        <h2 ref="greetingHeading" class="fw-semibold mb-1 position-absolute top-0 start-0 w-100" />
+      </div>
+      <div class="position-relative">
+        <div class="h5 fw-normal mb-0" style="color: transparent;">How can I help your IT work today?</div>
+        <h5 ref="greetingSubheading" class="fw-normal mb-0 position-absolute top-0 start-0 w-100" />
+      </div>
     </div>
 
     <ChatBox ref="chatBox" class="mb-5" />
@@ -42,7 +108,7 @@ const chatBox = useTemplateRef('chatBox');
               <img src="../assets/nav-collections.svg" width="16" height="16" class="invert-to-white">
             </div>
             <div>
-              <h6 class="fw-bold mb-0">Daily Tasks</h6>
+              <h6 class="fw-semibold mb-0">Daily Tasks</h6>
               <div class="smallest text-muted">for January 14, 2026</div>
             </div>
           </div>
@@ -75,7 +141,7 @@ const chatBox = useTemplateRef('chatBox');
             <img src="../assets/nav-prompt-library.svg" width="16" height="16" class="invert-to-white">
           </div>
           <div class="position-relative mt-auto">
-            <h6 class="fw-semibold mb-0">
+            <h6 class="fw-medium mb-0">
               Show me any underused or unused licenses.
             </h6>
             <!-- <p class="mb-0 true-small text-dark pretty-overflow">
@@ -90,7 +156,7 @@ const chatBox = useTemplateRef('chatBox');
             <img src="../assets/nav-resources.svg" width="16" height="16" class="invert-to-white">
           </div>
           <div class="position-relative mt-auto">
-            <h6 class="fw-semibold mb-0">
+            <h6 class="fw-medium mb-0">
               Run "Daily IT Health Check."
             </h6>
             <!-- <p class="mb-0 true-small text-dark pretty-overflow">

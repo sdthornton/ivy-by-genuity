@@ -41,7 +41,7 @@ function addSplitElseIf(insertAfterSectionIndex) {
     :start-block-options="startBlockOptions"
     :source-options="sourceOptions"
     @close="emit('close')"
-    @select-start-block="(mode) => emit('select-start-block', mode)"
+    @select-start-block="emit('select-start-block', $event)"
   >
     <template #details>
       <div class="mt-4 w-100">
@@ -95,7 +95,7 @@ function addSplitElseIf(insertAfterSectionIndex) {
   cursor: pointer;
   display: block;
   height: 1.15rem;
-  margin: 0.2rem 0;
+  margin: 0.25rem 0;
   padding: 0;
   position: relative;
   width: 100%;

@@ -1,7 +1,7 @@
 <script setup>
 import { computed, nextTick, ref } from "vue";
-import StepOptionsDropdown from "../shared/StepOptionsDropdown.vue";
-import CategoryPillDropdown from "./shared/CategoryPillDropdown.vue";
+import BasicDropdown from "../shared/BasicDropdown.vue";
+import { CATEGORY_OPTIONS, formatCategoryLabel } from "./shared/categoryOptions";
 import iconClock from "../../assets/clock.svg";
 import iconEyeOpen from "../../assets/eye-open.svg";
 import iconEdit from "../../assets/edit.svg";
@@ -255,6 +255,11 @@ function getLogStatusClass(status) {
   return "bg-secondary-subtle text-secondary";
 }
 
+function selectCategory(category, close) {
+  props.settings.category = category;
+  close();
+}
+
 async function focusTitleInput() {
   await nextTick();
   const input = titleInput.value;
@@ -320,11 +325,43 @@ defineExpose({
             <span>{{ settings.updatedAt }}</span>
           </div>
           <span class="text-body-tertiary smallest mx-1">&bullet;</span>
-          <CategoryPillDropdown
-            v-model="settings.category"
-            tooltip="Category."
-            placement="bottom-start"
-          />
+          <BasicDropdown placement="bottom-start" menu-class="assistant-category-menu">
+            <template #trigger>
+              <div
+                v-tooltip="{ content: 'Category.', placement: 'top' }"
+                class="assistant-category-pill fw-medium true-small text-black text-capitalize rounded-pill px-2 d-inline-flex"
+                :class="`bg-category-${String(settings.category || '').trim() || 'security'}`"
+              >
+                <div class="assistant-category-pill__content d-flex align-items-center">
+                  <span>{{ formatCategoryLabel(settings.category) }}</span>
+                  <img src="../../assets/dropdown.svg" height="10" width="10" class="ms-2 opacity-75">
+                </div>
+              </div>
+            </template>
+            <template #menu="{ close }">
+              <button
+                v-for="category in CATEGORY_OPTIONS"
+                :key="category"
+                type="button"
+                class="dropdown-item d-flex align-items-center justify-content-between gap-3 text-start assistant-category-menu__item"
+                @click="selectCategory(category, close)"
+              >
+                <span class="d-inline-flex align-items-center gap-2">
+                  <span
+                    class="assistant-category-menu__swatch rounded-pill"
+                    :class="`bg-category-${category}`"
+                  />
+                  <span>{{ formatCategoryLabel(category) }}</span>
+                </span>
+                <span
+                  v-if="String(settings.category || '').trim() === category"
+                  class="assistant-category-menu__selected text-body-secondary"
+                >
+                  Current
+                </span>
+              </button>
+            </template>
+          </BasicDropdown>
         </div>
 
         <div class="mb-4 me-5">
@@ -373,7 +410,7 @@ defineExpose({
         <div class="mb-4">
           <div class="mb-1 d-flex">
             <span class="me-2">Permissions</span>
-            <StepOptionsDropdown placement="bottom-start" menu-class="assistant-permission-principal-menu">
+            <BasicDropdown placement="bottom-start" menu-class="assistant-permission-principal-menu">
               <template #trigger>
                 <button
                   type="button"
@@ -422,7 +459,7 @@ defineExpose({
                   <span class="flex-grow-1">{{ team.label }}</span>
                 </button>
               </template>
-            </StepOptionsDropdown>
+            </BasicDropdown>
           </div>
           <div class="d-flex flex-column gap-2">
             <div
@@ -431,7 +468,7 @@ defineExpose({
               class="d-flex align-items-center justify-content-between gap-3"
             >
               <div class="fw-medium text-black">{{ permissionEntry.label }}</div>
-              <StepOptionsDropdown placement="bottom-end" menu-class="assistant-permissions-menu">
+              <BasicDropdown placement="bottom-end" menu-class="assistant-permissions-menu">
                 <template #trigger>
                   <span class="smallest text-body-secondary border rounded-pill px-2 py-1 flex-shrink-0 d-inline-flex align-items-center">
                     <img
@@ -481,14 +518,14 @@ defineExpose({
                     <span>{{ option }}</span>
                 </button>
               </template>
-            </StepOptionsDropdown>
+            </BasicDropdown>
           </div>
         </div>
         </div>
 
         <div class="mb-0">
           <div class="mb-1">Trigger</div>
-          <StepOptionsDropdown placement="bottom-start" menu-class="assistant-trigger-menu">
+          <BasicDropdown placement="bottom-start" menu-class="assistant-trigger-menu">
             <template #trigger>
               <span
                 class="assistant-settings-trigger-pill header-trigger-pill rounded-sm true-small fw-normal d-inline-flex align-items-center justify-content-center"
@@ -534,7 +571,7 @@ defineExpose({
                 <span>{{ option.label }}</span>
               </button>
             </template>
-          </StepOptionsDropdown>
+          </BasicDropdown>
         </div>
 
         <div class="mt-4">
@@ -628,17 +665,6 @@ defineExpose({
   overflow-y: auto;
 }
 
-.assistant-settings-title {
-  display: inline-block;
-  min-width: 0;
-  outline: none;
-  text-decoration-color: var(--bs-gray-300);
-  text-decoration-line: underline;
-  text-decoration-style: wavy;
-  text-decoration-thickness: 1.5px;
-  text-underline-offset: 0.5rem;
-}
-
 .assistant-settings-textarea {
   resize: vertical;
 }
@@ -682,7 +708,7 @@ defineExpose({
 
 :deep(.assistant-permissions-menu) {
   min-width: 12rem;
-  padding: 0.35rem 0;
+  padding: 0.375rem 0;
 }
 
 .assistant-permission-principal-menu__item {
@@ -714,7 +740,7 @@ defineExpose({
 
 :deep(.assistant-permission-principal-menu) {
   min-width: 14rem;
-  padding: 0.35rem 0;
+  padding: 0.375rem 0;
 }
 
 .assistant-trigger-menu__item {
@@ -750,9 +776,39 @@ defineExpose({
   line-height: 1;
 }
 
+.assistant-category-pill {
+  text-transform: capitalize;
+}
+
+.assistant-category-pill__content {
+  mix-blend-mode: darken;
+  opacity: 0.65;
+}
+
+.assistant-category-menu__item {
+  background: transparent;
+  border: 0;
+  width: 100%;
+}
+
+.assistant-category-menu__selected {
+  font-size: 0.75rem;
+}
+
+.assistant-category-menu__swatch {
+  display: inline-block;
+  height: 0.875rem;
+  width: 1.5rem;
+}
+
 .assistant-trigger-menu__icon-spacer {
   height: 14px;
   width: 14px;
+}
+
+:deep(.assistant-category-menu) {
+  min-width: 12rem;
+  padding: 0.375rem 0;
 }
 
 :deep(.assistant-trigger-menu) {

@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from "vue";
-import StepOptionsDropdown from "../../shared/StepOptionsDropdown.vue";
+import BasicDropdown from "../../shared/BasicDropdown.vue";
 import {
   getNormalizedWaitMode,
   getWaitModeOptions,
@@ -48,12 +48,12 @@ function selectWaitMode(waitMode, close) {
     :start-block-options="startBlockOptions"
     :source-options="sourceOptions"
     @close="emit('close')"
-    @select-start-block="(mode) => emit('select-start-block', mode)"
+    @select-start-block="emit('select-start-block', $event)"
   >
     <template #before-details>
       <div class="mt-4 w-100">
         <h6 class="fw-medium mb-1">Wait Type</h6>
-        <StepOptionsDropdown placement="bottom-start" menu-class="wait-mode-menu">
+        <BasicDropdown placement="bottom-start" menu-class="wait-mode-menu">
           <template #trigger>
             <button
               type="button"
@@ -75,7 +75,7 @@ function selectWaitMode(waitMode, close) {
               {{ option.label }}
             </button>
           </template>
-        </StepOptionsDropdown>
+        </BasicDropdown>
       </div>
     </template>
 

@@ -1,77 +1,62 @@
 <script setup>
-
-import { onBeforeMount, onMounted, onBeforeUnmount, ref, watch } from 'vue';
+import { computed, onBeforeMount, watch } from 'vue';
 import { useRoute } from 'vue-router';
+import { useAppLayoutState } from '../composables/useAppLayoutState';
 
 const toggleLeftNav = () => {
   document.body.classList.toggle('left-nav-open');
 }
 
-const viewportSize = {
-  width: null,
-  height: null,
-};
-
-const fixedHeightObserver = new ResizeObserver(entries => {
-  if (window.innerWidth === viewportSize.width && window.innerHeight === viewportSize.height) {
-    return;
-  }
-
-  for (let entry of entries) {
-    if (entry.target.classList.contains('fixed-height-set')) {
-      return;
-    }
-    const fixedHeight = entry.contentRect.height;
-    entry.target.style.height = `${fixedHeight}px`;
-    entry.target.classList.add('fixed-height-set');
-  }
-  viewportSize.width = window.innerWidth;
-  viewportSize.height = window.innerHeight;
-});
-
-const leftNavSubLinks = ref([]);
-const setSubLinkRef = el => {
-  if (el) {
-    leftNavSubLinks.value.push(el);
-  }
-}
-
 const route = useRoute();
+const { onboardingNavStage } = useAppLayoutState();
+const isOnboardingRoute = computed(() => route.name === "Onboarding");
+const showToggle = computed(() => !isOnboardingRoute.value || onboardingNavStage.value === "full");
+const leftNavOnboardingClass = computed(() => {
+  if (!isOnboardingRoute.value) {
+    return null;
+  }
+
+  if (onboardingNavStage.value === "profile") {
+    return "left-nav--onboarding-profile";
+  }
+
+  if (onboardingNavStage.value === "company") {
+    return "left-nav--onboarding-company";
+  }
+
+  if (onboardingNavStage.value === "main") {
+    return "left-nav--onboarding-main";
+  }
+
+  return null;
+});
 onBeforeMount(() => {
-  if (!route.meta?.splitContent) {
+  if (!route.meta?.splitContent && !route.meta?.hideLeftNav) {
     document.body.classList.add('left-nav-open');
   }
-});
-
-onMounted(() => {
-  leftNavSubLinks.value.forEach(el => {
-    el.style.height = "auto";
-    fixedHeightObserver.observe(el);
-  });
 });
 
 watch(route, to => {
   if (to.meta?.splitContent) {
     document.body.classList.remove('left-nav-open');
     document.body.classList.add('split-content-page');
+  } else if (to.meta?.hideLeftNav) {
+    document.body.classList.remove('left-nav-open');
+    document.body.classList.remove('split-content-page');
   } else {
     document.body.classList.add('left-nav-open');
     document.body.classList.remove('split-content-page');
   }
 });
-
-onBeforeUnmount(() => {
-  fixedHeightObserver.disconnect()
-});
 </script>
 
 <template>
-  <a href="#" class="toggle-left-nav" @click.prevent.stop="toggleLeftNav">
+  <a v-if="showToggle" href="#" class="toggle-left-nav" @click.prevent.stop="toggleLeftNav">
     <img src="../assets/toggle-left-nav-box.svg" class="toggle-left-nav__box">
     <img src="../assets/toggle-left-nav-line.svg" class="toggle-left-nav__line">
     <img src="../assets/toggle-left-nav-arrow.svg" class="toggle-left-nav__arrow">
   </a>
-  <div class="left-nav pt-3 d-flex flex-column">
+  <div class="left-nav pt-3 d-flex flex-column" :class="leftNavOnboardingClass">
     
     <div class="company-drawer">
       <div class="company-drawer__logo" style="background-image: url('https://s3.amazonaws.com/nulodgic-static-assets/images/location_defaults/default5_thumbnail.png');"></div>
@@ -88,26 +73,15 @@ onBeforeUnmount(() => {
         <img src="../assets/nav-resources-nav.svg" width="24" height="24" />
         <span class="left-nav-link-text">Ivy</span>
       </RouterLink>
-      <RouterLink to="/chat" class="left-nav-link d-flex">
+      <RouterLink to="/chat" class="left-nav-link">
         <img src="../assets/nav-chat.svg" width="18" height="18" />
         <span class="left-nav-link-text me-2">Chat</span>
       </RouterLink>
-      <RouterLink to="/prompt-library" class="left-nav-link d-flex">
+      <RouterLink to="/prompt-library" class="left-nav-link">
         <img src="../assets/nav-prompt-library.svg" width="18" height="18" />
         <span class="left-nav-link-text">Prompt Library</span>
         <!-- <img src="./assets/drodpown.svg" width="12" height="12" class="ms-auto opacity-50"> -->
       </RouterLink>
-      <!-- <span class="left-nav-sub-links" :ref="setSubLinkRef">
-        <a href="#" class="left-nav-sub-link">
-          My Prompts
-        </a>
-        <a href="#" class="left-nav-sub-link">
-          Shared Prompts
-        </a>
-        <a href="#" class="left-nav-sub-link">
-          Recommended Prompts
-        </a>
-      </span> -->
       <RouterLink to="/assistants" class="left-nav-link">
         <img src="../assets/nav-resources.svg" width="18" height="18" />
         <span class="left-nav-link-text">Assistants</span>
@@ -120,27 +94,10 @@ onBeforeUnmount(() => {
         <img src="../assets/nav-connectors.svg" width="18" height="18" />
         <span class="left-nav-link-text">Sources</span>
       </a>
-      <a href="#" class="left-nav-link d-flex">
+      <a href="#" class="left-nav-link">
         <img src="../assets/history.svg" width="18" height="18" />
         <span class="left-nav-link-text">History</span>
       </a>
-      <!-- <span class="left-nav-sub-links" :ref="setSubLinkRef">
-        <a href="#" class="left-nav-sub-link">
-          Cloud-Based Savings
-        </a>
-        <a href="#" class="left-nav-sub-link">
-          IT Environment Report
-        </a>
-        <a href="#" class="left-nav-sub-link">
-          New Security Risks
-        </a>
-        <a href="#" class="left-nav-sub-link">
-          Application Usage Report
-        </a>
-        <a href="#" class="left-nav-sub-link">
-          Summary of IT Dependencies
-        </a>
-      </span> -->
     </div>
     <div class="mt-auto left-nav__bottom">
       <a href="#" class="left-nav-link">
@@ -173,8 +130,6 @@ onBeforeUnmount(() => {
 </template>
 
 <style lang="scss" scoped>
-@use "sass:color";
-
 .toggle-left-nav {
   background-color: transparent;
   border-radius: 50%;
@@ -290,6 +245,33 @@ onBeforeUnmount(() => {
   }
 }
 
+.left-nav--onboarding-profile {
+  .company-drawer,
+  .left-nav-inner-wrap,
+  .left-nav__bottom {
+    display: none;
+  }
+}
+
+.left-nav--onboarding-company {
+  .left-nav-inner-wrap,
+  .left-nav__bottom {
+    display: none;
+  }
+}
+
+.left-nav--onboarding-main {
+  .left-nav__bottom {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(0.5rem);
+  }
+
+  .left-nav-link-text {
+    transition-delay: 0.22s;
+  }
+}
+
 .left-nav-link {
   align-items: center;
   border-radius: 0.5rem;
@@ -336,50 +318,6 @@ onBeforeUnmount(() => {
   padding: 0.3125rem;
 }
 
-.left-nav-sub-links {
-  display: flex;
-  flex-direction: column;
-  height: 0;
-  padding-bottom: 0.25rem;
-  opacity: 0;
-  transition: 
-    height 0.2s ease-out, 
-    opacity 0.1s ease-out;
-  will-change: height;
-
-  .left-nav-open & {
-    height: auto;
-    opacity: 1;
-    transition: 
-      height 0.2s ease-in, 
-      opacity 0.1s 0.1s ease-in;
-  }
-}
-
-body:not(.left-nav-open) .left-nav-sub-links {
-  height: 0 !important;
-}
-
-.left-nav-sub-link {
-  border-radius: 0.5rem;
-  // color: var(--bs-gray-700);
-  color: white;
-  display: inline-block;
-  font-size: 0.875rem;
-  margin: 0 1.5rem;
-  opacity: 0.5;
-  overflow: hidden;
-  padding: 0.25rem 0.75rem;
-  padding-left: 1.5rem;
-  text-decoration: none;
-  text-overflow: ellipsis;
-  text-wrap: nowrap;
-
-  &:hover {
-    background-color: color.mix($left-nav-background, #020D1C, 92.5%);
-  }
-}
-
 .left-nav-link-text {
   // color: var(--bs-dark);
   color: white;
@@ -394,7 +332,12 @@ body:not(.left-nav-open) .left-nav-sub-links {
 }
 
 .left-nav__bottom {
+  opacity: 1;
   padding-bottom: 5.75rem;
+  transform: translateY(0);
+  transition:
+    opacity 0.2s ease-in-out,
+    transform 0.2s ease-in-out;
 }
 
 .left-nav__profile {

@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from "vue";
-import StepOptionsDropdown from "../shared/StepOptionsDropdown.vue";
+import BasicDropdown from "../shared/BasicDropdown.vue";
 import AddStepMenuContent from "./AddStepMenuContent.vue";
 
 const props = defineProps({
@@ -79,6 +79,10 @@ const standardConnectionLines = computed(() => (
 
 const branchConnectionLines = computed(() => (
   props.connectionLines.filter((line) => isBranchConnectionLine(line))
+));
+
+const inlineAddLines = computed(() => (
+  props.connectionLines.filter((line) => line.showInlineAdd !== false)
 ));
 </script>
 
@@ -200,8 +204,8 @@ const branchConnectionLines = computed(() => (
     />
   </svg>
 
-  <StepOptionsDropdown
-    v-for="line in connectionLines.filter((line) => line.showInlineAdd !== false)"
+  <BasicDropdown
+    v-for="line in inlineAddLines"
     :key="`mid-add-${line.key}`"
     v-show="hiddenDraggedConnectionKey !== line.key"
     class="assistant-step-inline-add"
@@ -226,14 +230,12 @@ const branchConnectionLines = computed(() => (
           sourceId: line.sourceId,
           targetId: line.targetId,
           sourceConnectorKind: line.sourceConnectorKind,
-          sourceConnectorX: line.x1,
-          sourceConnectorY: line.y1,
         })"
       />
     </template>
-  </StepOptionsDropdown>
+  </BasicDropdown>
 
-  <StepOptionsDropdown
+  <BasicDropdown
     v-for="terminalAdd in terminalAddControls"
     :key="terminalAdd.key"
     v-show="!shouldShowFullTerminalAddCard"
@@ -260,9 +262,9 @@ const branchConnectionLines = computed(() => (
         })"
       />
     </template>
-  </StepOptionsDropdown>
+  </BasicDropdown>
 
-  <StepOptionsDropdown
+  <BasicDropdown
     v-if="singleStartTerminalAddControl"
     class="assistant-step-terminal-add assistant-step-terminal-add--card"
     :style="{ left: `${singleStartTerminalAddControl.x}px`, top: `${singleStartTerminalAddControl.top}px` }"
@@ -283,7 +285,7 @@ const branchConnectionLines = computed(() => (
         })"
       />
     </template>
-  </StepOptionsDropdown>
+  </BasicDropdown>
 </template>
 
 <style lang="scss" scoped>
@@ -361,7 +363,7 @@ const branchConnectionLines = computed(() => (
 }
 
 .assistant-step-inline-add:focus-within,
-.assistant-step-inline-add:has(.step-options-dropdown--open) {
+.assistant-step-inline-add:has(.basic-dropdown--open) {
   z-index: 40;
 }
 
@@ -391,7 +393,7 @@ const branchConnectionLines = computed(() => (
 }
 
 .assistant-step-terminal-add:focus-within,
-.assistant-step-terminal-add:has(.step-options-dropdown--open) {
+.assistant-step-terminal-add:has(.basic-dropdown--open) {
   z-index: 40;
 }
 

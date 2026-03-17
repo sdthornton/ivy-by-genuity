@@ -13,19 +13,23 @@ import iconAlert from "../../assets/sim-ai/alert.svg";
 import iconPlay from "../../assets/play.svg";
 
 export const sourceOptions = [
-  "Entra ID",
-  "Cisco Meraki",
-  "Kaseya VSA",
-  "Sophos XDR",
-  "KnowBe4",
   "Avanon",
+  "Azure",
+  "Cisco Meraki",
   "Cisco Umbrella",
+  "Dropbox",
+  "Entra ID",
+  "Google",
   "Kaseya Spanning",
-  "Sophos EDR",
-  "SharePoint",
+  "Kaseya VSA",
+  "KnowBe4",
   "Microsoft 365",
-  "Google Workspace",
   "OneLogin",
+  "SharePoint",
+  "Slack",
+  "Sophos EDR",
+  "Sophos XDR",
+  "IT Meeting Notes", 
 ];
 
 export const WAIT_MODE_OPTIONS = [

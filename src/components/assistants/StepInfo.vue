@@ -7,19 +7,10 @@ import {
   getStartBlockOptions,
   sourceOptions,
 } from "./stepRuntime";
-import StepInfoTypeAction from "./step-info/StepInfoTypeAction.vue";
-import StepInfoTypeAlert from "./step-info/StepInfoTypeAlert.vue";
-import StepInfoTypeCode from "./step-info/StepInfoTypeCode.vue";
 import StepInfoTypeGeneric from "./step-info/StepInfoTypeGeneric.vue";
-import StepInfoTypeLookup from "./step-info/StepInfoTypeLookup.vue";
 import StepInfoTypeLoop from "./step-info/StepInfoTypeLoop.vue";
-import StepInfoTypeMessage from "./step-info/StepInfoTypeMessage.vue";
-import StepInfoTypeNote from "./step-info/StepInfoTypeNote.vue";
 import StepInfoTypeParallel from "./step-info/StepInfoTypeParallel.vue";
-import StepInfoTypeSchedule from "./step-info/StepInfoTypeSchedule.vue";
 import StepInfoTypeSplit from "./step-info/StepInfoTypeSplit.vue";
-import StepInfoTypeStart from "./step-info/StepInfoTypeStart.vue";
-import StepInfoTypeTrigger from "./step-info/StepInfoTypeTrigger.vue";
 import StepInfoTypeWait from "./step-info/StepInfoTypeWait.vue";
 
 const props = defineProps({
@@ -47,19 +38,19 @@ const activeStep = computed(() => getSidebarStep(props.selectedStepId, {
 const startBlockOptions = computed(() => getStartBlockOptions());
 
 const STEP_INFO_COMPONENT_BY_TYPE = {
-  start: StepInfoTypeStart,
-  schedule: StepInfoTypeSchedule,
-  trigger: StepInfoTypeTrigger,
-  lookup: StepInfoTypeLookup,
-  code: StepInfoTypeCode,
-  message: StepInfoTypeMessage,
-  action: StepInfoTypeAction,
+  start: StepInfoTypeGeneric,
+  schedule: StepInfoTypeGeneric,
+  trigger: StepInfoTypeGeneric,
+  lookup: StepInfoTypeGeneric,
+  code: StepInfoTypeGeneric,
+  message: StepInfoTypeGeneric,
+  action: StepInfoTypeGeneric,
   wait: StepInfoTypeWait,
-  note: StepInfoTypeNote,
+  note: StepInfoTypeGeneric,
   split: StepInfoTypeSplit,
   parallel: StepInfoTypeParallel,
   loop: StepInfoTypeLoop,
-  alert: StepInfoTypeAlert,
+  alert: StepInfoTypeGeneric,
 };
 
 const activeStepComponent = computed(() => (
@@ -74,6 +65,6 @@ const activeStepComponent = computed(() => (
     :start-block-options="startBlockOptions"
     :source-options="sourceOptions"
     @close="emit('close')"
-    @select-start-block="(mode) => emit('select-start-block', mode)"
+    @select-start-block="emit('select-start-block', $event)"
   />
 </template>
