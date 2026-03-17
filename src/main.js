@@ -17,8 +17,9 @@ const routes = [
   { path: "/", component: HomePage, name: "Home" },
   { path: "/chat", component: Chat, name: "Chat" },
   { path: "/prompt-library", component: PromptLibrary, name: "Prompt Library" },
-  { path: "/assistants", component: Assistants, name: "Assistants", meta: { splitContent: true } },
-  { path: "/assistants-index", component: AssistantsIndex, name: "Assistants Index" },
+  { path: "/assistants/new", component: Assistants, name: "New Assistant", meta: { splitContent: true } },
+  { path: "/assistants", component: AssistantsIndex, name: "Assistants" },
+  { path: "/assistants-index", redirect: "/assistants" },
   { path: "/collections", component: Collections, name: "Collections" },
   { path: "/onboarding", component: Onboarding, name: "Onboarding", meta: { hideLeftNav: true } },
 ];

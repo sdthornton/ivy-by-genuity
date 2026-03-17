@@ -591,7 +591,7 @@ function selectAssistantCategory(assistant, category, close) {
 
         <div class="text-center">
           <router-link
-            to="/assistants"
+            to="/assistants/new"
             class="btn btn-outline-light border mx-auto d-inline-block text-dark px-5"
             @click="closeCreateAssistantModal"
           >

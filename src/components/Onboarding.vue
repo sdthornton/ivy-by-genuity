@@ -480,7 +480,7 @@ onBeforeUnmount(() => {
                 <button type="button" class="btn btn-sm btn-white border" @click="openRoute('/chat')">
                   Open Chat
                 </button>
-                <button type="button" class="btn btn-sm btn-white border" @click="openRoute('/assistants-index')">
+                <button type="button" class="btn btn-sm btn-white border" @click="openRoute('/assistants')">
                   Open Assistants
                 </button>
               </div>
