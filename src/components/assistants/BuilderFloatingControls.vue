@@ -20,6 +20,7 @@ defineProps({
 const emit = defineEmits([
   "zoom-in",
   "zoom-out",
+  "recenter",
   "undo",
   "toggle-editor-comments",
   "toggle-all-node-details",
@@ -37,7 +38,7 @@ function handleAddStepSelection(item) {
 </script>
 
 <template>
-  <div class="builder-zoom">
+  <div class="builder-controls">
     <button
       v-tooltip="{ content: 'Zoom In', placement: 'left' }"
       type="button"
@@ -56,21 +57,19 @@ function handleAddStepSelection(item) {
     >
       &minus;
     </button>
-  </div>
-  <div class="assistant-step-floating-controls d-flex align-items-center gap-3">
     <button
-      v-tooltip="{ content: 'Undo', placement: 'top' }"
+      v-tooltip="{ content: 'Reset zoom and position.', placement: 'left' }"
       type="button"
-      class="assistant-step-floating-mini-btn assistant-step-control d-flex align-items-center justify-content-center"
-      aria-label="Undo"
-      @click.stop="emit('undo')"
+      class="builder-action--recenter btn btn-sm bg-white py-2.5 px-2.5"
+      aria-label="Reset zoom and position"
+      @click.stop="emit('recenter')"
     >
-      <img src="../../assets/undo.svg" width="14" height="14" class="d-block opacity-75">
+      <img src="../../assets/recenter.svg" width="14" height="14" class="builder-action__icon d-block">
     </button>
     <button
-      v-tooltip="{ content: 'Toggle comments', placement: 'top' }"
+      v-tooltip="{ content: 'Toggle comments', placement: 'left' }"
       type="button"
-      class="assistant-step-floating-mini-btn assistant-step-control d-flex align-items-center justify-content-center"
+      class="builder-action--comments btn btn-sm bg-white py-2.5 px-2.5"
       aria-label="Toggle comments"
       @click.stop="emit('toggle-editor-comments')"
     >
@@ -78,9 +77,9 @@ function handleAddStepSelection(item) {
       <img v-else src="../../assets/eye-open.svg" width="14" height="14" class="d-block">
     </button>
     <button
-      v-tooltip="{ content: 'Toggle details', placement: 'top' }"
+      v-tooltip="{ content: 'Toggle details', placement: 'left' }"
       type="button"
-      class="assistant-step-floating-mini-btn assistant-step-control d-flex align-items-center justify-content-center"
+      class="builder-action--details btn btn-sm bg-white py-2.5 px-2.5"
       aria-label="Toggle details"
       @click.stop="emit('toggle-all-node-details')"
     >
@@ -92,6 +91,17 @@ function handleAddStepSelection(item) {
         :class="{ 'assistant-step-floating-mini-btn__icon--collapsed': !areAllDetailsCollapsed }"
         aria-hidden="true"
       >
+    </button>
+  </div>
+  <div class="assistant-step-floating-controls d-flex align-items-center gap-3">
+    <button
+      v-tooltip="{ content: 'Undo', placement: 'top' }"
+      type="button"
+      class="assistant-step-floating-mini-btn assistant-step-control d-flex align-items-center justify-content-center"
+      aria-label="Undo"
+      @click.stop="emit('undo')"
+    >
+      <img src="../../assets/undo.svg" width="14" height="14" class="d-block opacity-75">
     </button>
     <BasicDropdown placement="top-end">
       <template #trigger="{ open }">
@@ -122,7 +132,7 @@ function handleAddStepSelection(item) {
   width: 2.7rem;
 }
 
-.builder-zoom {
+.builder-controls {
   border-radius: 0.5rem;
   box-shadow: 0 2px 2px 0 rgba(0,0,0,0.14), 0 3px 1px -2px rgba(0,0,0,0.12), 0 1px 5px 0 rgba(0,0,0,0.20);
   display: flex;
@@ -133,9 +143,21 @@ function handleAddStepSelection(item) {
 }
 
 .builder-action--zoom-in,
-.builder-action--zoom-out {
+.builder-action--zoom-out,
+.builder-action--recenter,
+.builder-action--comments,
+.builder-action--details {
+  align-items: center;
   border-radius: 0;
+  border-bottom: 1px solid var(--bs-gray-200);
+  display: inline-flex;
   font-size: 1.125rem;
+  justify-content: center;
+  line-height: 1.875rem;
+
+  &:hover {
+    background-color: var(--bs-gray-200) !important;
+  }
 }
 
 .builder-action--zoom-in {
@@ -143,9 +165,10 @@ function handleAddStepSelection(item) {
   border-top-right-radius: 0.5rem;
 }
 
-.builder-action--zoom-out {
+.builder-action--details {
   border-bottom-left-radius: 0.5rem;
   border-bottom-right-radius: 0.5rem;
+  border-bottom: 0;
 }
 
 .assistant-step-floating-controls {

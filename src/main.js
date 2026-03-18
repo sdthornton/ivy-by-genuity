@@ -3,7 +3,7 @@ import FloatingVue from 'floating-vue'
 import 'floating-vue/dist/style.css'
 import './style.css'
 
-import { createWebHistory, createRouter } from 'vue-router';
+import { createWebHashHistory, createRouter } from 'vue-router';
 import App from "./App.vue";
 import HomePage from "./components/HomePage.vue";
 import Chat from "./components/Chat.vue";
@@ -25,7 +25,7 @@ const routes = [
 ];
 
 const router = createRouter({
-  history: createWebHistory(),
+  history: createWebHashHistory(import.meta.env.BASE_URL),
   routes,
 });
 

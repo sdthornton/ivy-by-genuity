@@ -566,7 +566,6 @@ function recenterCanvas() {
     zoomLevel.value = DEFAULT_ZOOM;
     beginZoomTransition();
   }
-  scheduleSingleStartLayoutCentering();
 }
 
 function setZoom(nextZoom) {
@@ -587,7 +586,7 @@ function zoomOut() {
   setZoom(zoomLevel.value - ZOOM_STEP);
 }
 
-const PAN_BLOCKED_SELECTOR = ".assistant-step, .assistant-step-control, .assistant-step-connection-hit-area, .basic-dropdown, .builder-zoom, .assistant-step-floating-controls, .assistant-step-connection-menu";
+const PAN_BLOCKED_SELECTOR = ".assistant-step, .assistant-step-control, .assistant-step-connection-hit-area, .basic-dropdown, .builder-zoom, .builder-controls, .assistant-step-floating-controls, .assistant-step-connection-menu";
 
 function canStartCanvasPan(target) {
   if (!(target instanceof Element)) {
@@ -1401,6 +1400,7 @@ onBeforeUnmount(() => {
       :add-step-menu-groups="addStepMenuGroups"
       @zoom-in="zoomIn"
       @zoom-out="zoomOut"
+      @recenter="recenterCanvas"
       @undo="handleUndoClick"
       @toggle-editor-comments="toggleEditorComments"
       @toggle-all-node-details="toggleAllNodeDetails"
