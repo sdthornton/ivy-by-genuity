@@ -56,6 +56,10 @@ const props = defineProps({
     required: false,
     default: 0,
   },
+  flowKey: {
+    type: String,
+    default: "default",
+  },
   startBlockMode: {
     type: String,
     default: "start",
@@ -1245,7 +1249,14 @@ function rebuildNodes() {
 }
 
 watch(
-  () => [props.currentBuilderStep, props.startBlockMode, props.startTriggerOption?.key, props.startTriggerOption?.label, props.startTriggerOption?.pillLabel],
+  () => [
+    props.flowKey,
+    props.currentBuilderStep,
+    props.startBlockMode,
+    props.startTriggerOption?.key,
+    props.startTriggerOption?.label,
+    props.startTriggerOption?.pillLabel,
+  ],
   rebuildNodes,
   { immediate: true },
 );

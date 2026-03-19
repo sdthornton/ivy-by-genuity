@@ -3,11 +3,11 @@ import { computed, nextTick, onBeforeUnmount, ref, watch } from "vue";
 import ContentHeader from "./shared/ContentHeader.vue";
 import BasicDropdown from "./shared/BasicDropdown.vue";
 import { CATEGORY_OPTIONS, formatCategoryLabel } from "./assistants/shared/categoryOptions";
+import { DEFAULT_ASSISTANT_CREATOR, mockAssistants as mockAssistantSeed } from "./assistants/shared/mockAssistants";
 import iconIvyCreator from "../assets/nav-resources-nav.svg";
 import iconCalendar from "../assets/calendar.svg";
 import iconStop from "../assets/stop.svg";
 
-const DEFAULT_ASSISTANT_CREATOR = "Ivy";
 const IVY_CREATOR_NAME = "Ivy";
 const IVY_CREATOR_BG = "var(--bs-gray-200)";
 const AVATAR_COLORS = [
@@ -28,102 +28,7 @@ const AVATAR_COLORS = [
   "#ff5722",
 ];
 
-const mockAssistants = ref([
-  {
-    id: 1,
-    title: "Identity Hygiene Monitor",
-    description: "Finds identity risks like missing MFA, inactive users, and risky sign-ins.",
-    category: "security",
-    trigger: {
-      type: "time-based",
-      value: "Daily 9:00 AM"
-    }
-  },
-  {
-    id: 2,
-    title: "Privileged Access Watch",
-    description: "Detects new admin role assignments and evaluates risk context.",
-    category: "access",
-    trigger: {
-      type: "event-based",
-      value: "When a new admin role is assigned"
-    }
-  },
-  {
-    id: 3,
-    title: "Endpoint Hygiene Agent",
-    description: "Flags unmanaged devices, missing patches, disabled agents, or missing encryption.",
-    category: "monitoring",
-    trigger: {
-      type: "time-based",
-      value: "Daily 8:00 AM"
-    }
-  },
-  {
-    id: 4,
-    title: "High-Risk Device Finder",
-    description: "Correlates security signals to identify the riskiest endpoints.",
-    category: "threats",
-    trigger: {
-      type: "manual",
-      value: null
-    }
-  },
-  {
-    id: 5,
-    title: "Email Threat Exposure Agent",
-    description: "Tracks phishing activity and identifies users most exposed to email threats.",
-    category: "threats",
-    trigger: {
-      type: "time-based",
-      value: "Daily 10:00 AM"
-    }
-  },
-  {
-    id: 6,
-    title: "High-Risk User Monitor",
-    description: "Ranks users by risk using signals like phishing failures, malware exposure, and weak auth.",
-    category: "security",
-    trigger: {
-      type: "time-based",
-      value: "Daily 10:30 AM"
-    }
-  },
-  {
-    id: 7,
-    title: "Network Exposure Monitor",
-    description: "Detects risky network configurations, DNS threats, and unusual access patterns.",
-    category: "monitoring",
-    trigger: {
-      type: "time-based",
-      value: "Daily 7:30 AM"
-    }
-  },
-  {
-    id: 8,
-    title: "Backup & Recovery Readiness",
-    description: "Verifies backup coverage and flags failures or protection gaps.",
-    category: "backup",
-    trigger: {
-      type: "time-based",
-      value: "Daily 6:00 AM"
-    }
-  },
-  {
-    id: 9,
-    title: "Weekly Security & IT Risk Brief",
-    description: "Summarizes the most important risks and changes across systems.",
-    category: "activity",
-    trigger: {
-      type: "time-based",
-      value: "Weekly Monday 8:00 AM"
-    }
-  }
-].map((assistant) => ({
-  ...assistant,
-  created_by: DEFAULT_ASSISTANT_CREATOR,
-  createdBy: DEFAULT_ASSISTANT_CREATOR,
-})));
+const mockAssistants = ref(mockAssistantSeed);
 const showCreateAssistantModal = ref(false);
 const createAssistantPrompt = ref("");
 const createAssistantPromptInput = ref(null);
@@ -417,10 +322,11 @@ function selectAssistantCategory(assistant, category, close) {
     </div>
 
     <div class="basic-box-grid">
-      <div
+      <router-link
         v-for="assistant in mockAssistants"
         :key="assistant.id"
-        class="basic-box-grid__item border bg-white pt-4 rounded d-flex flex-column overflow-hidden"
+        class="basic-box-grid__item hover-shadow border bg-white pt-4 rounded d-flex flex-column overflow-hidden text-decoration-none text-reset"
+        :to="`/assistants/${assistant.id}`"
       >
         <div class="px-4 mb-4">
           <div class="d-flex align-items-start gap-2 mb-2">
@@ -445,7 +351,7 @@ function selectAssistantCategory(assistant, category, close) {
         </div>
 
         <div class="d-flex align-items-center true-small gap-3 mt-auto mb-3 px-4">
-          <BasicDropdown menu-class="assistant-category-menu">
+          <BasicDropdown menu-class="assistant-category-menu" @click.prevent.stop>
             <template #trigger>
               <div
                 class="assistant-category-pill fw-medium true-small text-black text-capitalize rounded-pill px-2 d-inline-flex"
@@ -463,7 +369,7 @@ function selectAssistantCategory(assistant, category, close) {
                 :key="category"
                 type="button"
                 class="dropdown-item d-flex align-items-center justify-content-between gap-3 text-start assistant-category-menu__item"
-                @click="selectAssistantCategory(assistant, category, close)"
+                @click.stop.prevent="selectAssistantCategory(assistant, category, close)"
               >
                 <span class="d-inline-flex align-items-center gap-2">
                   <span
@@ -527,7 +433,7 @@ function selectAssistantCategory(assistant, category, close) {
             </span>
           </div>
         </div>
-      </div>
+      </router-link>
     </div>
   </section>
   <Teleport to="body">

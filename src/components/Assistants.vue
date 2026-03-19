@@ -7,55 +7,65 @@ import StepInfo  from "./assistants/StepInfo.vue";
 import AssistantBuilder from "./assistants/AssistantBuilder.vue";
 import AssistantSettingsPanel from "./assistants/AssistantSettingsPanel.vue";
 import BasicDropdown from "./shared/BasicDropdown.vue";
+import { getMockAssistantById } from "./assistants/shared/mockAssistants";
+import { DEFAULT_ASSISTANT_FLOW, getMockAssistantFlowById } from "./assistants/shared/mockAssistantFlows";
 import {
   applyMockFlowStepDataForBuildStep,
   createBuilderNodeTemplates,
   isStepWarningVisible,
   resetMockFlowStepData,
+  setMockAssistantFlow,
   syncStartStepDataFromTrigger,
 } from "./assistants/mockSteps";
 import iconClock from "../assets/clock.svg";
 import iconStar from "../assets/star.svg";
 import iconStop from "../assets/stop.svg";
-import { ref, nextTick, onMounted, onBeforeUnmount, computed, reactive } from "vue";
+import { ref, nextTick, onMounted, onBeforeUnmount, computed, reactive, watch } from "vue";
+import { useRoute } from "vue-router";
 
 const buildStep = ref(0);
 const showSidebar = ref(false);
 const showSettingsModal = ref(false);
 const settingsPanelRef = ref(null);
+const route = useRoute();
+const activeAssistantFlowKey = ref("new");
 const selectedSidebarStepId = ref(1);
-const assistantSettings = reactive({
-  title: "New Assistant",
-  description: "",
-  creator: "You",
-  ownerTeam: "Security Team",
-  permissions: "Workspace editors",
-  permissionLevel: "Read/Write",
-  permissionEntries: [
-    {
-      id: "workspace-editors",
-      label: "Workspace Editors",
-      level: "Read/Write",
-      type: "team",
-    },
-  ],
-  status: "Draft",
-  category: "security",
-  createdAt: "Mar 1, 9:00am",
-  updatedAt: "Mar 3, 9:00am",
-  updatedAtLong: "March 3, 2026 at 9:00 AM PT",
-  log: {
-    runs: [
-      { at: "Mar 5, 9:00am", status: "Success", note: "Completed in 27s." },
-      { at: "Mar 4, 9:00am", status: "Error", note: "SharePoint request timed out." },
-      { at: "Mar 3, 9:00am", status: "Success", note: "Completed in 30s." },
+function createDefaultAssistantSettings() {
+  return {
+    title: "New Assistant",
+    description: "",
+    creator: "You",
+    ownerTeam: "Security Team",
+    permissions: "Workspace editors",
+    permissionLevel: "Read/Write",
+    permissionEntries: [
+      {
+        id: "workspace-editors",
+        label: "Workspace Editors",
+        level: "Read/Write",
+        type: "team",
+      },
     ],
-    editedAt: "Mar 5, 8:47am",
-    editedBy: "You",
-    savedAt: "Mar 5, 8:50am",
-    savedBy: "You",
-  },
-});
+    status: "Draft",
+    category: "security",
+    createdAt: "Mar 1, 9:00am",
+    updatedAt: "Mar 3, 9:00am",
+    updatedAtLong: "March 3, 2026 at 9:00 AM PT",
+    log: {
+      runs: [
+        { at: "Mar 5, 9:00am", status: "Success", note: "Completed in 27s." },
+        { at: "Mar 4, 9:00am", status: "Error", note: "SharePoint request timed out." },
+        { at: "Mar 3, 9:00am", status: "Success", note: "Completed in 30s." },
+      ],
+      editedAt: "Mar 5, 8:47am",
+      editedBy: "You",
+      savedAt: "Mar 5, 8:50am",
+      savedBy: "You",
+    },
+  };
+}
+
+const assistantSettings = reactive(createDefaultAssistantSettings());
 const conversationContent = ref(null);
 const leftContentEl = ref(null);
 const leftContentUserWidth = ref(null);
@@ -179,6 +189,101 @@ const selectStartBlock = (mode) => {
 
   updateSelectedTrigger(NO_TRIGGER_OPTION);
 };
+
+function resetAssistantSettings() {
+  Object.assign(assistantSettings, createDefaultAssistantSettings());
+}
+
+function inferTimeTriggerKey(triggerValue) {
+  const normalizedValue = String(triggerValue || "").trim().toLowerCase();
+  if (!normalizedValue) {
+    return "custom";
+  }
+
+  if (normalizedValue.includes("weekday")) {
+    return "weekdays";
+  }
+
+  if (normalizedValue.includes("monthly") || normalizedValue.includes("every month")) {
+    return "every-month";
+  }
+
+  if (normalizedValue.includes("weekly") || normalizedValue.includes("every week")) {
+    return "every-week";
+  }
+
+  if (normalizedValue.includes("daily") || normalizedValue.includes("every day")) {
+    return "every-day";
+  }
+
+  return "custom";
+}
+
+function resolveAssistantTriggerOption(assistant) {
+  const triggerType = String(assistant?.trigger?.type || "").trim().toLowerCase();
+  const triggerValue = String(assistant?.trigger?.value || "").trim();
+
+  if (!triggerType || triggerType === "manual") {
+    return NO_TRIGGER_OPTION;
+  }
+
+  if (triggerType === "event-based") {
+    return {
+      ...EVENT_TRIGGER_OPTION,
+      label: triggerValue || EVENT_TRIGGER_OPTION.label,
+      pillLabel: triggerValue || EVENT_TRIGGER_OPTION.pillLabel || EVENT_TRIGGER_OPTION.label,
+    };
+  }
+
+  if (triggerType === "time-based") {
+    const key = inferTimeTriggerKey(triggerValue);
+    const matchedOption = headerTriggerOptions.find((option) => option.key === key) || DEFAULT_TRIGGER_OPTION;
+    return {
+      ...matchedOption,
+      pillLabel: triggerValue || matchedOption.pillLabel || matchedOption.label,
+    };
+  }
+
+  return NO_TRIGGER_OPTION;
+}
+
+function hydrateAssistantFromRoute() {
+  resetAssistantSettings();
+  showSidebar.value = false;
+  selectedSidebarStepId.value = 1;
+
+  const assistantId = String(route.params.assistantId || "").trim();
+  if (!assistantId) {
+    activeAssistantFlowKey.value = "new";
+    conversationStageIndex.value = 0;
+    setMockAssistantFlow(DEFAULT_ASSISTANT_FLOW);
+    buildStep.value = 0;
+    updateSelectedTrigger(NO_TRIGGER_OPTION);
+    applyMockFlowStepDataForBuildStep(buildStep.value);
+    return;
+  }
+
+  activeAssistantFlowKey.value = assistantId;
+  conversationStageIndex.value = conversationStages.length;
+  const flow = getMockAssistantFlowById(assistantId);
+  setMockAssistantFlow(flow);
+
+  const assistant = getMockAssistantById(assistantId);
+  if (!assistant) {
+    buildStep.value = flow.buildStep || (Array.isArray(flow.steps) ? flow.steps.length + 1 : 1);
+    updateSelectedTrigger(NO_TRIGGER_OPTION);
+    applyMockFlowStepDataForBuildStep(buildStep.value);
+    return;
+  }
+
+  buildStep.value = flow.buildStep || (Array.isArray(flow.steps) ? flow.steps.length + 1 : 1);
+  assistantSettings.title = assistant.title || assistantSettings.title;
+  assistantSettings.description = assistant.description || "";
+  assistantSettings.category = assistant.category || assistantSettings.category;
+  assistantSettings.creator = assistant.created_by || assistant.createdBy || assistantSettings.creator;
+  updateSelectedTrigger(resolveAssistantTriggerOption(assistant));
+  applyMockFlowStepDataForBuildStep(buildStep.value);
+}
 
 const focusSettingsTitleInput = async () => {
   await nextTick();
@@ -407,10 +512,18 @@ async function initializeConversation() {
 }
 
 onMounted(async () => {
+  hydrateAssistantFromRoute();
   resetMockFlowStepData();
   applyMockFlowStepDataForBuildStep(buildStep.value);
   await initializeConversation();
 });
+
+watch(
+  () => route.params.assistantId,
+  () => {
+    hydrateAssistantFromRoute();
+  },
+);
 
 onBeforeUnmount(() => {
   activeTypewriterController?.abort();
@@ -550,6 +663,7 @@ const onBuilderNodesChange = (nodeIds = []) => {
       <AssistantBuilder 
         class="assistant-builder-column col p-4" 
         :current-builder-step="buildStep"
+        :flow-key="activeAssistantFlowKey"
         :start-block-mode="startBlockMode"
         :start-trigger-option="selectedHeaderTrigger"
         @toggleSidebar="onBuilderStepSelect"

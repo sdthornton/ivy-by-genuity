@@ -1,6 +1,6 @@
 import { reactive } from "vue";
-import { MOCK_FLOW_STEP_DATA_BY_STATE_KEY, MOCK_FLOW_STEP_STATE_ORDER } from "./mockAssistantBuildData";
-import { BASE_FLOW_STEPS, START_VARIANT_BASE } from "./mockStepSeeds";
+import { DEFAULT_ASSISTANT_FLOW } from "./shared/mockAssistantFlows";
+import { START_VARIANT_BASE } from "./mockStepSeeds";
 import {
   START_BLOCK_MODES,
   START_STATE_KEYS,
@@ -22,45 +22,118 @@ const resolvedStartVariants = Object.fromEntries(
   Object.entries(START_VARIANT_BASE).map(([mode, step]) => [mode, resolveStepDefinition(step)]),
 );
 
-const resolvedBaseFlowSteps = BASE_FLOW_STEPS.map((step) => resolveStepDefinition(step));
+let activeBaseFlowSteps = [];
+let activeMockFlowStepDataByStateKey = {};
+let activeMockFlowStepStateOrder = [];
 
-const sharedStepData = reactive({
-  [START_STATE_KEYS.start]: { ...resolvedStartVariants.start.builderData },
-  [START_STATE_KEYS.schedule]: { ...resolvedStartVariants.schedule.builderData },
-  [START_STATE_KEYS.trigger]: { ...resolvedStartVariants.trigger.builderData },
-  ...resolvedBaseFlowSteps.reduce((acc, step) => {
-    acc[step.stateKey] = { ...step.builderData };
-    return acc;
-  }, {}),
-});
-
-const sharedStepComments = reactive({
-  [START_STATE_KEYS.start]: cloneComments(resolvedStartVariants.start.comments),
-  [START_STATE_KEYS.schedule]: cloneComments(resolvedStartVariants.schedule.comments),
-  [START_STATE_KEYS.trigger]: cloneComments(resolvedStartVariants.trigger.comments),
-  ...resolvedBaseFlowSteps.reduce((acc, step) => {
-    acc[step.stateKey] = cloneComments(step.comments);
-    return acc;
-  }, {}),
-});
-
-const sharedStepWarnings = reactive({
-  [START_STATE_KEYS.start]: createWarningState(resolvedStartVariants.start.rows),
-  [START_STATE_KEYS.schedule]: createWarningState(resolvedStartVariants.schedule.rows),
-  [START_STATE_KEYS.trigger]: createWarningState(resolvedStartVariants.trigger.rows),
-  ...resolvedBaseFlowSteps.reduce((acc, step) => {
-    acc[step.stateKey] = createWarningState(step.rows);
-    return acc;
-  }, {}),
-});
-
-const initialSharedStepDataByStateKey = Object.fromEntries(
-  Object.entries(sharedStepData).map(([stateKey, value]) => [stateKey, cloneDataValue(value)]),
-);
+const sharedStepData = reactive({});
+const sharedStepComments = reactive({});
+const sharedStepWarnings = reactive({});
+let initialSharedStepDataByStateKey = {};
 
 const liveSidebarSteps = reactive({});
 
-export const MOCK_STEP_COUNT = resolvedBaseFlowSteps.length + 1;
+function replaceReactiveObject(target, nextValues) {
+  Object.keys(target).forEach((key) => {
+    if (!(key in nextValues)) {
+      delete target[key];
+    }
+  });
+
+  Object.entries(nextValues).forEach(([key, value]) => {
+    target[key] = value;
+  });
+}
+
+function buildDefaultStepDataMap(baseFlowSteps = []) {
+  return {
+    [START_STATE_KEYS.start]: { ...resolvedStartVariants.start.builderData },
+    [START_STATE_KEYS.schedule]: { ...resolvedStartVariants.schedule.builderData },
+    [START_STATE_KEYS.trigger]: { ...resolvedStartVariants.trigger.builderData },
+    ...baseFlowSteps.reduce((acc, step) => {
+      acc[step.stateKey] = { ...step.builderData };
+      return acc;
+    }, {}),
+  };
+}
+
+function buildDefaultStepCommentMap(baseFlowSteps = []) {
+  return {
+    [START_STATE_KEYS.start]: cloneComments(resolvedStartVariants.start.comments),
+    [START_STATE_KEYS.schedule]: cloneComments(resolvedStartVariants.schedule.comments),
+    [START_STATE_KEYS.trigger]: cloneComments(resolvedStartVariants.trigger.comments),
+    ...baseFlowSteps.reduce((acc, step) => {
+      acc[step.stateKey] = cloneComments(step.comments);
+      return acc;
+    }, {}),
+  };
+}
+
+function buildDefaultStepWarningMap(baseFlowSteps = []) {
+  const hasSharePointSource = (step) => (
+    Array.isArray(step?.sources)
+    && step.sources.some((source) => String(source?.label || source || "").trim().toLowerCase() === "sharepoint")
+  );
+
+  return {
+    [START_STATE_KEYS.start]: createWarningState(resolvedStartVariants.start.rows),
+    [START_STATE_KEYS.schedule]: createWarningState(resolvedStartVariants.schedule.rows),
+    [START_STATE_KEYS.trigger]: createWarningState(resolvedStartVariants.trigger.rows),
+    ...baseFlowSteps.reduce((acc, step) => {
+      const warningState = createWarningState(step.rows);
+
+      if (step.type === "lookup" && warningState.code && !hasSharePointSource(step)) {
+        warningState.code = false;
+      }
+
+      acc[step.stateKey] = warningState;
+      return acc;
+    }, {}),
+  };
+}
+
+function applyStepTemplateSet(baseFlowSteps = []) {
+  const nextStepData = buildDefaultStepDataMap(baseFlowSteps);
+  const nextStepComments = buildDefaultStepCommentMap(baseFlowSteps);
+  const nextStepWarnings = buildDefaultStepWarningMap(baseFlowSteps);
+
+  replaceReactiveObject(sharedStepData, nextStepData);
+  replaceReactiveObject(sharedStepComments, nextStepComments);
+  replaceReactiveObject(sharedStepWarnings, nextStepWarnings);
+
+  initialSharedStepDataByStateKey = Object.fromEntries(
+    Object.entries(sharedStepData).map(([stateKey, value]) => [stateKey, cloneDataValue(value)]),
+  );
+}
+
+function resolveActiveFlowSteps(flow) {
+  const rawSteps = Array.isArray(flow?.steps) && flow.steps.length
+    ? flow.steps
+    : DEFAULT_ASSISTANT_FLOW.steps;
+
+  return rawSteps.map((step) => resolveStepDefinition(step));
+}
+
+function resolveActiveMockData(flow) {
+  return flow?.stepDataByStateKey || DEFAULT_ASSISTANT_FLOW.stepDataByStateKey;
+}
+
+function resolveActiveMockOrder(flow, baseFlowSteps) {
+  if (Array.isArray(flow?.stepStateOrder) && flow.stepStateOrder.length) {
+    return flow.stepStateOrder.map((stateKey) => String(stateKey));
+  }
+
+  return baseFlowSteps.map((step) => String(step.stateKey));
+}
+
+export function setMockAssistantFlow(flow = DEFAULT_ASSISTANT_FLOW) {
+  activeBaseFlowSteps = resolveActiveFlowSteps(flow);
+  activeMockFlowStepDataByStateKey = resolveActiveMockData(flow);
+  activeMockFlowStepStateOrder = resolveActiveMockOrder(flow, activeBaseFlowSteps);
+  applyStepTemplateSet(activeBaseFlowSteps);
+}
+
+setMockAssistantFlow(DEFAULT_ASSISTANT_FLOW);
 
 function resetStepDataByStateKey(stateKey) {
   const defaults = cloneDataValue(initialSharedStepDataByStateKey[stateKey]);
@@ -80,7 +153,7 @@ function resetStepDataByStateKey(stateKey) {
 }
 
 export function resetMockFlowStepData() {
-  MOCK_FLOW_STEP_STATE_ORDER.forEach((stateKey) => {
+  activeMockFlowStepStateOrder.forEach((stateKey) => {
     resetStepDataByStateKey(stateKey);
   });
 }
@@ -91,8 +164,8 @@ export function applyMockFlowStepDataForBuildStep(buildStep = 0) {
   const resolvedBuildStep = Math.max(0, Number(buildStep) || 0);
   const visibleFlowStepCount = Math.max(0, resolvedBuildStep - 1);
   for (let index = 0; index < visibleFlowStepCount; index += 1) {
-    const stateKey = MOCK_FLOW_STEP_STATE_ORDER[index];
-    const mockValues = MOCK_FLOW_STEP_DATA_BY_STATE_KEY[stateKey];
+    const stateKey = activeMockFlowStepStateOrder[index];
+    const mockValues = activeMockFlowStepDataByStateKey[stateKey];
     if (!stateKey || !mockValues || !sharedStepData[stateKey]) {
       continue;
     }
@@ -170,7 +243,7 @@ function createStartStepDefinition(startBlockMode = START_BLOCK_MODES.start, tri
   const variant = resolvedStartVariants[resolvedMode];
   const stateKey = getStartStateKey(resolvedMode);
   const typeMeta = getStepTypeMeta(variant.type);
-  const hasFollowingSteps = resolvedBaseFlowSteps.length > 0;
+  const hasFollowingSteps = activeBaseFlowSteps.length > 0;
 
   return {
     id: 1,
@@ -208,7 +281,7 @@ function getResolvedStepDefinitions(options = {}) {
 
   return [
     createStartStepDefinition(startBlockMode, triggerOption),
-    ...resolvedBaseFlowSteps.map((step) => ({
+    ...activeBaseFlowSteps.map((step) => ({
       ...step,
       typeMeta: getStepTypeMeta(step.type),
       isStartBlock: false,
@@ -347,7 +420,11 @@ export function getSidebarStep(stepId, options = {}) {
   };
 }
 
-export function createBuilderNodeTemplates(stepCount = MOCK_STEP_COUNT, options = {}) {
+export function getMockStepCount() {
+  return activeBaseFlowSteps.length + 1;
+}
+
+export function createBuilderNodeTemplates(stepCount = null, options = {}) {
   const stepDefinitions = getResolvedStepDefinitions(options);
   const normalizedCount = stepCount == null
     ? stepDefinitions.length
