@@ -8,7 +8,7 @@ import iconIvyCreator from "../assets/nav-resources-nav.svg";
 import iconCalendar from "../assets/calendar.svg";
 import iconStop from "../assets/stop.svg";
 
-const IVY_CREATOR_NAME = "Ivy";
+const IVY_CREATOR_NAMES = ["ivy", "ivy template"];
 const IVY_CREATOR_BG = "var(--bs-gray-200)";
 const AVATAR_COLORS = [
   "#f44336",
@@ -112,7 +112,7 @@ function getCreatorName(assistant) {
 }
 
 function isIvyCreator(name) {
-  return String(name || "").trim().toLowerCase() === IVY_CREATOR_NAME.toLowerCase();
+  return IVY_CREATOR_NAMES.includes(String(name || "").trim().toLowerCase());
 }
 
 function getCreatorInitials(name) {

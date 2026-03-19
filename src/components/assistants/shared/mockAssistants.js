@@ -1,4 +1,4 @@
-export const DEFAULT_ASSISTANT_CREATOR = "Ivy";
+export const DEFAULT_ASSISTANT_CREATOR = "Ivy Template";
 
 export const mockAssistants = [
   {
