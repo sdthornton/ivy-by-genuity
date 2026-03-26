@@ -83,7 +83,7 @@ const selectedSourceIcon = computed(() => {
 });
 
 const step1Label = computed(() => (
-  `Step 1 of ${TOTAL_ONBOARDING_STEPS}: ${step1Status.value}.`
+  `Step 1 of ${ TOTAL_ONBOARDING_STEPS }: ${ step1Status.value}`
 ));
 
 const step2Label = computed(() => (
@@ -167,14 +167,14 @@ onMounted(() => {
 <template>
   <section class="onboarding-page">
     <div class="onboarding-content">
-      <div class="position-relative">
+      <div class="position-relative mb-4">
         <p class="ivy-chat-width onboarding-intro--sizer mb-0" v-html="INTRO_MARKUP" aria-hidden="true"></p>
         <p ref="introMessageEl" class="ivy-chat-width onboarding-intro--typing mb-0"></p>
       </div>
 
       <div
         v-if="onboardingStep === 'source'"
-        class="onboarding-sources mt-5"
+        class="onboarding-sources"
         :class="{ 'onboarding-sources--visible': showSourceOptions }"
       >
         <div class="py-4 rounded border onboarding-inline-interaction bg-light">
@@ -229,7 +229,17 @@ onMounted(() => {
             </button>
           </div>
         </div>
-        <div class="onboarding-step-note true-small text-secondary mt-2">{{ step1Label }}</div>
+        <div class="onboarding-step-note d-flex align-items-center gap-2 true-small text-secondary mt-2">
+          <span class="step-progress-indicator">
+            <img
+              src="../assets/ellipses.svg"
+              class="invert-to-white"
+              width="11"
+              height="11"
+            >
+          </span>
+          <span>{{ step1Label }}</span>
+        </div>
       </div>
 
       <div v-else class="mt-5 d-flex flex-column onboarding-details-step">
@@ -250,119 +260,154 @@ onMounted(() => {
             </button>
           </div>
         </div>
-        <div class="onboarding-step-note true-small text-secondary mt-2 mx-0">{{ step1Label }}</div>
+        <div class="ms-0 onboarding-step-note d-flex align-items-center gap-2 true-small text-secondary mt-2">
+          <span class="step-progress-indicator step-progress-indicator--complete">
+            <img
+              src="../assets/checkmark.svg"
+              class="invert-to-white"
+              width="11"
+              height="11"
+            >
+          </span>
+          <span>{{ step1Label }}</span>
+        </div>
 
-        <p class="ivy-chat-width my-5">
+        <p class="ivy-chat-width mt-5 mb-4">
           Nice choice with {{ selectedSourceLabel }}. When you’re ready,
           <strong>fill in the connection details below</strong> and I’ll get your first sync prepared.
         </p>
 
-        <div class="border rounded py-4 onboarding-inline-interaction bg-light mb-5">
-          <div class="mb-4 pt-2.5">
-            <h4 class="fw-bold mb-1">
-              Set up {{ selectedSourceLabel }}
-            </h4>
-            <label class="mb-2 text-body-secondary">
-              Please enter your {{ selectedSourceLabel }} account details.
-            </label>
-          </div>
-
-          <form v-if="!sourceDetailsSubmitted" class="row gy-3 gx-4" @submit.prevent="submitSourceDetails">
-            <div class="col-md-6">
-              <label class="form-label" for="accountEmail">Account Email</label>
-              <input id="accountEmail" v-model="sourceForm.accountEmail" type="email" class="form-control" placeholder="name@company.com">
+        <div v-if="!sourceDetailsSubmitted" class="mb-5">
+          <div class="border rounded py-4 onboarding-inline-interaction bg-light">
+            <div class="mb-4 pt-2.5">
+              <h4 class="fw-bold mb-1">
+                Set up {{ selectedSourceLabel }}
+              </h4>
+              <label class="mb-2 text-body-secondary">
+                Please enter your {{ selectedSourceLabel }} account details.
+              </label>
             </div>
 
-            <div class="col-md-6">
-              <label class="form-label" for="workspaceId">Workspace / Tenant ID</label>
-              <input id="workspaceId" v-model="sourceForm.workspaceId" type="text" class="form-control" placeholder="Workspace ID">
-            </div>
-
-            <div class="col-md-6">
-              <label class="form-label" for="apiToken">API Token</label>
-              <input id="apiToken" v-model="sourceForm.apiToken" type="password" class="form-control" placeholder="Paste token">
-            </div>
-
-            <div class="col-md-6">
-              <label class="form-label d-block w-100" for="importWindow">Initial Import Window</label>
-              <select id="importWindow" v-model="sourceForm.importWindow" class="form-select" style="max-width: 16rem;">
-                <option>Last 7 days</option>
-                <option>Last 30 days</option>
-                <option>Last 90 days</option>
-                <option>Custom range</option>
-              </select>
-            </div>
-
-            <div class="col-12">
-              <label class="form-label" for="notes">Notes (optional)</label>
-              <textarea
-                id="notes"
-                v-model="sourceForm.notes"
-                class="form-control"
-                rows="3"
-                placeholder="Any notes for this connection..."
-              ></textarea>
-            </div>
-
-            <div class="col-12 d-flex gap-2 mt-5">
-              <button
-                type="button"
-                class="btn not-as-small text-muted ms-auto"
-                @click="skipToDashboard"
-              >
-                Skip to dashboard
-              </button>
-              <button type="button" class="btn btn-white border" @click="backToSourceSelection">
-                Back
-              </button>
-              <button type="submit" class="btn btn-primary rounded-sm px-4">
-                Confirm Details
-              </button>
-            </div>
-          </form>
-
-          <div v-else>
-            <div class="d-flex align-items-center gap-3">
-              <img
-                v-if="selectedSourceIcon"
-                :src="selectedSourceIcon"
-                :alt="selectedSourceLabel"
-                width="40"
-                height="40"
-              >
-              <div class="min-w-0">
-                <div class="fw-semibold text-truncate">{{ selectedSourceLabel }}</div>
-                <div class="smallest text-secondary">Sync status: Active</div>
+            <form class="row gy-3 gx-4" @submit.prevent="submitSourceDetails">
+              <div class="col-md-6">
+                <label class="form-label" for="accountEmail">Account Email</label>
+                <input id="accountEmail" v-model="sourceForm.accountEmail" type="email" class="form-control" placeholder="name@company.com">
               </div>
-              <span class="badge text-bg-success ms-auto">Synced</span>
-            </div>
-            <div class="d-flex gap-2 mt-3">
-              <button type="button" class="btn btn-sm text-dark" @click="addAnotherSource">
-                Add another source
-              </button>
-              <button type="button" class="btn btn-sm btn-primary ms-auto" @click="skipToDashboard">
-                Continue to dashboard
-              </button>
-            </div>
+
+              <div class="col-md-6">
+                <label class="form-label" for="workspaceId">Workspace / Tenant ID</label>
+                <input id="workspaceId" v-model="sourceForm.workspaceId" type="text" class="form-control" placeholder="Workspace ID">
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label" for="apiToken">API Token</label>
+                <input id="apiToken" v-model="sourceForm.apiToken" type="password" class="form-control" placeholder="Paste token">
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label d-block w-100" for="importWindow">Initial Import Window</label>
+                <select id="importWindow" v-model="sourceForm.importWindow" class="form-select" style="max-width: 16rem;">
+                  <option>Last 7 days</option>
+                  <option>Last 30 days</option>
+                  <option>Last 90 days</option>
+                  <option>Custom range</option>
+                </select>
+              </div>
+
+              <div class="col-12">
+                <label class="form-label" for="notes">Notes (optional)</label>
+                <textarea
+                  id="notes"
+                  v-model="sourceForm.notes"
+                  class="form-control"
+                  rows="3"
+                  placeholder="Any notes for this connection..."
+                ></textarea>
+              </div>
+
+              <div class="col-12 d-flex gap-2 mt-5">
+                <button
+                  type="button"
+                  class="btn not-as-small text-muted ms-auto"
+                  @click="skipToDashboard"
+                >
+                  Skip to dashboard
+                </button>
+                <button type="button" class="btn btn-white border" @click="backToSourceSelection">
+                  Back
+                </button>
+                <button type="submit" class="btn btn-primary rounded-sm px-4">
+                  Confirm Details
+                </button>
+              </div>
+            </form>
+          </div>
+          <div class="onboarding-step-note d-flex align-items-center gap-2 true-small text-secondary mt-2">
+            <span class="step-progress-indicator">
+              <img
+                src="../assets/ellipses.svg"
+                class="invert-to-white"
+                width="11"
+                height="11"
+              >
+            </span>
+            <span>{{ step2Label }}</span>
           </div>
         </div>
 
-        <div class="onboarding-details-chat mt-auto pt-4">
-          <p v-if="sourceDetailsSubmitted" class="mb-3">
-            Great work syncing that. Now that you have a data source I can provide you with even more help and insights.
-            Go ahead and take a look at the sources option in the chat dialog and try selecting your newly added source.
-          </p>
-
-          <ChatBox
-            class="w-100"
-            :show-quick-actions="showOnboardingQuickActions"
-            chat-placeholder="Need a hand? Ask Ivy or paste your details here."
-            :source-options="onboardingChatSourceOptions"
-            :active-sources="onboardingChatActiveSources"
-            :highlight-sources-pill="sourceDetailsSubmitted"
-            sources-callout-text="Try the Sources option next"
-          />
+        <div 
+          v-else
+          class="d-flex flex-column"
+        >
+          <div class="border rounded p-3 mx-0 bg-white d-flex align-items-center gap-3 position-relative">
+            <div class="active-sync-check">
+              <img src="../assets/linked.svg" class="invert-to-white" width="12" height="12">
+            </div>
+            <img
+              v-if="selectedSourceIcon"
+              :src="selectedSourceIcon"
+              :alt="selectedSourceLabel"
+              width="40"
+              height="40"
+            >
+            <div class="min-w-0">
+              <div class="fw-semibold text-truncate">{{ selectedSourceLabel }}</div>
+              <div class="smallest text-secondary">Sync status: Active</div>
+            </div>
+            <span class="badge text-bg-success ms-auto">Synced</span>
+          </div>
+          <div class="d-flex gap-2">
+            <div class="ms-0 onboarding-step-note d-flex align-items-center gap-2 true-small text-secondary mt-2">
+              <span class="step-progress-indicator step-progress-indicator--complete">
+                <img
+                  src="../assets/checkmark.svg"
+                  class="invert-to-white"
+                  width="11"
+                  height="11"
+                >
+              </span>
+              <span>{{ step2Label }}</span>
+            </div>
+            <button type="button" class="btn btn-sm text-dark ms-auto" @click="addAnotherSource">
+              + Add another source
+            </button>
+          </div>
         </div>
+
+        <p v-if="sourceDetailsSubmitted" class="mb-4 mt-5 ivy-chat-width">
+          Great work syncing that! Now that you have a data source I can provide you with even more help and insights.
+          Why don't I just show you? <strong>Take a look at the sources option in the chat dialog and try selecting your newly added source</strong>.
+        </p>
+
+        <ChatBox
+          class="w-100"
+          :show-quick-actions="showOnboardingQuickActions"
+          chat-placeholder="Need a hand? Ask Ivy or paste your details here."
+          :source-options="onboardingChatSourceOptions"
+          :active-sources="onboardingChatActiveSources"
+          :highlight-sources-pill="sourceDetailsSubmitted"
+          sources-callout-text="Try the Sources option next"
+        />
       </div>
 
       <input
@@ -379,7 +424,9 @@ onMounted(() => {
 .onboarding-content {
   margin: 0 auto;
   max-width: 48rem;
+  position: relative;
   width: min(100%, 48rem);
+  z-index: 1;
 }
 
 .ivy-chat-width {
@@ -399,11 +446,16 @@ onMounted(() => {
 }
 
 .onboarding-page {
-  align-items: center;
   display: flex;
   justify-content: center;
   min-height: 100%;
-  padding: 2.5rem 0;
+  overflow: hidden;
+  padding: 8rem 0 5rem;
+  position: relative;
+
+  @media only screen and (max-height: 24rem) {
+    padding-top: 3rem;
+  }
 }
 
 .onboarding-inline-interaction {
@@ -431,6 +483,19 @@ onMounted(() => {
   margin-left: -3rem;
 }
 
+.step-progress-indicator {
+  align-items: center;
+  background-color: $blue;
+  border-radius: 50%;
+  display: inline-flex;
+  justify-content: center;
+  padding: 0.125rem;
+
+  &--complete {
+    background-color: hsl(151, 65%, 48%);
+  }
+}
+
 .onboarding-source-button {
   transition: all 0.2s ease-in-out;
 
@@ -453,10 +518,6 @@ onMounted(() => {
   line-height: 1.25;
   margin-left: -0.5rem;
   margin-right: -0.5rem;
-}
-
-.onboarding-details-step {
-  min-height: 32rem;
 }
 
 @media (max-width: 992px) {

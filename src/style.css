@@ -351,7 +351,8 @@ h5, .h5 {
 .bg-grid-effect {
   bottom: 0;
   height: 100%;
-  max-width: 22rem;
+  max-width: 20rem;
+  max-height: 20rem;
   object-fit: cover;
   position: absolute;
   pointer-events: none;
@@ -430,11 +431,24 @@ h5, .h5 {
 
 .text-ivy-gradient {
   background-clip: text;
-  background-image: linear-gradient(135deg, hsl(151, 65%, 48%), #4661FE);
-  color: #4661FE;
+  background-image: linear-gradient(135deg, hsl(151, 65%, 48%), #465FFF);
+  color: #465FFF;
   -webkit-text-fill-color: transparent;
 }
 
 .form-label {
   font-size: 0.9375rem;
+}
+
+.active-sync-check {
+  align-items: center;
+  background-color: var(--bs-green);
+  box-shadow: 0 1px 3px -1px rgba(0,0,0,0.5);
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  left: 0.5rem;
+  padding: 0.25rem;
+  position: absolute;
+  top: 0.5rem;
 }

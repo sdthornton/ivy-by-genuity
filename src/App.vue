@@ -52,6 +52,15 @@ watch(
       },
     ]"
   >
+    <img
+      v-if="hideLeftNav"
+      src="./assets/bg-grid-effect.svg"
+      class="bg-grid-effect onboarding-page__grid-effect"
+    >
+    <div 
+      v-if="hideLeftNav" 
+      class="onboarding-content-gradient" 
+    />
     <main 
       class="page-content"
       :class="isHomePage ? 'my-auto text-content-wrap' : 'w-100'"
@@ -321,9 +330,37 @@ body {
   }
 }
 
+.onboarding-content-gradient {
+  background-image: 
+    linear-gradient(
+      -30deg,
+      hsla(0deg, 0%, 100%, 1) 0%,
+      hsla(240deg, 20%, 98%, 1) 70%,
+      hsla(211deg, 39%, 95%, 1) 80%,
+      hsla(227deg, 89%, 83%, 1) 90%,
+      hsla(232deg, 100%, 64%, 1) 100%
+    );
+  inset: $content-inset;
+  opacity: 0.3125;
+  pointer-events: none;
+  position: fixed;
+  z-index: -1;
+}
+
 .text-content-wrap {
   max-width: 52rem;
   width: 100%;
+}
+
+.onboarding-page__grid-effect {
+  border-top-left-radius: 0.5rem;
+  filter: invert(1);
+  left: $content-inset;
+  mix-blend-mode: unset;
+  opacity: 0.3125;
+  pointer-events: none;
+  position: fixed;
+  top: $content-inset;
 }
 
 // .footer-line {
