@@ -12,6 +12,14 @@ const props = defineProps({
     type: Array,
     default: () => [],
   },
+  activeSourceOptions: {
+    type: Array,
+    default: null,
+  },
+  inactiveSourceOptions: {
+    type: Array,
+    default: null,
+  },
   placement: {
     type: String,
     default: "bottom-end",
@@ -28,6 +36,14 @@ const props = defineProps({
     type: String,
     default: "Add source",
   },
+  showSearch: {
+    type: Boolean,
+    default: true,
+  },
+  compact: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 const emit = defineEmits(["select-source", "connect-source"]);
@@ -35,16 +51,32 @@ const emit = defineEmits(["select-source", "connect-source"]);
 const sourceSearch = ref("");
 const normalizedQuery = computed(() => sourceSearch.value.trim().toLowerCase());
 
+const allSourceOptions = computed(() => (
+  props.sourceOptions
+    .map((source) => String(source || "").trim())
+    .filter(Boolean)
+));
+
 const activeSources = computed(() => (
-  props.sourceOptions.filter((source) => MOCK_ACTIVE_SOURCES.includes(source))
+  Array.isArray(props.activeSourceOptions)
+    ? props.activeSourceOptions
+      .map((source) => String(source || "").trim())
+      .filter(Boolean)
+    : allSourceOptions.value.filter((source) => MOCK_ACTIVE_SOURCES.includes(source))
 ));
 
 const inactiveSources = computed(() => (
-  props.sourceOptions.filter((source) => MOCK_INACTIVE_SOURCES.includes(source))
+  Array.isArray(props.inactiveSourceOptions)
+    ? props.inactiveSourceOptions
+      .map((source) => String(source || "").trim())
+      .filter(Boolean)
+    : props.activeSourceOptions
+      ? allSourceOptions.value.filter((source) => !activeSources.value.includes(source))
+      : allSourceOptions.value.filter((source) => MOCK_INACTIVE_SOURCES.includes(source))
 ));
 
 const filteredActiveSources = computed(() => {
-  if (!normalizedQuery.value) {
+  if (!props.showSearch || !normalizedQuery.value) {
     return activeSources.value;
   }
 
@@ -52,7 +84,7 @@ const filteredActiveSources = computed(() => {
 });
 
 const filteredInactiveSources = computed(() => {
-  if (!normalizedQuery.value) {
+  if (!props.showSearch || !normalizedQuery.value) {
     return inactiveSources.value;
   }
 
@@ -65,8 +97,11 @@ function selectSource(source, close) {
   close();
 }
 
-function connectSource(source) {
+function connectSource(source, close) {
   emit("connect-source", source);
+  if (typeof close === "function") {
+    close();
+  }
 }
 </script>
 
@@ -93,41 +128,71 @@ function connectSource(source) {
           {{ title }}
         </h5>
         <input
+          v-if="showSearch"
           v-model="sourceSearch"
           type="text"
           class="form-control form-control-sm mb-3 rounded-sm"
           placeholder="Search all sources..."
         >
 
-        <div class="label-spacing true-small text-muted mb-1">Active Sources</div>
-        <div class="source-selector-grid row">
-          <div
+        <template v-if="compact">
+          <div class="true-small text-muted mb-1">Active Sources</div>
+          <button
             v-for="source in filteredActiveSources"
-            :key="`active-${source}`"
-            class="col-4 mb-1"
+            :key="`compact-active-${source}`"
+            type="button"
+            class="dropdown-item d-flex align-items-center gap-2 rounded-sm"
             @click.stop="selectSource(source, close)"
           >
-            <div class="btn btn-white p-1 d-flex gap-2 align-items-center justify-content-start text-start">
-              <img :src="resolveSourceIcon(source)" height="32" width="32" :alt="source">
-              <span class="text-dark smallest">{{ source }}</span>
-            </div>
-          </div>
-        </div>
+            <img v-if="resolveSourceIcon(source)" :src="resolveSourceIcon(source)" height="16" width="16" :alt="source">
+            <span class="smallest text-dark">{{ source }}</span>
+            <span class="badge bg-success-subtle text-success-emphasis ms-auto">Active</span>
+          </button>
 
-        <div class="label-spacing true-small text-muted mb-1 mt-3">Inactive Sources</div>
-        <div class="source-selector-grid row">
-          <div
+          <div class="true-small text-muted mt-2 mb-1">Other Sources</div>
+          <button
             v-for="source in filteredInactiveSources"
-            :key="`inactive-${source}`"
-            class="col-4 mb-1"
-            @click.stop="connectSource(source)"
+            :key="`compact-inactive-${source}`"
+            type="button"
+            class="dropdown-item d-flex align-items-center gap-2 rounded-sm"
+            @click.stop="connectSource(source, close)"
           >
-            <div class="btn btn-white p-1 d-flex gap-2 align-items-center justify-content-start text-start">
-              <img :src="resolveSourceIcon(source)" class="inactive-source-icon" height="32" width="32" :alt="source">
-              <span class="text-dark smallest">{{ source }}</span>
+            <img v-if="resolveSourceIcon(source)" :src="resolveSourceIcon(source)" height="16" width="16" :alt="source">
+            <span class="smallest text-dark">{{ source }}</span>
+          </button>
+        </template>
+
+        <template v-else>
+          <div class="label-spacing true-small text-muted mb-1">Active Sources</div>
+          <div class="source-selector-grid row">
+            <div
+              v-for="source in filteredActiveSources"
+              :key="`active-${source}`"
+              class="col-4 mb-1"
+              @click.stop="selectSource(source, close)"
+            >
+              <div class="btn btn-white p-1 d-flex gap-2 align-items-center justify-content-start text-start">
+                <img :src="resolveSourceIcon(source)" height="32" width="32" :alt="source">
+                <span class="text-dark smallest">{{ source }}</span>
+              </div>
             </div>
           </div>
-        </div>
+
+          <div class="label-spacing true-small text-muted mb-1 mt-3">Inactive Sources</div>
+          <div class="source-selector-grid row">
+            <div
+              v-for="source in filteredInactiveSources"
+              :key="`inactive-${source}`"
+              class="col-4 mb-1"
+              @click.stop="connectSource(source, close)"
+            >
+              <div class="btn btn-white p-1 d-flex gap-2 align-items-center justify-content-start text-start">
+                <img :src="resolveSourceIcon(source)" class="inactive-source-icon" height="32" width="32" :alt="source">
+                <span class="text-dark smallest">{{ source }}</span>
+              </div>
+            </div>
+          </div>
+        </template>
       </div>
     </template>
   </BasicDropdown>
@@ -142,4 +207,3 @@ function connectSource(source) {
   width: 28rem;
 }
 </style>
-

@@ -275,13 +275,28 @@ export function ensureContainerStepData(stepData = null, containerType = "branch
     stepData.branchConnections = {};
   }
 
-  const normalizedInnerSteps = Array.isArray(stepData.innerSteps)
-    ? stepData.innerSteps.map((step, index) => toNormalizedInnerStep(step, index, branchPrefix))
-    : [];
+  const currentInnerSteps = Array.isArray(stepData.innerSteps) ? stepData.innerSteps : [];
+  if (!currentInnerSteps.length) {
+    stepData.innerSteps = getDefaultContainerInnerSteps(branchPrefix);
+    return stepData;
+  }
 
-  stepData.innerSteps = normalizedInnerSteps.length
-    ? normalizedInnerSteps
-    : getDefaultContainerInnerSteps(branchPrefix);
+  const normalizedInnerSteps = currentInnerSteps.map((step, index) => (
+    toNormalizedInnerStep(step, index, branchPrefix)
+  ));
+
+  const hasInnerStepChanges = normalizedInnerSteps.some((normalizedStep, index) => {
+    const currentStep = currentInnerSteps[index] || {};
+    return (
+      String(currentStep?.branchId || "").trim() !== normalizedStep.branchId
+      || String(currentStep?.type || "").trim() !== normalizedStep.type
+      || String(currentStep?.label || "").trim() !== normalizedStep.label
+    );
+  });
+
+  if (hasInnerStepChanges) {
+    stepData.innerSteps = normalizedInnerSteps;
+  }
 
   return stepData;
 }

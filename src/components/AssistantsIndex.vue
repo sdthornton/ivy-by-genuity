@@ -2,7 +2,10 @@
 import { computed, nextTick, onBeforeUnmount, ref, watch } from "vue";
 import ContentHeader from "./shared/ContentHeader.vue";
 import BasicDropdown from "./shared/BasicDropdown.vue";
+import CenteredModalShell from "./shared/CenteredModalShell.vue";
+import { resolveSourceIcon } from "./shared/sourceCatalog";
 import { CATEGORY_OPTIONS, formatCategoryLabel } from "./assistants/shared/categoryOptions";
+import { mockAssistantInsights } from "./assistants/shared/mockAssistantInsights";
 import { DEFAULT_ASSISTANT_CREATOR, mockAssistants as mockAssistantSeed } from "./assistants/shared/mockAssistants";
 import iconIvyCreator from "../assets/nav-resources-nav.svg";
 import iconCalendar from "../assets/calendar.svg";
@@ -30,6 +33,7 @@ const AVATAR_COLORS = [
 
 const mockAssistants = ref(mockAssistantSeed);
 const showCreateAssistantModal = ref(false);
+const showAssistantInsightsModal = ref(false);
 const createAssistantPrompt = ref("");
 const createAssistantPromptInput = ref(null);
 const createAssistantPromptExamples = [
@@ -43,6 +47,35 @@ const createAssistantPromptPlaceholder = computed(() => (
   createAssistantPromptExamples[createAssistantPromptExampleIndex.value] || ""
 ));
 const hasCreateAssistantPrompt = computed(() => createAssistantPrompt.value.length > 0);
+const dismissedInsightIds = ref([]);
+const alertedInsightIds = ref([]);
+const ignoredInsightIds = ref([]);
+const insightOverridesById = ref({});
+const snoozedInsightUntilById = ref({});
+const allAssistantInsights = computed(() => (
+  mockAssistantInsights.map((insight) => {
+    const assistant = mockAssistants.value.find((item) => Number(item?.id) === Number(insight.assistantId));
+    const override = insightOverridesById.value[insight.id] || {};
+    const remindAt = Number(override.remindAt) || null;
+    return {
+      ...insight,
+      status: override.status || insight.status,
+      remindAt,
+      remindAtLabel: remindAt ? formatInsightReminder(remindAt) : "",
+      assistantName: assistant?.title || "Unknown Assistant",
+      sources: (insight.sourceLabels || []).map((label) => ({
+        label,
+        icon: resolveSourceIcon(label),
+      })),
+    };
+  })
+));
+const assistantInsights = computed(() => (
+  allAssistantInsights.value.filter((insight) => !dismissedInsightIds.value.includes(insight.id))
+));
+const newInsightCount = computed(() => (
+  assistantInsights.value.filter((insight) => String(insight.status || "").toLowerCase() === "new").length
+));
 let createAssistantPlaceholderTimer = null;
 
 function rotateCreateAssistantPromptExample() {
@@ -100,6 +133,147 @@ async function openCreateAssistantModal() {
 
 function closeCreateAssistantModal() {
   showCreateAssistantModal.value = false;
+}
+
+function openAssistantInsightsModal() {
+  restoreReadySnoozedInsights();
+  showAssistantInsightsModal.value = true;
+}
+
+function closeAssistantInsightsModal() {
+  showAssistantInsightsModal.value = false;
+}
+
+function setInsightOverride(insightId, patch = {}) {
+  insightOverridesById.value = {
+    ...insightOverridesById.value,
+    [insightId]: {
+      ...(insightOverridesById.value[insightId] || {}),
+      ...patch,
+    },
+  };
+}
+
+function clearInsightReminder(insightId) {
+  const current = insightOverridesById.value[insightId] || {};
+  if (!("remindAt" in current)) {
+    return;
+  }
+
+  const next = { ...current };
+  delete next.remindAt;
+  insightOverridesById.value = {
+    ...insightOverridesById.value,
+    [insightId]: next,
+  };
+}
+
+function showInsight(insightId) {
+  dismissedInsightIds.value = dismissedInsightIds.value.filter((id) => id !== insightId);
+}
+
+function hideInsight(insightId) {
+  if (!dismissedInsightIds.value.includes(insightId)) {
+    dismissedInsightIds.value = [...dismissedInsightIds.value, insightId];
+  }
+}
+
+function dismissInsight(insightId) {
+  setInsightOverride(insightId, { status: "Dismissed" });
+  hideInsight(insightId);
+}
+
+function dismissInsightAndIgnore(insightId) {
+  if (!ignoredInsightIds.value.includes(insightId)) {
+    ignoredInsightIds.value = [...ignoredInsightIds.value, insightId];
+  }
+
+  setInsightOverride(insightId, { status: "Ignored" });
+  hideInsight(insightId);
+}
+
+function dismissInsightForNow(insightId) {
+  const remindAt = Date.now() + (24 * 60 * 60 * 1000);
+  snoozedInsightUntilById.value = {
+    ...snoozedInsightUntilById.value,
+    [insightId]: remindAt,
+  };
+  setInsightOverride(insightId, {
+    remindAt,
+    status: "Snoozed",
+  });
+  hideInsight(insightId);
+}
+
+function remindLaterInsight(insightId) {
+  const remindAt = Date.now() + (24 * 60 * 60 * 1000);
+  setInsightOverride(insightId, {
+    remindAt,
+    status: "Reminder set",
+  });
+  showInsight(insightId);
+}
+
+function restoreReadySnoozedInsights() {
+  const now = Date.now();
+  const nextSnoozed = { ...snoozedInsightUntilById.value };
+  let changed = false;
+
+  Object.entries(nextSnoozed).forEach(([insightId, remindAt]) => {
+    if (Number(remindAt) > now) {
+      return;
+    }
+
+    delete nextSnoozed[insightId];
+    if (!ignoredInsightIds.value.includes(insightId)) {
+      showInsight(insightId);
+      setInsightOverride(insightId, { status: "New" });
+      clearInsightReminder(insightId);
+    }
+    changed = true;
+  });
+
+  if (changed) {
+    snoozedInsightUntilById.value = nextSnoozed;
+  }
+}
+
+function setInsightInReview(insightId) {
+  setInsightOverride(insightId, { status: "In Review" });
+  showInsight(insightId);
+}
+
+function setInsightResolved(insightId) {
+  setInsightOverride(insightId, { status: "Resolved" });
+  showInsight(insightId);
+}
+
+function recheckInsight(insightId) {
+  setInsightOverride(insightId, { status: "New" });
+  clearInsightReminder(insightId);
+  showInsight(insightId);
+}
+
+function toggleInsightAlert(insightId) {
+  if (alertedInsightIds.value.includes(insightId)) {
+    alertedInsightIds.value = alertedInsightIds.value.filter((id) => id !== insightId);
+    return;
+  }
+
+  alertedInsightIds.value = [...alertedInsightIds.value, insightId];
+}
+
+function isInsightAlerted(insightId) {
+  return alertedInsightIds.value.includes(insightId);
+}
+
+function formatInsightReminder(timestamp) {
+  return new Date(timestamp).toLocaleString([], {
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    month: "short",
+  });
 }
 
 onBeforeUnmount(() => {
@@ -165,6 +339,23 @@ function getAssistantScheduleIcon(assistant) {
 
 function getAssistantCategory(assistant) {
   return String(assistant?.category || "").trim() || "security";
+}
+
+function getInsightSeverityClass(severity) {
+  const normalizedSeverity = String(severity || "").trim().toLowerCase();
+  if (normalizedSeverity === "critical") {
+    return "bg-danger-subtle text-danger-emphasis border border-danger-subtle";
+  }
+
+  if (normalizedSeverity === "risk") {
+    return "bg-warning-subtle text-warning-emphasis border border-warning-subtle";
+  }
+
+  if (normalizedSeverity === "warning") {
+    return "bg-warning-subtle text-warning-emphasis border border-warning-subtle";
+  }
+
+  return "bg-info-subtle text-info-emphasis border border-info-subtle";
 }
 
 function selectAssistantCategory(assistant, category, close) {
@@ -261,11 +452,11 @@ function selectAssistantCategory(assistant, category, close) {
           <a
             href="#"
             class="btn btn-link d-block p-2 text-start"
-            @click.prevent=""
+            @click.prevent="openAssistantInsightsModal"
           >
             <h3 class="fw-bold mb-0 d-flex align-items-center gap-2">
               <img src="../assets/ivy-basic-icon.svg" height="24" width="24">
-              <span>4</span>
+              <span>{{ newInsightCount }}</span>
             </h3>
             <div class="text-dark opacity-75 reduced">
               Assistant Insights
@@ -436,106 +627,211 @@ function selectAssistantCategory(assistant, category, close) {
       </router-link>
     </div>
   </section>
-  <Teleport to="body">
-    <Transition name="assistant-create-backdrop">
-      <button
-        v-if="showCreateAssistantModal"
-        type="button"
-        class="assistant-create-modal-backdrop"
-        aria-label="Close create assistant modal"
-        @click="closeCreateAssistantModal"
+  <CenteredModalShell
+    :open="showCreateAssistantModal"
+    aria-label="Create assistant"
+    close-label="Close create assistant modal"
+    max-width="42rem"
+    panel-classes="p-5"
+    @close="closeCreateAssistantModal"
+  >
+    <h3 class="fw-semibold mb-1">Let's Build Your Assistant</h3>
+    <p class="text-secondary not-as-small mb-4">
+      Describe any automated workflow and watch Ivy create your assistant in seconds.
+    </p>
+
+    <div class="ivy-chat-highlight-shadow position-relative">
+      <textarea
+        ref="createAssistantPromptInput"
+        v-model="createAssistantPrompt"
+        class="assistant-create-modal__prompt-input form-control reduced p-3"
+        rows="4"
+        placeholder=" "
       />
-    </Transition>
-    <Transition name="assistant-create-modal">
-      <aside
-        v-if="showCreateAssistantModal"
-        class="assistant-create-modal bg-white rounded p-5"
-        role="dialog"
-        aria-modal="true"
-        aria-label="Create assistant"
+      <div
+        v-show="!hasCreateAssistantPrompt"
+        class="assistant-create-modal__prompt-placeholder opacity-50 position-absolute start-0 top-0 d-flex align-items-start px-3 pt-3 pe-4 text-body-secondary reduced"
+        @click="createAssistantPromptInput?.focus()"
       >
-        <button
-          type="button"
-          class="assistant-create-modal__close btn btn-sm btn-white d-flex align-items-center justify-content-center"
-          aria-label="Close create assistant modal"
-          @click.stop.prevent="closeCreateAssistantModal"
-        >
-          &times;
-        </button>
+        <div class="d-flex align-items-start min-w-0">
+          <span class="me-1 flex-shrink-0">e.g.</span>
+          <Transition name="assistant-create-placeholder-swap" mode="out-in">
+            <span :key="createAssistantPromptPlaceholder">{{ createAssistantPromptPlaceholder }}</span>
+          </Transition>
+        </div>
+      </div>
+    </div>
 
-        <h3 class="fw-semibold mb-1">Let's Build Your Assistant</h3>
-        <p class="text-secondary not-as-small mb-4">
-          Describe any automated workflow and watch Ivy create your assistant in seconds.
+    <div class="assistant-create-modal__or-divider position-relative my-4 py-2">
+      <hr class="my-0">
+      <span class="assistant-create-modal__or-label px-2 smallest text-body-tertiary bg-white">or</span>
+    </div>
+
+    <div class="text-center">
+      <router-link
+        to="/assistants/new"
+        class="btn btn-outline-light border mx-auto d-inline-block text-dark px-5"
+        @click="closeCreateAssistantModal"
+      >
+        Build from Scratch
+      </router-link>
+    </div>
+  </CenteredModalShell>
+
+  <CenteredModalShell
+    :open="showAssistantInsightsModal"
+    aria-label="Assistant insights"
+    close-label="Close assistant insights"
+    max-width="56rem"
+    panel-classes="p-4"
+    @close="closeAssistantInsightsModal"
+  >
+    <div class="d-flex align-items-start justify-content-between mb-3">
+      <div>
+        <h3 class="fw-semibold mb-1">Assistant Insights Feed</h3>
+        <p class="text-secondary not-as-small mb-0">
+          Continuous findings generated from assistant runs.
         </p>
+      </div>
+      <span class="assistant-insights-count rounded-pill px-2 py-1 true-small fw-medium">
+        {{ assistantInsights.length }} this week
+      </span>
+    </div>
 
-        <div class="ivy-chat-highlight-shadow position-relative">
-          <textarea
-            ref="createAssistantPromptInput"
-            v-model="createAssistantPrompt"
-            class="assistant-create-modal__prompt-input form-control reduced p-3"
-            rows="4"
-            placeholder=" "
-          />
-          <div
-            v-show="!hasCreateAssistantPrompt"
-            class="assistant-create-modal__prompt-placeholder opacity-50 position-absolute start-0 top-0 d-flex align-items-start px-3 pt-3 pe-4 text-body-secondary reduced"
-            @click="createAssistantPromptInput?.focus()"
+    <div class="assistant-insights-list d-grid gap-2">
+      <article
+        v-for="insight in assistantInsights"
+        :key="insight.id"
+        class="assistant-insight-card border rounded-sm p-3 bg-titan-white"
+      >
+        <div class="d-flex align-items-center gap-2 mb-2">
+          <span
+            class="assistant-insight-card__severity rounded-pill px-2 py-0.5 true-small fw-medium"
+            :class="getInsightSeverityClass(insight.severity)"
           >
-            <div class="d-flex align-items-start min-w-0">
-              <span class="me-1 flex-shrink-0">e.g.</span>
-              <Transition name="assistant-create-placeholder-swap" mode="out-in">
-                <span :key="createAssistantPromptPlaceholder">{{ createAssistantPromptPlaceholder }}</span>
-              </Transition>
-            </div>
-          </div>
+            {{ insight.severity }}
+          </span>
+          <span class="smallest text-body-secondary">{{ insight.status }}</span>
+          <span class="smallest text-body-secondary ms-auto">{{ insight.detectedAt }}</span>
         </div>
-
-        <div class="assistant-create-modal__or-divider position-relative my-4 py-2">
-          <hr class="my-0">
-          <span class="assistant-create-modal__or-label px-2 smallest text-body-tertiary bg-white">or</span>
-        </div>
-
-        <div class="text-center">
+        <h6 class="mb-1 fw-medium">{{ insight.title }}</h6>
+        <p class="not-as-small text-secondary mb-2">{{ insight.summary }}</p>
+        <p
+          v-if="insight.remindAtLabel"
+          class="smallest text-body-secondary mb-2"
+        >
+          Reminder: {{ insight.remindAtLabel }}
+        </p>
+        <div class="assistant-insight-card__meta d-flex flex-wrap align-items-center gap-2 smallest text-body-secondary">
+          <span>Assistant:</span>
           <router-link
-            to="/assistants/new"
-            class="btn btn-outline-light border mx-auto d-inline-block text-dark px-5"
-            @click="closeCreateAssistantModal"
+            :to="`/assistants/${insight.assistantId}`"
+            class="assistant-insight-card__assistant text-decoration-none"
+            @click="closeAssistantInsightsModal"
           >
-            Build from Scratch
-        </router-link>
+            {{ insight.assistantName }}
+          </router-link>
+          <span>•</span>
+          <span>Affected: {{ insight.affectedObject }}</span>
+          <span>•</span>
+          <span>Confidence: {{ insight.confidence }}</span>
         </div>
-      </aside>
-    </Transition>
-  </Teleport>
+        <div class="d-flex align-items-center flex-wrap gap-2 mt-2">
+          <span class="smallest text-body-secondary">Sources:</span>
+          <span
+            v-for="source in insight.sources"
+            :key="`${insight.id}-${source.label}`"
+            class="assistant-insight-card__source d-inline-flex align-items-center gap-1 border rounded-pill px-2 py-0.5 smallest text-body-secondary bg-white"
+          >
+            <img
+              v-if="source.icon"
+              :src="source.icon"
+              width="14"
+              height="14"
+              :alt="source.label"
+            >
+            <span>{{ source.label }}</span>
+          </span>
+        </div>
+        <div class="assistant-insight-card__actions d-flex align-items-center gap-2 mt-3">
+          <button
+            type="button"
+            class="btn btn-sm btn-outline-light border text-dark smallest"
+            :class="{ 'assistant-insight-card__status-btn--active': insight.status === 'In Review' }"
+            @click="setInsightInReview(insight.id)"
+          >
+            In Review
+          </button>
+          <button
+            type="button"
+            class="btn btn-sm btn-outline-light border text-dark smallest"
+            :class="{ 'assistant-insight-card__status-btn--active': insight.status === 'Resolved' }"
+            @click="setInsightResolved(insight.id)"
+          >
+            Resolved
+          </button>
+          <BasicDropdown placement="bottom-end" menu-class="assistant-insight-actions-menu ms-auto">
+            <template #trigger>
+              <button
+                type="button"
+                class="btn btn-sm btn-outline-light border text-body-secondary smallest"
+              >
+                Actions
+              </button>
+            </template>
+            <template #menu="{ close }">
+              <button
+                type="button"
+                class="dropdown-item text-start"
+                @click="recheckInsight(insight.id); close()"
+              >
+                Recheck
+              </button>
+              <button
+                type="button"
+                class="dropdown-item text-start"
+                @click="remindLaterInsight(insight.id); close()"
+              >
+                Remind later
+              </button>
+              <button
+                type="button"
+                class="dropdown-item text-start"
+                @click="dismissInsightForNow(insight.id); close()"
+              >
+                Dismiss for now
+              </button>
+              <button
+                type="button"
+                class="dropdown-item text-start"
+                @click="dismissInsight(insight.id); close()"
+              >
+                Dismiss
+              </button>
+              <button
+                type="button"
+                class="dropdown-item text-start text-danger-emphasis"
+                @click="dismissInsightAndIgnore(insight.id); close()"
+              >
+                Dismiss and Ignore
+              </button>
+              <hr class="my-1">
+              <button
+                type="button"
+                class="dropdown-item text-start"
+                @click="toggleInsightAlert(insight.id); close()"
+              >
+                {{ isInsightAlerted(insight.id) ? "Clear alert" : "Set alert" }}
+              </button>
+            </template>
+          </BasicDropdown>
+        </div>
+      </article>
+    </div>
+  </CenteredModalShell>
 </template>
 
 <style lang="scss" scoped>
-.assistant-create-modal-backdrop {
-  background-color: rgba(0, 0, 0, 0.35);
-  border: 0;
-  inset: 0;
-  padding: 0;
-  position: fixed;
-  z-index: 60;
-}
-
-.assistant-create-modal {
-  box-shadow: 0 24px 38px 3px rgba(0,0,0,0.14), 0 9px 46px 8px rgba(0,0,0,0.12), 0 11px 15px -7px rgba(0,0,0,0.20);
-  left: 50%;
-  max-width: min(42rem, calc(100vw - 2rem));
-  position: fixed;
-  top: 50%;
-  transform: translate(-50%, -50%);
-  width: 100%;
-  z-index: 61;
-}
-
-.assistant-create-modal__close {
-  position: absolute;
-  right: 0.75rem;
-  top: 0.75rem;
-}
-
 .assistant-create-modal__prompt-input {
   padding: 1rem;
   resize: none;
@@ -585,33 +881,44 @@ function selectAssistantCategory(assistant, category, close) {
   transform: translate(-50%, -50%);
 }
 
-.assistant-create-backdrop-enter-active,
-.assistant-create-backdrop-leave-active,
-.assistant-create-modal-enter-active,
-.assistant-create-modal-leave-active {
-  transition: all 0.2s ease-in-out;
+.assistant-insights-count {
+  background-color: var(--bs-gray-150);
+  color: var(--bs-secondary);
 }
 
-.assistant-create-backdrop-enter-from,
-.assistant-create-backdrop-leave-to {
-  opacity: 0;
+.assistant-insights-list {
+  max-height: min(34rem, calc(100vh - 14rem));
+  overflow-y: auto;
+  padding-right: 0.25rem;
 }
 
-.assistant-create-backdrop-enter-to,
-.assistant-create-backdrop-leave-from {
-  opacity: 1;
+.assistant-insight-card__assistant {
+  color: var(--bs-primary);
+  font-weight: 500;
 }
 
-.assistant-create-modal-enter-from,
-.assistant-create-modal-leave-to {
-  opacity: 0;
-  transform: translate(-50%, calc(-50% + 1rem));
+.assistant-insight-card__assistant:hover {
+  text-decoration: underline !important;
 }
 
-.assistant-create-modal-enter-to,
-.assistant-create-modal-leave-from {
-  opacity: 1;
-  transform: translate(-50%, -50%);
+.assistant-insight-card__severity {
+  letter-spacing: 0.01em;
+}
+
+.assistant-insight-card__actions {
+  border-top: 1px solid var(--bs-gray-200);
+  padding-top: 0.625rem;
+}
+
+.assistant-insight-card__status-btn--active {
+  background-color: var(--bs-primary);
+  border-color: var(--bs-primary);
+  color: white !important;
+}
+
+:deep(.assistant-insight-actions-menu) {
+  min-width: 12rem;
+  padding: 0.35rem 0;
 }
 
 .assistant-index-schedule-pill {

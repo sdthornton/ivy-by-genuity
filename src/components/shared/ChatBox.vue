@@ -1,8 +1,9 @@
 <script setup>
 
-import { useTemplateRef } from 'vue';
+import { computed, useTemplateRef } from "vue";
+import SourceSelectorDropdown from "./SourceSelectorDropdown.vue";
 
-const chatInput = useTemplateRef('chatInput');
+const chatInput = useTemplateRef("chatInput");
 
 const props = defineProps({
   showQuickActions: {
@@ -13,7 +14,27 @@ const props = defineProps({
     type: String,
     default: "Ask Ivy anything...",
   },
+  sourceOptions: {
+    type: Array,
+    default: () => [],
+  },
+  activeSources: {
+    type: Array,
+    default: () => [],
+  },
+  highlightSourcesPill: {
+    type: Boolean,
+    default: false,
+  },
+  sourcesCalloutText: {
+    type: String,
+    default: "",
+  },
 });
+
+const inactiveSources = computed(() => (
+  props.sourceOptions.filter((source) => !props.activeSources.includes(source))
+));
 
 defineExpose({
   chatInput,
@@ -45,6 +66,7 @@ defineExpose({
     <div 
       v-if="showQuickActions"
       class="chat-quick-actions mt-3 d-flex text-biscay-blue true-small d-flex"
+      :class="{ 'chat-quick-actions--focus-sources': highlightSourcesPill }"
     >
       <div class="chat-quick-action rounded-pill px-3 py-1 d-flex align-items-center">
         <img src="../../assets/nav-prompt-library.svg" height="16" width="16" class="me-1">
@@ -56,16 +78,44 @@ defineExpose({
         Actions
         <img src="../../assets/arrow-down-b.svg" height="12" width="12" class="ms-2 pill-dropdown-arrow">
       </div>
-      <div class="chat-quick-action rounded-pill px-3 py-1 d-flex align-items-center">
-        <img src="../../assets/nav-connectors.svg" height="16" width="16" class="me-1">
-        Integrations
-        <img src="../../assets/arrow-down-b.svg" height="12" width="12" class="ms-2 pill-dropdown-arrow">
+      <div class="position-relative chat-source-focus">
+        <SourceSelectorDropdown
+          v-if="sourceOptions.length"
+          :source-options="sourceOptions"
+          :active-source-options="activeSources"
+          :inactive-source-options="inactiveSources"
+          placement="bottom-start"
+          menu-class="chat-source-dropdown-menu"
+          title="Select Your Source(s)"
+        >
+          <template #trigger>
+            <div
+              class="chat-quick-action rounded-pill px-3 py-1 d-flex align-items-center"
+              :class="{ 'chat-quick-action--highlight': highlightSourcesPill }"
+            >
+              <img src="../../assets/nav-connectors.svg" height="16" width="16" class="me-1">
+              Sources
+              <img src="../../assets/arrow-down-b.svg" height="12" width="12" class="ms-2 pill-dropdown-arrow">
+            </div>
+          </template>
+        </SourceSelectorDropdown>
+        <div v-else class="chat-quick-action rounded-pill px-3 py-1 d-flex align-items-center">
+          <img src="../../assets/nav-connectors.svg" height="16" width="16" class="me-1">
+          Sources
+          <img src="../../assets/arrow-down-b.svg" height="12" width="12" class="ms-2 pill-dropdown-arrow">
+        </div>
+        <div
+          v-if="highlightSourcesPill && sourcesCalloutText"
+          class="chat-quick-action-callout smallest bg-dark text-white rounded-pill px-2 py-1"
+        >
+          {{ sourcesCalloutText }}
+        </div>
       </div>
       <div class="chat-quick-action rounded-pill px-3 py-1 d-flex align-items-center">
         <img src="../../assets/global-search.svg" height="16" width="16" class="me-1">
         <span>Search the Web</span>
       </div>
-      <div class="chat-quick-action bg-secondary-subtle rounded-pill px-3 py-1 d-flex align-items-center ms-auto">
+      <div class="chat-quick-action chat-quick-action--help bg-secondary-subtle rounded-pill px-3 py-1 d-flex align-items-center ms-auto">
         <img src="../../assets/help-circled-2.svg" height="16" width="16" class="me-1">
         <span>What can you do?</span>
       </div>
@@ -124,6 +174,76 @@ defineExpose({
 
   &:hover {
     background-color: color.mix($iceberg-blue, #020D1C, 87.5%);
+  }
+}
+
+.chat-quick-actions--focus-sources > *:not(.chat-source-focus):not(.chat-quick-action--help) {
+  opacity: 0.4;
+}
+
+.chat-quick-action--help {
+  opacity: 1;
+}
+
+.chat-source-focus {
+  opacity: 1 !important;
+}
+
+.chat-quick-action--highlight {
+  animation: sources-pill-pulse 1.05s ease-in-out infinite;
+  background-color: var(--bs-primary-bg-subtle);
+  box-shadow: inset 0 0 0 1px var(--bs-primary), 0 0 0 4px rgba(13, 110, 253, 0.25);
+}
+
+.chat-quick-action-callout {
+  animation: sources-callout-float 0.95s ease-in-out infinite;
+  font-weight: 600;
+  left: 50%;
+  pointer-events: none;
+  position: absolute;
+  top: -2rem;
+  transform: translateX(-50%);
+  white-space: nowrap;
+
+  &:after {
+    border-left: 0.35rem solid transparent;
+    border-right: 0.35rem solid transparent;
+    border-top: 0.45rem solid var(--bs-dark);
+    content: "";
+    left: 50%;
+    margin-left: -0.35rem;
+    position: absolute;
+    top: calc(100% - 1px);
+  }
+}
+
+@keyframes sources-pill-pulse {
+  0% {
+    transform: translateY(0);
+    box-shadow: inset 0 0 0 1px var(--bs-primary), 0 0 0 0 rgba(13, 110, 253, 0.45);
+  }
+  40% {
+    transform: translateY(-1px);
+  }
+  70% {
+    transform: translateY(0);
+    box-shadow: inset 0 0 0 1px var(--bs-primary), 0 0 0 9px rgba(13, 110, 253, 0);
+  }
+  100% {
+    transform: translateY(0);
+    box-shadow: inset 0 0 0 1px var(--bs-primary), 0 0 0 0 rgba(13, 110, 253, 0);
+  }
+}
+
+@keyframes sources-callout-float {
+  0% {
+    transform: translateX(-50%) translateY(0);
+  }
+  50% {
+    transform: translateX(-50%) translateY(-2px);
+  }
+  100% {
+    transform: translateX(-50%) translateY(0);
   }
 }
 

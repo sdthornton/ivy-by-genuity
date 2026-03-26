@@ -214,7 +214,7 @@ export const MOCK_ASSISTANT_FLOWS_BY_ID = {
         type: "lookup",
         title: "Collect Device Health Signals",
         builderTitle: "Collect Device Signals",
-        sources: buildSources(["Kaseya VSA", "Sophos XDR", "Sophos EDR"]),
+        sources: buildSources(["Kaseya VSA", "Sophos"]),
         ivySays: "This step pulls management, protection, and encryption posture across endpoint tools.",
         detailsCollapsed: false,
         connections: [3],
@@ -247,7 +247,7 @@ export const MOCK_ASSISTANT_FLOWS_BY_ID = {
     ],
     stepDataByStateKey: {
       "2": {
-        source: "Kaseya VSA, Sophos XDR, Sophos EDR",
+        source: "Kaseya VSA, Sophos",
         list: "Managed devices and agent health",
         code: "Identify devices not checking in, missing patches, unhealthy protection agents, and missing encryption coverage.",
       },
@@ -273,7 +273,7 @@ export const MOCK_ASSISTANT_FLOWS_BY_ID = {
         type: "lookup",
         title: "Gather Device Risk Signals",
         builderTitle: "Gather Device Signals",
-        sources: buildSources(["Kaseya VSA", "Sophos XDR", "Sophos EDR"]),
+        sources: buildSources(["Kaseya VSA", "Sophos"]),
         ivySays: "This step collects correlated endpoint posture and threat signals.",
         detailsCollapsed: false,
         connections: [3],
@@ -306,7 +306,7 @@ export const MOCK_ASSISTANT_FLOWS_BY_ID = {
     ],
     stepDataByStateKey: {
       "2": {
-        source: "Kaseya VSA, Sophos XDR, Sophos EDR",
+        source: "Kaseya VSA, Sophos",
         list: "Device posture + threat telemetry",
         code: "Collect encryption status, patch compliance, malware alerts, and backup coverage indicators per device.",
       },
@@ -391,7 +391,7 @@ export const MOCK_ASSISTANT_FLOWS_BY_ID = {
         type: "lookup",
         title: "Collect User Risk Signals",
         builderTitle: "Collect User Risk Signals",
-        sources: buildSources(["Microsoft 365", "Avanon", "KnowBe4", "Sophos XDR"]),
+        sources: buildSources(["Microsoft 365", "Avanon", "KnowBe4", "Sophos"]),
         ivySays: "This lookup combines identity, phishing, and endpoint context for each user.",
         detailsCollapsed: false,
         connections: [3],
@@ -424,7 +424,7 @@ export const MOCK_ASSISTANT_FLOWS_BY_ID = {
     ],
     stepDataByStateKey: {
       "2": {
-        source: "Microsoft 365, Avanon, KnowBe4, Sophos XDR",
+        source: "Microsoft 365, Avanon, KnowBe4, Sophos",
         list: "User activity, exposure, and role context",
         code: "Collect privileged roles, weak auth indicators, phishing failures, malware exposure, and recent risky sign-ins.",
       },
@@ -568,7 +568,7 @@ export const MOCK_ASSISTANT_FLOWS_BY_ID = {
         type: "lookup",
         title: "Aggregate Weekly Risk Signals",
         builderTitle: "Aggregate Weekly Signals",
-        sources: buildSources(["Microsoft 365", "Sophos XDR", "Cisco Meraki", "Kaseya Spanning"]),
+        sources: buildSources(["Microsoft 365", "Sophos", "Cisco Meraki", "Kaseya Spanning"]),
         ivySays: "This step pulls cross-system signals needed for a concise weekly leadership brief.",
         detailsCollapsed: false,
         connections: [3],
@@ -600,7 +600,7 @@ export const MOCK_ASSISTANT_FLOWS_BY_ID = {
     ],
     stepDataByStateKey: {
       "2": {
-        source: "Microsoft 365, Sophos XDR, Cisco Meraki, Kaseya Spanning",
+        source: "Microsoft 365, Sophos, Cisco Meraki, Kaseya Spanning",
         list: "Cross-platform weekly security and IT activity",
         code: "Collect signal trends for risks, improvements, and material changes from connected tools.",
       },

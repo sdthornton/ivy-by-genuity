@@ -12,8 +12,7 @@ import microsoft365Logo from "../../assets/integrations/microsoft-365.png";
 import oneLoginLogo from "../../assets/integrations/one-login.png";
 import sharepointLogo from "../../assets/integrations/sharepoint.png";
 import slackLogo from "../../assets/integrations/slack.png";
-import sophosEndpointLogo from "../../assets/integrations/sophos.png";
-import sophosXdrLogo from "../../assets/integrations/sophos.png";
+import sophosLogo from "../../assets/integrations/sophos.png";
 import pdfLogo from "../../assets/integrations/pdf.png";
 
 export const SOURCE_LOGOS = {
@@ -31,8 +30,7 @@ export const SOURCE_LOGOS = {
   "OneLogin": oneLoginLogo,
   "SharePoint": sharepointLogo,
   "Slack": slackLogo,
-  "Sophos EDR": sophosEndpointLogo,
-  "Sophos XDR": sophosXdrLogo,
+  "Sophos": sophosLogo,
   "IT Meeting Notes": pdfLogo,
 };
 
@@ -41,7 +39,7 @@ export const MOCK_ACTIVE_SOURCES = [
   "Cisco Meraki",
   "Kaseya VSA",
   "OneLogin",
-  "Sophos XDR",
+  "Sophos",
   "Microsoft 365",
   "Slack",
   "SharePoint",
@@ -53,7 +51,6 @@ export const MOCK_INACTIVE_SOURCES = [
   "Avanon",
   "Cisco Umbrella",
   "KnowBe4",
-  "Sophos EDR",
   "Kaseya Spanning",
   "Google",
   "Dropbox",
@@ -62,4 +59,3 @@ export const MOCK_INACTIVE_SOURCES = [
 export function resolveSourceIcon(sourceLabel) {
   return SOURCE_LOGOS[String(sourceLabel || "").trim()] || null;
 }
-

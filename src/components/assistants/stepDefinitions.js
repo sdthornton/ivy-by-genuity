@@ -27,8 +27,7 @@ export const sourceOptions = [
   "OneLogin",
   "SharePoint",
   "Slack",
-  "Sophos EDR",
-  "Sophos XDR",
+  "Sophos",
   "IT Meeting Notes", 
 ];
 

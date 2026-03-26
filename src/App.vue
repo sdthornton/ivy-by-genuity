@@ -43,11 +43,14 @@ watch(
 <template>
   <LeftNav v-if="!hideLeftNav" />
   <div 
-    class="content-container d-flex justify-content-center bg-titan-white"
-    :class="{
-      'px-0': isSplitContent,
-      'content-container--standalone': hideLeftNav,
-    }"
+    class="content-container d-flex justify-content-center"
+    :class="[
+      isOnboardingRoute ? 'bg-white' : 'bg-titan-white',
+      {
+        'px-0': isSplitContent,
+        'content-container--standalone': hideLeftNav,
+      },
+    ]"
   >
     <main 
       class="page-content"
@@ -275,10 +278,6 @@ body {
     left: $left-nav-open-width;
   }
 
-  &.content-container--standalone {
-    left: $content-inset;
-  }
-
   // &:before {
   //   background-image: 
   //     linear-gradient(
@@ -291,13 +290,35 @@ body {
   //       hsl(216deg 98% 52%) 100%
   //     );
   //   content: "";
-  //   filter: blur(10px);
+  //   // filter: blur(10px);
   //   inset: 0;
   //   opacity: 0.1;
   //   pointer-events: none;
   //   position: absolute;
   //   z-index: -1;
   // }
+
+  &.content-container--standalone {
+    left: $content-inset;
+
+    // &:before,
+    // &:after {
+    //   background-image: url('./assets/gradient-bg-1.png');
+    //   background-size: 100% 100%;
+    //   background-position: left top;
+    //   content: "";
+    //   inset: 0;
+    //   opacity: 1;
+    //   position: absolute;
+    //   z-index: -1;
+    // }
+
+    // &:after {
+    //   background-image: url('./assets/gradient-bg-2.png');
+    //   content: "";
+    //   opacity: 1;
+    // }
+  }
 }
 
 .text-content-wrap {
