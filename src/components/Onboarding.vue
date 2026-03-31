@@ -1,7 +1,8 @@
 <script setup>
-import { computed, onMounted, reactive, ref } from "vue";
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from "vue";
 import { useRouter } from "vue-router";
 import { hideOnboardingNavigation } from "../composables/useAppLayoutState";
+import typewriter from "../utils/typewriter";
 import { sourceOptions } from "./assistants/stepRuntime";
 import { resolveSourceIcon } from "./shared/sourceCatalog";
 import ChatBox from "./shared/ChatBox.vue";
@@ -15,8 +16,11 @@ const sourceSelectionConfirmed = ref(false);
 const sourceDetailsSubmitted = ref(false);
 const selectedSource = ref("");
 const hasSelectedSourceInChatPill = ref(false);
+const onboardingChatThread = ref([]);
+const showSuggestedPrompts = ref(false);
 const showOnboardingQuickActions = ref(false);
 const uploadedFileName = ref("");
+let activePromptTypewriterController = null;
 const sourceForm = reactive({
   accountEmail: "",
   apiToken: "",
@@ -214,8 +218,10 @@ function continueToDashboard() {
 
   sourceSelectionConfirmed.value = true;
   onboardingStep.value = "details";
+  onboardingChatThread.value = [];
   sourceDetailsSubmitted.value = false;
   hasSelectedSourceInChatPill.value = false;
+  showSuggestedPrompts.value = false;
   showOnboardingQuickActions.value = false;
 }
 
@@ -223,13 +229,16 @@ function backToSourceSelection() {
   onboardingStep.value = "source";
   sourceSelectionConfirmed.value = false;
   hasSelectedSourceInChatPill.value = false;
+  showSuggestedPrompts.value = false;
 }
 
 function clearSelectedSource() {
   selectedSource.value = "";
   uploadedFileName.value = "";
   sourceSelectionConfirmed.value = false;
+  onboardingChatThread.value = [];
   hasSelectedSourceInChatPill.value = false;
+  showSuggestedPrompts.value = false;
 }
 
 function addAnotherSource() {
@@ -237,12 +246,15 @@ function addAnotherSource() {
   sourceDetailsSubmitted.value = false;
   onboardingStep.value = "source";
   hasSelectedSourceInChatPill.value = false;
+  showSuggestedPrompts.value = false;
   showOnboardingQuickActions.value = false;
 }
 
 function submitSourceDetails() {
+  onboardingChatThread.value = [];
   sourceDetailsSubmitted.value = true;
   hasSelectedSourceInChatPill.value = false;
+  showSuggestedPrompts.value = false;
   showOnboardingQuickActions.value = true;
 }
 
@@ -250,25 +262,70 @@ function skipToDashboard() {
   router.push("/");
 }
 
-function applySuggestedPrompt(prompt) {
+async function applySuggestedPrompt(prompt) {
   const chatInput = onboardingChatBox.value?.chatInput;
   if (!chatInput) {
     return;
   }
 
-  chatInput.value = prompt;
+  const controller = new AbortController();
+  activePromptTypewriterController?.abort();
+  activePromptTypewriterController = controller;
+
+  const source = selectedSourceLabel.value;
+  const now = Date.now();
+  chatInput.value = "";
   chatInput.focus();
+  showSuggestedPrompts.value = false;
+
+  try {
+    await typewriter(chatInput, prompt, {
+      clearElementFirst: true,
+      signal: controller.signal,
+      timing: {
+        startDelay: 0,
+        minDelay: 5,
+        maxDelay: 11,
+        whitespaceMinDelay: 0,
+        whitespaceMaxDelay: 2,
+      },
+    });
+  } catch (error) {
+    if (error?.name !== "AbortError") {
+      throw error;
+    }
+    return;
+  } finally {
+    if (activePromptTypewriterController === controller) {
+      activePromptTypewriterController = null;
+    }
+  }
+
+  onboardingChatThread.value.push({
+    id: `user-${now}`,
+    format: "text",
+    role: "user",
+    text: prompt,
+  });
+  onboardingChatThread.value.push({
+    id: `ivy-${now}`,
+    format: "html",
+    role: "ivy",
+    text: buildSuggestedPromptResponse(prompt, source),
+  });
 }
 
 function handleOnboardingChatSourceSelect(source) {
   const selectedSourceName = String(selectedSourceLabel.value || "").trim().toLowerCase();
   const selectedFromPill = String(source || "").trim().toLowerCase();
-  hasSelectedSourceInChatPill.value = Boolean(
+  const hasMatchingSource = Boolean(
     sourceDetailsSubmitted.value
       && selectedSourceName
       && selectedFromPill
       && selectedSourceName === selectedFromPill
   );
+  hasSelectedSourceInChatPill.value = hasMatchingSource;
+  showSuggestedPrompts.value = hasMatchingSource;
 }
 
 function renderIntroMessage() {
@@ -279,9 +336,142 @@ function renderIntroMessage() {
   introMessageEl.value.innerHTML = INTRO_MARKUP;
 }
 
+function buildSuggestedPromptResponse(prompt, source) {
+  const lowerPrompt = String(prompt || "").toLowerCase();
+  const timestamp = "Mar 31, 2026 • 11:22 AM PT";
+
+  if (lowerPrompt.includes("draft")) {
+    return `
+      <p>Absolutely. Here’s a full draft you could send right now. ✅</p>
+      <p><strong>📄 Daily ${source} Ops Brief</strong><br><span class="text-secondary">🕒 Generated: ${timestamp}</span></p>
+      <p><strong>1) Executive Summary</strong></p>
+      <ul>
+        <li>✅ Environment health is stable overall with no confirmed critical incidents.</li>
+        <li>⚠️ 3 items need same-day review based on recent activity and risk profile.</li>
+        <li>💡 2 workflow improvements were detected that could reduce manual follow-up this week.</li>
+      </ul>
+      <p><strong>2) Top Findings</strong></p>
+      <ul>
+        <li>📈 Elevated activity spike in one monitored segment compared to the prior 24 hours.</li>
+        <li>🔐 New permission/configuration changes were identified and should be validated.</li>
+        <li>🔁 One recurring medium-severity issue appears in multiple records and is trending upward.</li>
+      </ul>
+      <p><strong>3) Recommended Actions (Priority)</strong></p>
+      <ol>
+        <li>Validate the high-variance activity source and confirm expected behavior.</li>
+        <li>Review recent policy/permission changes and verify approver intent.</li>
+        <li>Assign owner for recurring issue and schedule corrective follow-up.</li>
+      </ol>
+      <p><strong>4) Suggested Owner Routing</strong></p>
+      <ul>
+        <li>🛡️ Security Operations: variance validation and escalation decision.</li>
+        <li>🧰 Systems Admin: configuration and permission verification.</li>
+        <li>👤 Team Lead: confirm remediation owner and deadline.</li>
+      </ul>
+      <p>I can also convert this into <strong>✂️ a shorter leadership summary</strong> or <strong>🧾 a technical handoff version</strong>.</p>
+    `;
+  }
+
+  if (lowerPrompt.includes("summarize") || lowerPrompt.includes("summary")) {
+    return `
+      <p>Here’s a full summary from <strong>${source}</strong> based on the latest synced data. 👇</p>
+      <p><strong>🗓️ Summary Window</strong></p>
+      <ul>
+        <li>Last 24 hours (rolling)</li>
+        <li>Snapshot generated: ${timestamp}</li>
+      </ul>
+      <p><strong>🔍 What changed</strong></p>
+      <ul>
+        <li>Activity volume increased moderately vs the previous day.</li>
+        <li>Most records are normal, but a small subset is outside baseline patterns.</li>
+        <li>Recent changes cluster around access/configuration events.</li>
+      </ul>
+      <p><strong>🚦 Risk snapshot</strong></p>
+      <ul>
+        <li><strong>Critical:</strong> 0 confirmed ✅</li>
+        <li><strong>High:</strong> 1 needs triage ⚠️</li>
+        <li><strong>Medium:</strong> 3 need review 🟡</li>
+        <li><strong>Low:</strong> several informational items only ℹ️</li>
+      </ul>
+      <p><strong>🎯 What to review first</strong></p>
+      <ol>
+        <li>The high-priority outlier tied to unusual behavior.</li>
+        <li>Recent configuration/permission modifications.</li>
+        <li>Repeated medium-priority signals appearing across multiple entries.</li>
+      </ol>
+      <p><strong>🧠 Bottom line:</strong> No broad incident signal right now, but there are enough high/medium indicators to justify focused review today.</p>
+    `;
+  }
+
+  if (lowerPrompt.includes("show me") || lowerPrompt.includes("highlight")) {
+    return `
+      <p>Great prompt. Here are the top findings from <strong>${source}</strong> right now. 👇</p>
+      <p><strong>🔎 Top Findings</strong></p>
+      <ol>
+        <li>
+          <strong>Highest-impact alert</strong>
+          <ul>
+            <li><strong>Severity:</strong> High 🔴</li>
+            <li><strong>Why it matters:</strong> Pattern is outside expected baseline and affects a high-value workflow.</li>
+            <li><strong>Next step:</strong> Validate source context and confirm whether this behavior is expected.</li>
+          </ul>
+        </li>
+        <li>
+          <strong>Most active entity in the last 24h</strong>
+          <ul>
+            <li>Activity is materially above normal trend 📈</li>
+            <li>This can be legitimate, but the volume shift warrants a quick verification pass.</li>
+          </ul>
+        </li>
+        <li>
+          <strong>Recurring issue cluster</strong>
+          <ul>
+            <li>Similar medium-priority events are repeating across multiple records 🔁</li>
+            <li>This usually indicates a process gap, stale policy, or unresolved upstream condition.</li>
+          </ul>
+        </li>
+      </ol>
+      <p><strong>⚙️ Recommended immediate sequence</strong></p>
+      <ol>
+        <li>First 15 minutes: triage the high-impact signal.</li>
+        <li>Next 20 minutes: validate top actor context.</li>
+        <li>Final 15 minutes: decide whether to open remediation tasks for the recurring cluster.</li>
+      </ol>
+      <p>If helpful, I can turn this into an owner-tagged checklist for your team. ✅</p>
+    `;
+  }
+
+  return `
+    <p>I checked <strong>${source}</strong> and put together a full first-pass analysis. ✅</p>
+    <p><strong>📍 Current State</strong></p>
+    <ul>
+      <li>Environment appears operational with no confirmed outage indicators.</li>
+      <li>A few items need review for risk reduction and data hygiene.</li>
+    </ul>
+    <p><strong>📈 Key Trend</strong></p>
+    <ul>
+      <li>Signal volume is trending slightly upward in a way that is usually manageable but worth monitoring.</li>
+    </ul>
+    <p><strong>⚠️ Most Relevant Risk</strong></p>
+    <ul>
+      <li>One event grouping is repeatedly showing up across records, suggesting an unresolved root cause.</li>
+    </ul>
+    <p><strong>🛠️ Recommended Next Step</strong></p>
+    <ul>
+      <li>Run a focused review on the repeated grouping, assign an owner, and confirm expected policy/config state.</li>
+    </ul>
+    <p>I can continue by generating either <strong>📋 a remediation plan with owners and due dates</strong> or <strong>🧭 a concise leadership update</strong>.</p>
+  `;
+}
+
 onMounted(() => {
   hideOnboardingNavigation();
   renderIntroMessage();
+});
+
+onBeforeUnmount(() => {
+  activePromptTypewriterController?.abort();
+  activePromptTypewriterController = null;
 });
 </script>
 
@@ -515,16 +705,28 @@ onMounted(() => {
 
         <p v-if="sourceDetailsSubmitted" class="mb-3 mt-5 ivy-chat-width">
           Great work setting up your first source! 🎉 While I'm finalizing the {{ selectedSourceLabel }} sync, 
-          why not explore just some of the ways I can navigate your data. Try clicking the "sources" pill 
-          highlighted below and select your newly-added {{ selectedSourceLabel }} app?
+          why not explore just some of the ways I can navigate your data. <strong>Try clicking the "sources" pill 
+          highlighted below and select your newly-added {{ selectedSourceLabel }} app.</strong>
         </p>
-        <p v-if="sourceDetailsSubmitted && hasSelectedSourceInChatPill" class="mb-3 ivy-chat-width">
+        <p v-if="sourceDetailsSubmitted && showSuggestedPrompts" class="mb-3 ivy-chat-width">
           Good work. See those suggested prompts that just popped up? <strong>Try selecting a prompt</strong> and I'll give you a quick demo of what I can do.
         </p>
+        <div v-if="onboardingChatThread.length" class="mb-4">
+          <article
+            v-for="message in onboardingChatThread"
+            :key="message.id"
+            :class="message.role === 'user'
+              ? 'user-chat-bubble rounded bg-iceberg-blue px-3 py-2 mb-4'
+              : 'assistant-chat-message ivy-chat-width mb-4'"
+          >
+            <p v-if="message.format !== 'html'" class="mb-0" style="white-space: pre-line;">{{ message.text }}</p>
+            <div v-else v-html="message.text"></div>
+          </article>
+        </div>
 
         <div class="onboarding-details-chat mt-auto">
-          <div 
-            v-if="sourceDetailsSubmitted && hasSelectedSourceInChatPill"
+          <div
+            v-if="sourceDetailsSubmitted && showSuggestedPrompts"
             class="chat-suggested-prompts p-3 bg-light rounded reduced"
           >
             <h6 class="border-bottom pb-2 d-flex gap-2 align-items-center">
