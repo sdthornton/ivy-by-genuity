@@ -278,6 +278,7 @@ body {
   left: $left-nav-closed-width;
   overflow-y: scroll;
   overflow-x: hidden;
+  overscroll-behavior: none !important;
   padding-left: 3rem;
   padding-right: 3rem;
   position: fixed;

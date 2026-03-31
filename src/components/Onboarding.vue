@@ -9,11 +9,12 @@ import ChatBox from "./shared/ChatBox.vue";
 const router = useRouter();
 const fileInputEl = ref(null);
 const introMessageEl = ref(null);
-const showSourceOptions = ref(false);
+const onboardingChatBox = ref(null);
 const onboardingStep = ref("source");
 const sourceSelectionConfirmed = ref(false);
 const sourceDetailsSubmitted = ref(false);
 const selectedSource = ref("");
+const hasSelectedSourceInChatPill = ref(false);
 const showOnboardingQuickActions = ref(false);
 const uploadedFileName = ref("");
 const sourceForm = reactive({
@@ -90,6 +91,101 @@ const step2Label = computed(() => (
   `Step 2 of ${TOTAL_ONBOARDING_STEPS}: ${step2Status.value}.`
 ));
 
+const PROMPT_SUGGESTIONS_BY_SOURCE = {
+  "avanon": [
+    "Show me the top phishing and malware detections from the last 24 hours.",
+    "Summarize unusual outbound email behavior by user.",
+    "Draft a daily email security brief I can share with leadership.",
+  ],
+  "azure": [
+    "Summarize new high-severity Azure alerts from the last day.",
+    "Show me failed sign-in spikes and likely root causes.",
+    "Draft a daily cloud security status update for my team.",
+  ],
+  "cisco meraki": [
+    "Show me devices that went offline in the last 24 hours.",
+    "Summarize critical Meraki alerts and recommended next actions.",
+    "Create a morning network health report for branch locations.",
+  ],
+  "cisco umbrella": [
+    "Show me the top blocked domains and categories from the last day.",
+    "Summarize users with unusual DNS activity.",
+    "Draft a daily secure web activity summary for my security team.",
+  ],
+  "dropbox": [
+    "Show me newly shared external links from the last 24 hours.",
+    "Summarize large file movements and ownership changes.",
+    "Draft a collaboration risk summary based on recent Dropbox activity.",
+  ],
+  "entra id": [
+    "Show me high-risk sign-ins from the last 24 hours.",
+    "Summarize new privileged role assignments.",
+    "Draft a daily identity risk brief with priority follow-ups.",
+  ],
+  "google": [
+    "Summarize recent admin and account security events.",
+    "Show me suspicious login patterns by user and location.",
+    "Draft a daily Google environment health summary.",
+  ],
+  "kaseya spanning": [
+    "Show me failed backup jobs from the last 24 hours.",
+    "Summarize backup coverage gaps across monitored workloads.",
+    "Draft a daily backup integrity report with action items.",
+  ],
+  "kaseya vsa": [
+    "Show me endpoints with critical patching issues.",
+    "Summarize devices with repeated agent or policy failures.",
+    "Draft a daily endpoint operations summary for my team.",
+  ],
+  "knowbe4": [
+    "Summarize phishing campaign results from the most recent run.",
+    "Show me users with repeated risky training outcomes.",
+    "Draft a weekly security awareness progress recap.",
+  ],
+  "microsoft 365": [
+    "Show me unusual sign-ins and mailbox rule changes from the last 24 hours.",
+    "Summarize high-priority M365 security events that need review.",
+    "Draft a daily Microsoft 365 security operations brief.",
+  ],
+  "onelogin": [
+    "Show me authentication anomalies from the last 24 hours.",
+    "Summarize newly granted high-privilege access.",
+    "Draft a daily identity access review summary.",
+  ],
+  "sharepoint": [
+    "Show me SharePoint audit activity from the last 24 hours with key anomalies.",
+    "Summarize permission and sharing changes made yesterday.",
+    "Draft a daily SharePoint risk and usage summary.",
+  ],
+  "slack": [
+    "Summarize critical incidents mentioned in channels over the last day.",
+    "Show me messages that include urgent security keywords.",
+    "Draft a daily operations recap from Slack conversations.",
+  ],
+  "sophos": [
+    "Show me high-severity Sophos detections from the last 24 hours.",
+    "Summarize endpoints with unresolved threats.",
+    "Draft a daily endpoint threat posture brief.",
+  ],
+};
+
+const suggestedPrompts = computed(() => {
+  if (uploadedFileName.value) {
+    return [
+      "Summarize the top insights from my uploaded file.",
+      "Highlight risks, anomalies, and anything that needs immediate action.",
+      "Draft an executive-ready status summary based on this upload.",
+    ];
+  }
+
+  const sourceKey = String(selectedSource.value || "").trim().toLowerCase();
+  return PROMPT_SUGGESTIONS_BY_SOURCE[sourceKey] || [
+    "Summarize the most important events from the last 24 hours.",
+    "Highlight potential risks and what I should review first.",
+    "Draft a concise daily operations brief from this source.",
+  ];
+});
+
 function selectSource(source) {
   selectedSource.value = source;
   uploadedFileName.value = "";
@@ -119,34 +215,60 @@ function continueToDashboard() {
   sourceSelectionConfirmed.value = true;
   onboardingStep.value = "details";
   sourceDetailsSubmitted.value = false;
+  hasSelectedSourceInChatPill.value = false;
   showOnboardingQuickActions.value = false;
 }
 
 function backToSourceSelection() {
   onboardingStep.value = "source";
   sourceSelectionConfirmed.value = false;
+  hasSelectedSourceInChatPill.value = false;
 }
 
 function clearSelectedSource() {
   selectedSource.value = "";
   uploadedFileName.value = "";
   sourceSelectionConfirmed.value = false;
+  hasSelectedSourceInChatPill.value = false;
 }
 
 function addAnotherSource() {
   clearSelectedSource();
   sourceDetailsSubmitted.value = false;
   onboardingStep.value = "source";
+  hasSelectedSourceInChatPill.value = false;
   showOnboardingQuickActions.value = false;
 }
 
 function submitSourceDetails() {
   sourceDetailsSubmitted.value = true;
+  hasSelectedSourceInChatPill.value = false;
   showOnboardingQuickActions.value = true;
 }
 
 function skipToDashboard() {
   router.push("/");
+}
+
+function applySuggestedPrompt(prompt) {
+  const chatInput = onboardingChatBox.value?.chatInput;
+  if (!chatInput) {
+    return;
+  }
+
+  chatInput.value = prompt;
+  chatInput.focus();
+}
+
+function handleOnboardingChatSourceSelect(source) {
+  const selectedSourceName = String(selectedSourceLabel.value || "").trim().toLowerCase();
+  const selectedFromPill = String(source || "").trim().toLowerCase();
+  hasSelectedSourceInChatPill.value = Boolean(
+    sourceDetailsSubmitted.value
+      && selectedSourceName
+      && selectedFromPill
+      && selectedSourceName === selectedFromPill
+  );
 }
 
 function renderIntroMessage() {
@@ -155,7 +277,6 @@ function renderIntroMessage() {
   }
 
   introMessageEl.value.innerHTML = INTRO_MARKUP;
-  showSourceOptions.value = true;
 }
 
 onMounted(() => {
@@ -167,15 +288,13 @@ onMounted(() => {
 <template>
   <section class="onboarding-page">
     <div class="onboarding-content">
-      <div class="position-relative mb-4">
-        <p class="ivy-chat-width onboarding-intro--sizer mb-0" v-html="INTRO_MARKUP" aria-hidden="true"></p>
-        <p ref="introMessageEl" class="ivy-chat-width onboarding-intro--typing mb-0"></p>
+      <div class="ivy-chat-width mb-4">
+        <div ref="introMessageEl"></div>
       </div>
 
       <div
         v-if="onboardingStep === 'source'"
         class="onboarding-sources"
-        :class="{ 'onboarding-sources--visible': showSourceOptions }"
       >
         <div class="py-4 rounded border onboarding-inline-interaction bg-light">
           <label class="mb-2 text-secondary">Choose an initial source to sync:</label>
@@ -242,7 +361,7 @@ onMounted(() => {
         </div>
       </div>
 
-      <div v-else class="mt-5 d-flex flex-column onboarding-details-step">
+      <div v-else class="d-flex flex-column onboarding-details-step">
         <div class="border rounded p-3 mx-0 bg-white">
           <div class="d-flex align-items-center gap-3">
             <img
@@ -394,20 +513,49 @@ onMounted(() => {
           </div>
         </div>
 
-        <p v-if="sourceDetailsSubmitted" class="mb-4 mt-5 ivy-chat-width">
-          Great work syncing that! Now that you have a data source I can provide you with even more help and insights.
-          Why don't I just show you? <strong>Take a look at the sources option in the chat dialog and try selecting your newly added source</strong>.
+        <p v-if="sourceDetailsSubmitted" class="mb-3 mt-5 ivy-chat-width">
+          Great work setting up your first source! 🎉 While I'm finalizing the {{ selectedSourceLabel }} sync, 
+          why not explore just some of the ways I can navigate your data. Try clicking the "sources" pill 
+          highlighted below and select your newly-added {{ selectedSourceLabel }} app?
+        </p>
+        <p v-if="sourceDetailsSubmitted && hasSelectedSourceInChatPill" class="mb-3 ivy-chat-width">
+          Good work. See those suggested prompts that just popped up? <strong>Try selecting a prompt</strong> and I'll give you a quick demo of what I can do.
         </p>
 
-        <ChatBox
-          class="w-100"
-          :show-quick-actions="showOnboardingQuickActions"
-          chat-placeholder="Need a hand? Ask Ivy or paste your details here."
-          :source-options="onboardingChatSourceOptions"
-          :active-sources="onboardingChatActiveSources"
-          :highlight-sources-pill="sourceDetailsSubmitted"
-          sources-callout-text="Try the Sources option next"
-        />
+        <div class="onboarding-details-chat mt-auto">
+          <div 
+            v-if="sourceDetailsSubmitted && hasSelectedSourceInChatPill"
+            class="chat-suggested-prompts p-3 bg-light rounded reduced"
+          >
+            <h6 class="border-bottom pb-2 d-flex gap-2 align-items-center">
+              <img src="../assets/nav-resources-alt.svg" height="16" width="16">
+              Suggested Prompts
+            </h6>
+            <div
+              v-for="prompt in suggestedPrompts"
+              :key="prompt"
+              class="chat-suggested-prompt d-flex gap-2 align-items-center rounded-sm py-1 px-2"
+              @click="applySuggestedPrompt(prompt)"
+            >
+              <span>{{ prompt }}</span>
+              <img src="../assets/arrow-right-c-dark.svg" class="ms-auto" width="14" height="14">
+            </div>
+          </div>
+
+
+          <ChatBox
+            ref="onboardingChatBox"
+            class="w-100"
+            :show-quick-actions="showOnboardingQuickActions"
+            :chat-placeholder="sourceDetailsSubmitted ? 'Ask Ivy anything...' : 'Need a hand? Ask Ivy or paste your details here...'"
+            :source-options="onboardingChatSourceOptions"
+            :active-sources="onboardingChatActiveSources"
+            :highlight-sources-pill="sourceDetailsSubmitted && !hasSelectedSourceInChatPill"
+            :sources-callout-text="sourceDetailsSubmitted && !hasSelectedSourceInChatPill ? 'Select your new source first.' : ''"
+            :disable-animations="true"
+            @select-source="handleOnboardingChatSourceSelect"
+          />
+        </div>
       </div>
 
       <input
@@ -433,18 +581,6 @@ onMounted(() => {
   max-width: 40rem;
 }
 
-.onboarding-intro--sizer {
-  opacity: 0;
-  pointer-events: none;
-}
-
-.onboarding-intro--typing {
-  left: 0;
-  position: absolute;
-  top: 0;
-  width: 100%;
-}
-
 .onboarding-page {
   display: flex;
   justify-content: center;
@@ -466,16 +602,8 @@ onMounted(() => {
 }
 
 .onboarding-sources {
-  opacity: 0;
-  pointer-events: none;
-  transform: translateY(0.375rem);
-  transition: none;
-}
-
-.onboarding-sources--visible {
   opacity: 1;
   pointer-events: auto;
-  transform: translateY(0);
 }
 
 .onboarding-step-note {
@@ -497,8 +625,6 @@ onMounted(() => {
 }
 
 .onboarding-source-button {
-  transition: all 0.2s ease-in-out;
-
   &:hover {
     background-color: $iceberg-blue;
     border-color: var(--bs-primary);
@@ -520,6 +646,37 @@ onMounted(() => {
   margin-right: -0.5rem;
 }
 
+.onboarding-details-step {
+  min-height: calc(100vh - 18rem);
+  padding-bottom: 11rem;
+  position: relative;
+}
+
+.onboarding-details-chat {
+  background-color: white;
+  border-top-left-radius: 1.8125rem;  // Matches the rendered radius of the chat box.
+  border-top-right-radius: 1.8125rem; // Matches the rendered radius of the chat box.
+  bottom: $content-inset;
+  left: 50%;
+  max-width: 48rem;
+  padding-bottom: 1.5rem;
+  position: fixed;
+  transform: translateX(-50%);
+  width: min(48rem, calc(100vw - 8rem));
+  z-index: 6;
+}
+
+.onboarding-suggested-prompts {
+  display: grid;
+  gap: 0.5rem;
+}
+
+.onboarding-suggested-prompts__item {
+  font-size: 0.875rem;
+  line-height: 1.35;
+  padding: 0.625rem 0.75rem;
+}
+
 @media (max-width: 992px) {
   .onboarding-source-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -531,8 +688,40 @@ onMounted(() => {
     padding: 1.5rem 0;
   }
 
+  .onboarding-details-chat {
+    bottom: 0.75rem;
+    width: calc(100vw - 2rem);
+  }
+
   .onboarding-source-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.chat-suggested-prompts {
+  bottom: calc(100% + 1.5rem);
+  left: 1.5rem;
+  position: absolute;
+  width: calc(100% - 3rem);
+
+  &:before {
+    background: $maastricht-blue;
+    border-radius: 1rem;
+    box-shadow: 0 4px 24px -2px rgba(0, 0, 0, 1);
+    content: "";
+    inset: -1.5rem -1.5rem -4rem;
+    opacity: 0.25;
+    position: absolute;
+    z-index: -1;
+  }
+}
+
+.chat-suggested-prompt {
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+
+  &:hover {
+    background-color: $iceberg-blue;
   }
 }
 </style>

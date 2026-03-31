@@ -30,11 +30,25 @@ const props = defineProps({
     type: String,
     default: "",
   },
+  disableAnimations: {
+    type: Boolean,
+    default: false,
+  },
 });
+
+const emit = defineEmits(["select-source", "connect-source"]);
 
 const inactiveSources = computed(() => (
   props.sourceOptions.filter((source) => !props.activeSources.includes(source))
 ));
+
+function handleSelectSource(source) {
+  emit("select-source", source);
+}
+
+function handleConnectSource(source) {
+  emit("connect-source", source);
+}
 
 defineExpose({
   chatInput,
@@ -43,7 +57,7 @@ defineExpose({
 </script>
 
 <template>
-  <div class="text-center search-wrap">
+  <div class="text-center search-wrap" :class="{ 'chat-box--no-motion': disableAnimations }">
     <div class="position-relative">
       <input type="text" class="mx-auto chat-prompt-input form-control py-3 pe-4 rounded-pill" ref="chatInput" placeholder="">
       <div class="position-absolute start-0 top-50 translate-middle-y ms-4 text-muted d-flex align-items-center">
@@ -87,6 +101,8 @@ defineExpose({
           placement="bottom-start"
           menu-class="chat-source-dropdown-menu"
           title="Select Your Source(s)"
+          @select-source="handleSelectSource"
+          @connect-source="handleConnectSource"
         >
           <template #trigger>
             <div
@@ -214,6 +230,18 @@ defineExpose({
     margin-left: -0.35rem;
     position: absolute;
     top: calc(100% - 1px);
+  }
+}
+
+.chat-box--no-motion {
+  .chat-quick-action,
+  .ivy-placeholder {
+    transition: none;
+  }
+
+  .chat-quick-action--highlight,
+  .chat-quick-action-callout {
+    animation: none;
   }
 }
 
