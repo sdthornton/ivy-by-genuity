@@ -50,6 +50,12 @@ const showStep1DetailsIntro = ref(false);
 const sampleResponseCompletionById = ref({});
 const suggestedPromptSpacerHeight = ref(0);
 const isSourceStepFadingOut = ref(false);
+const step1CardShell = ref(null);
+const step1PreviousCardHeight = ref(0);
+const step1CardTone = ref("in-progress");
+const step2CardShell = ref(null);
+const step2PreviousCardHeight = ref(0);
+const step2CardTone = ref("in-progress");
 const uploadedFileName = ref("");
 let activePromptTypewriterController = null;
 let suggestedPromptResizeObserver = null;
@@ -57,6 +63,7 @@ let activeOnboardingThinkingTimer = null;
 let activeSourceSelectionRevealTimer = null;
 let activeSourceDetailsRevealTimer = null;
 let activeSourceStepSwitchTimer = null;
+let activeStep1DetailsIntroTimer = null;
 const sourceForm = reactive({
   accountEmail: "",
   apiToken: "",
@@ -147,6 +154,10 @@ const shouldShowStep1InProgressCard = computed(() => isSourceStepActive.value);
 const shouldShowStep1CompleteCard = computed(() => isDetailsStepActive.value && showStep1CompletedCard.value);
 const shouldShowStep2InProgressCard = computed(() => isDetailsStepActive.value && showSourceDetailsSetupUi.value && !sourceDetailsSubmitted.value);
 const shouldShowStep2CompleteCard = computed(() => isDetailsStepActive.value && sourceDetailsSubmitted.value);
+const shouldShowStep2CardShell = computed(() => (
+  isDetailsStepActive.value
+  && (showSourceDetailsSetupUi.value || sourceDetailsSubmitted.value)
+));
 
 const selectedSourceLabel = computed(() => (
   selectedSource.value || uploadedFileName.value || "your source"
@@ -170,6 +181,10 @@ function isSampleResponseComplete(messageId) {
 
 function getStep3Status(messageId) {
   return isSampleResponseComplete(messageId) ? "Complete" : "In-Progress";
+}
+
+function getCardTone(status) {
+  return status === "Complete" ? "complete" : "in-progress";
 }
 
 const sourceDetailsIntroMarkup = computed(() => (
@@ -567,7 +582,14 @@ function handleStep1CompletedCardEntered() {
     return;
   }
 
-  showStep1DetailsIntro.value = true;
+  if (activeStep1DetailsIntroTimer) {
+    window.clearTimeout(activeStep1DetailsIntroTimer);
+  }
+
+  activeStep1DetailsIntroTimer = window.setTimeout(() => {
+    showStep1DetailsIntro.value = true;
+    activeStep1DetailsIntroTimer = null;
+  }, 300);
 }
 
 function handleStep2CardEntered() {
@@ -577,6 +599,100 @@ function handleStep2CardEntered() {
 
   showSourceSelectionCallout.value = false;
   showPostSubmitIvyMessages.value = true;
+}
+
+function captureCardHeight(shellRef, heightRef) {
+  const shell = shellRef.value;
+  if (!shell) {
+    return;
+  }
+
+  heightRef.value = shell.offsetHeight;
+}
+
+function runCardEnterTransition({ done, el, heightRef, shellRef, targetTone, toneRef }) {
+  const shell = shellRef.value;
+  if (!shell) {
+    done();
+    return;
+  }
+
+  toneRef.value = targetTone;
+
+  if (!heightRef.value) {
+    done();
+    return;
+  }
+
+  nextTick(() => {
+    const fromHeight = heightRef.value || shell.offsetHeight;
+    const toHeight = shell.scrollHeight;
+
+    el.style.opacity = "0";
+
+    const fadeInContent = () => {
+      el.style.transition = "opacity 0.2s ease-in-out";
+      requestAnimationFrame(() => {
+        el.style.opacity = "1";
+      });
+      el.addEventListener("transitionend", () => {
+        el.style.opacity = "";
+        el.style.transition = "";
+        done();
+      }, { once: true });
+    };
+
+    if (fromHeight === toHeight) {
+      fadeInContent();
+      return;
+    }
+
+    shell.style.height = `${fromHeight}px`;
+    shell.offsetHeight;
+    shell.style.height = `${toHeight}px`;
+
+    const handleShellTransitionEnd = (event) => {
+      if (event.propertyName !== "height") {
+        return;
+      }
+
+      shell.removeEventListener("transitionend", handleShellTransitionEnd);
+      shell.style.height = "";
+      fadeInContent();
+    };
+
+    shell.addEventListener("transitionend", handleShellTransitionEnd);
+  });
+}
+
+function handleStep1CardBeforeLeave() {
+  captureCardHeight(step1CardShell, step1PreviousCardHeight);
+}
+
+function handleStep2CardBeforeLeave() {
+  captureCardHeight(step2CardShell, step2PreviousCardHeight);
+}
+
+function handleStep1CardEnter(el, done) {
+  runCardEnterTransition({
+    done,
+    el,
+    heightRef: step1PreviousCardHeight,
+    shellRef: step1CardShell,
+    targetTone: getCardTone(step1Status.value),
+    toneRef: step1CardTone,
+  });
+}
+
+function handleStep2CardEnter(el, done) {
+  runCardEnterTransition({
+    done,
+    el,
+    heightRef: step2PreviousCardHeight,
+    shellRef: step2CardShell,
+    targetTone: getCardTone(step2Status.value),
+    toneRef: step2CardTone,
+  });
 }
 
 function handleSampleResponseTypingDone(messageId) {
@@ -775,6 +891,8 @@ onMounted(() => {
   showSourceSelectionUi.value = onboardingStep.value !== "source";
   showStep1CompletedCard.value = onboardingStep.value !== "source";
   showStep1DetailsIntro.value = onboardingStep.value !== "source";
+  step1CardTone.value = getCardTone(step1Status.value);
+  step2CardTone.value = getCardTone(step2Status.value);
   connectSuggestedPromptObserver();
 });
 
@@ -797,6 +915,10 @@ onBeforeUnmount(() => {
   if (activeSourceStepSwitchTimer) {
     window.clearTimeout(activeSourceStepSwitchTimer);
     activeSourceStepSwitchTimer = null;
+  }
+  if (activeStep1DetailsIntroTimer) {
+    window.clearTimeout(activeStep1DetailsIntroTimer);
+    activeStep1DetailsIntroTimer = null;
   }
 });
 
@@ -834,86 +956,96 @@ watch(suggestedPromptSpacerHeight, (nextHeight, previousHeight) => {
           'onboarding-step-state--fading-out': isSourceStepFadingOut && isSourceStepActive,
         }"
       >
-        <Transition name="onboarding-card-fade" mode="out-in" @after-enter="handleStep1CompletedCardEntered">
-          <div
-            v-if="shouldShowStep1InProgressCard"
-            key="step-1-in-progress"
-            class="border rounded py-4 onboarding-inline-interaction bg-light onboarding-interactive-box"
+        <div
+          ref="step1CardShell"
+          class="border rounded onboarding-step-card-shell onboarding-interactive-box"
+          :class="step1CardTone === 'complete' ? 'bg-white p-3' : 'bg-light py-4 onboarding-inline-interaction'"
+        >
+          <Transition
+            name="onboarding-card-fade"
+            mode="out-in"
+            @after-enter="handleStep1CompletedCardEntered"
+            @before-leave="handleStep1CardBeforeLeave"
+            @enter="handleStep1CardEnter"
           >
-            <label class="mb-2 text-secondary">Choose an initial source to sync:</label>
-            <div class="onboarding-source-grid text-center">
-              <div
-                v-for="source in onboardingSources"
-                :key="source"
-                class="onboarding-source-button rounded p-2"
-                :class="{ 'onboarding-source-button--active': selectedSource === source }"
-                @click="selectSource(source)"
-              >
-                <img
-                  v-if="resolveSourceIcon(source)"
-                  :src="resolveSourceIcon(source)"
-                  :alt="source"
-                  width="64"
-                  height="64"
+            <div
+              v-if="shouldShowStep1InProgressCard"
+              key="step-1-in-progress"
+            >
+              <label class="mb-2 text-secondary">Choose an initial source to sync:</label>
+              <div class="onboarding-source-grid text-center">
+                <div
+                  v-for="source in onboardingSources"
+                  :key="source"
+                  class="onboarding-source-button rounded p-2"
+                  :class="{ 'onboarding-source-button--active': selectedSource === source }"
+                  @click="selectSource(source)"
                 >
-                <div class="smallest text-dark mt-1">{{ source }}</div>
-              </div>
+                  <img
+                    v-if="resolveSourceIcon(source)"
+                    :src="resolveSourceIcon(source)"
+                    :alt="source"
+                    width="64"
+                    height="64"
+                  >
+                  <div class="smallest text-dark mt-1">{{ source }}</div>
+                </div>
 
-              <div
-                class="onboarding-source-button rounded p-2"
-                :class="{ 'onboarding-source-button--active': uploadedFileName }"
-                @click="openFilePicker"
-              >
-                <img
-                  v-if="uploadSourceIcon"
-                  :src="uploadSourceIcon"
-                  alt="Upload file"
-                  width="64"
-                  height="64"
+                <div
+                  class="onboarding-source-button rounded p-2"
+                  :class="{ 'onboarding-source-button--active': uploadedFileName }"
+                  @click="openFilePicker"
                 >
-                <div class="smallest text-dark mt-1">Upload</div>
+                  <img
+                    v-if="uploadSourceIcon"
+                    :src="uploadSourceIcon"
+                    alt="Upload file"
+                    width="64"
+                    height="64"
+                  >
+                  <div class="smallest text-dark mt-1">Upload</div>
+                </div>
+              </div>
+              <div class="d-flex justify-content-end flex-wrap align-items-center gap-4 mt-4 pt-2.5">
+                <button
+                  type="button"
+                  class="btn not-as-small text-muted"
+                  @click="skipToDashboard"
+                >
+                  {{ embedded ? "Close onboarding" : "Skip to dashboard" }}
+                </button>
+                <button
+                  type="button"
+                  class="btn btn-primary rounded-sm px-4"
+                  @click="continueToDashboard"
+                >
+                  Confirm Selection
+                </button>
               </div>
             </div>
-            <div class="d-flex justify-content-end flex-wrap align-items-center gap-4 mt-4 pt-2.5">
-              <button
-                type="button"
-                class="btn not-as-small text-muted"
-                @click="skipToDashboard"
-              >
-                {{ embedded ? "Close onboarding" : "Skip to dashboard" }}
-              </button>
-              <button
-                type="button"
-                class="btn btn-primary rounded-sm px-4"
-                @click="continueToDashboard"
-              >
-                Confirm Selection
-              </button>
-            </div>
-          </div>
 
-          <div
-            v-else-if="shouldShowStep1CompleteCard"
-            key="step-1-complete"
-            class="border rounded p-3 mx-0 bg-white onboarding-interactive-box"
-          >
-            <div class="d-flex align-items-center gap-3">
-              <img
-                v-if="selectedSourceIcon"
-                :src="selectedSourceIcon"
-                width="40"
-                height="40"
-              >
-              <div class="min-w-0">
-                <div class="fw-semibold text-truncate">{{ selectedSourceLabel }}</div>
-                <div class="smallest text-secondary">Selected for your first sync.</div>
+            <div
+              v-else-if="shouldShowStep1CompleteCard"
+              key="step-1-complete"
+            >
+              <div class="d-flex align-items-center gap-3">
+                <img
+                  v-if="selectedSourceIcon"
+                  :src="selectedSourceIcon"
+                  width="40"
+                  height="40"
+                >
+                <div class="min-w-0">
+                  <div class="fw-semibold text-truncate">{{ selectedSourceLabel }}</div>
+                  <div class="smallest text-secondary">Selected for your first sync.</div>
+                </div>
+                <button type="button" class="btn btn-sm btn-white border ms-auto" @click="backToSourceSelection">
+                  Change
+                </button>
               </div>
-              <button type="button" class="btn btn-sm btn-white border ms-auto" @click="backToSourceSelection">
-                Change
-              </button>
             </div>
-          </div>
-        </Transition>
+          </Transition>
+        </div>
 
         <div class="mt-2">
           <OnboardingStepStatus
@@ -936,101 +1068,114 @@ watch(suggestedPromptSpacerHeight, (nextHeight, previousHeight) => {
         />
 
         <div class="onboarding-step-wrapper mb-5">
-          <Transition mode="out-in" name="onboarding-card-fade" @after-enter="handleStep2CardEntered">
+          <Transition name="onboarding-step-shell-fade">
             <div
-              v-if="shouldShowStep2InProgressCard"
-              key="step-2-in-progress"
+              v-if="shouldShowStep2CardShell"
+              ref="step2CardShell"
+              class="border rounded onboarding-step-card-shell onboarding-interactive-box"
+              :class="step2CardTone === 'complete' ? 'bg-white p-3' : 'bg-light py-4 onboarding-inline-interaction'"
             >
-              <div class="border rounded py-4 onboarding-inline-interaction bg-light onboarding-interactive-box">
-                <div class="mb-4 pt-2.5">
-                  <h4 class="fw-bold mb-1">
-                    Set up {{ selectedSourceLabel }}
-                  </h4>
-                  <label class="mb-2 text-body-secondary">
-                    Please enter your {{ selectedSourceLabel }} account details.
-                  </label>
-                </div>
-
-                <form class="row gy-3 gx-4" @submit.prevent="submitSourceDetails">
-                  <div class="col-md-6">
-                    <label class="form-label" for="accountEmail">Account Email</label>
-                    <input id="accountEmail" v-model="sourceForm.accountEmail" type="email" class="form-control" placeholder="name@company.com">
-                  </div>
-
-                  <div class="col-md-6">
-                    <label class="form-label" for="workspaceId">Workspace / Tenant ID</label>
-                    <input id="workspaceId" v-model="sourceForm.workspaceId" type="text" class="form-control" placeholder="Workspace ID">
-                  </div>
-
-                  <div class="col-md-6">
-                    <label class="form-label" for="apiToken">API Token</label>
-                    <input id="apiToken" v-model="sourceForm.apiToken" type="password" class="form-control" placeholder="Paste token">
-                  </div>
-
-                  <div class="col-md-6">
-                    <label class="form-label d-block w-100" for="importWindow">Initial Import Window</label>
-                    <select id="importWindow" v-model="sourceForm.importWindow" class="form-select" style="max-width: 16rem;">
-                      <option>Last 7 days</option>
-                      <option>Last 30 days</option>
-                      <option>Last 90 days</option>
-                      <option>Custom range</option>
-                    </select>
-                  </div>
-
-                  <div class="col-12">
-                    <label class="form-label" for="notes">Notes (optional)</label>
-                    <textarea
-                      id="notes"
-                      v-model="sourceForm.notes"
-                      class="form-control"
-                      rows="3"
-                      placeholder="Any notes for this connection..."
-                    ></textarea>
-                  </div>
-
-                  <div class="col-12 d-flex gap-2 mt-5">
-                    <button
-                      type="button"
-                      class="btn not-as-small text-muted ms-auto"
-                      @click="skipToDashboard"
-                    >
-                      {{ embedded ? "Close onboarding" : "Skip to dashboard" }}
-                    </button>
-                    <button type="button" class="btn btn-white border" @click="backToSourceSelection">
-                      Back
-                    </button>
-                    <button type="submit" class="btn btn-primary rounded-sm px-4">
-                      Confirm Details
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>
-
-            <div v-else-if="shouldShowStep2CompleteCard" key="step-2-complete">
-              <div class="border rounded p-3 mx-0 bg-white d-flex align-items-center gap-3 position-relative onboarding-interactive-box">
-                <img
-                  v-if="selectedSourceIcon"
-                  :src="selectedSourceIcon"
-                  :alt="selectedSourceLabel"
-                  width="40"
-                  height="40"
+              <Transition
+                mode="out-in"
+                name="onboarding-card-fade"
+                @after-enter="handleStep2CardEntered"
+                @before-leave="handleStep2CardBeforeLeave"
+                @enter="handleStep2CardEnter"
+              >
+                <div
+                  v-if="shouldShowStep2InProgressCard"
+                  key="step-2-in-progress"
                 >
-                <div class="min-w-0">
-                  <div class="fw-semibold text-truncate">{{ selectedSourceLabel }}</div>
-                  <div class="smallest text-secondary">Sync status: Syncing</div>
+                  <div class="mb-4 pt-2.5">
+                    <h4 class="fw-bold mb-1">
+                      Set up {{ selectedSourceLabel }}
+                    </h4>
+                    <label class="mb-2 text-body-secondary">
+                      Please enter your {{ selectedSourceLabel }} account details.
+                    </label>
+                  </div>
+
+                  <form class="row gy-3 gx-4" @submit.prevent="submitSourceDetails">
+                    <div class="col-md-6">
+                      <label class="form-label" for="accountEmail">Account Email</label>
+                      <input id="accountEmail" v-model="sourceForm.accountEmail" type="email" class="form-control" placeholder="name@company.com">
+                    </div>
+
+                    <div class="col-md-6">
+                      <label class="form-label" for="workspaceId">Workspace / Tenant ID</label>
+                      <input id="workspaceId" v-model="sourceForm.workspaceId" type="text" class="form-control" placeholder="Workspace ID">
+                    </div>
+
+                    <div class="col-md-6">
+                      <label class="form-label" for="apiToken">API Token</label>
+                      <input id="apiToken" v-model="sourceForm.apiToken" type="password" class="form-control" placeholder="Paste token">
+                    </div>
+
+                    <div class="col-md-6">
+                      <label class="form-label d-block w-100" for="importWindow">Initial Import Window</label>
+                      <select id="importWindow" v-model="sourceForm.importWindow" class="form-select" style="max-width: 16rem;">
+                        <option>Last 7 days</option>
+                        <option>Last 30 days</option>
+                        <option>Last 90 days</option>
+                        <option>Custom range</option>
+                      </select>
+                    </div>
+
+                    <div class="col-12">
+                      <label class="form-label" for="notes">Notes (optional)</label>
+                      <textarea
+                        id="notes"
+                        v-model="sourceForm.notes"
+                        class="form-control"
+                        rows="3"
+                        placeholder="Any notes for this connection..."
+                      ></textarea>
+                    </div>
+
+                    <div class="col-12 d-flex gap-2 mt-5">
+                      <button
+                        type="button"
+                        class="btn not-as-small text-muted ms-auto"
+                        @click="skipToDashboard"
+                      >
+                        {{ embedded ? "Close onboarding" : "Skip to dashboard" }}
+                      </button>
+                      <button type="button" class="btn btn-white border" @click="backToSourceSelection">
+                        Back
+                      </button>
+                      <button type="submit" class="btn btn-primary rounded-sm px-4">
+                        Confirm Details
+                      </button>
+                    </div>
+                  </form>
                 </div>
-                <div class="ms-auto d-flex flex-column align-items-end justify-content-center">
-                  <div class="badge text-bg-success">Synced</div>
-                  <button
-                    type="button"
-                    class="btn btn-sm border-0 text-muted true-small ms-auto p-0 mt-2"
-                    @click="addAnotherSource"
-                  >
-                    + Add another source
-                  </button>
+
+                <div v-else-if="shouldShowStep2CompleteCard" key="step-2-complete">
+                  <div class="d-flex align-items-center gap-3 position-relative">
+                    <img
+                      v-if="selectedSourceIcon"
+                      :src="selectedSourceIcon"
+                      :alt="selectedSourceLabel"
+                      width="40"
+                      height="40"
+                    >
+                    <div class="min-w-0">
+                      <div class="fw-semibold text-truncate">{{ selectedSourceLabel }}</div>
+                      <div class="smallest text-secondary">Sync status: Syncing</div>
+                    </div>
+                    <div class="ms-auto d-flex flex-column align-items-end justify-content-center">
+                      <div class="badge text-bg-success">Synced</div>
+                      <button
+                        type="button"
+                        class="btn btn-sm border-0 text-muted true-small ms-auto p-0 mt-2"
+                        @click="addAnotherSource"
+                      >
+                        + Add another source
+                      </button>
+                    </div>
+                  </div>
                 </div>
-              </div>
+              </Transition>
             </div>
           </Transition>
 
@@ -1193,14 +1338,29 @@ watch(suggestedPromptSpacerHeight, (nextHeight, previousHeight) => {
   pointer-events: none;
 }
 
-.onboarding-card-fade-enter-active,
+.onboarding-step-card-shell {
+  overflow: hidden;
+  transition: background-color 0.2s ease-in-out, height 0.2s ease-in-out, padding 0.2s ease-in-out;
+}
+
 .onboarding-card-fade-leave-active {
   transition: opacity 0.2s ease-in-out;
 }
 
-.onboarding-card-fade-enter-from,
 .onboarding-card-fade-leave-to {
   opacity: 0;
+}
+
+.onboarding-step-shell-fade-enter-active {
+  transition: opacity 0.2s ease-in-out;
+}
+
+.onboarding-step-shell-fade-enter-from {
+  opacity: 0;
+}
+
+.onboarding-step-shell-fade-enter-to {
+  opacity: 1;
 }
 
 .onboarding-sources {
