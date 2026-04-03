@@ -8,6 +8,7 @@ const route = useRoute();
 const { onboardingNavStage } = useAppLayoutState();
 
 const isOnboardingRoute = computed(() => route.name === "Onboarding");
+const isChatRoute = computed(() => route.path.includes("/chats/"));
 const hideLeftNav = computed(() => {
   if (isOnboardingRoute.value && route.meta?.hideLeftNav) {
     return onboardingNavStage.value === "hidden";
@@ -16,7 +17,7 @@ const hideLeftNav = computed(() => {
   return Boolean(route.meta?.hideLeftNav);
 });
 const isSplitContent = computed(() => Boolean(route.meta?.splitContent));
-const isHomePage = computed(() => route.name === "Home");
+const isHomePage = computed(() => Boolean(route.meta?.homeLayout));
 
 watch(
   () => route.name,
@@ -45,7 +46,7 @@ watch(
   <div 
     class="content-container d-flex justify-content-center"
     :class="[
-      isOnboardingRoute ? 'bg-white' : 'bg-titan-white',
+      (isOnboardingRoute || isChatRoute) ? 'bg-white' : 'bg-titan-white',
       {
         'px-0': isSplitContent,
         'content-container--standalone': hideLeftNav,
@@ -245,6 +246,30 @@ watch(
   text-wrap: pretty;
 }
 
+.ivy-thinking-text {
+  background-image: linear-gradient(100deg, #9aa4b2 20%, #e5e7eb 45%, #9aa4b2 70%);
+  background-size: 220% 100%;
+  background-position: 100% 0;
+  background-clip: text;
+  color: var(--bs-gray-500);
+  display: inline-block;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: ivy-thinking-shimmer 1.05s linear infinite;
+}
+
+@keyframes ivy-thinking-shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+
+  100% {
+    background-position: -100% 0;
+  }
+}
+
 body {
   background: $left-nav-background;
   // background-image: linear-gradient(45deg, $left-nav-background, $biscay-blue, $maastricht-blue);
@@ -349,7 +374,7 @@ body {
 }
 
 .text-content-wrap {
-  max-width: 52rem;
+  max-width: 48rem;
   width: 100%;
 }
 

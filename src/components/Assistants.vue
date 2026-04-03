@@ -82,6 +82,8 @@ const leftContentResizeState = reactive({
 });
 const LEFT_CONTENT_MIN_WIDTH = 280;
 const LEFT_CONTENT_MAX_MARGIN = 320;
+const IVY_THINKING_MARKUP = '<span class="ivy-thinking-text">Ivy is thinking...</span>';
+const IVY_THINKING_DELAY_MS = 520;
 
 const headerTriggerOptions = [
   { key: "every-day", label: "Every day", pillLabel: "Every day at 9am", icon: iconClock, iconClass: "opacity-50" },
@@ -433,7 +435,10 @@ async function appendIvyMessage(markup) {
 
   const article = document.createElement("article");
   article.className = "assistant-chat-message mb-4";
+  article.innerHTML = IVY_THINKING_MARKUP;
   content.appendChild(article);
+
+  await new Promise((resolve) => window.setTimeout(resolve, IVY_THINKING_DELAY_MS));
 
   const controller = new AbortController();
   activeTypewriterController?.abort();

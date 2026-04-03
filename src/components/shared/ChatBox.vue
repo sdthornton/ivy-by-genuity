@@ -14,6 +14,14 @@ const props = defineProps({
     type: String,
     default: "Ask Ivy anything...",
   },
+  inputSourceIcon: {
+    type: String,
+    default: "",
+  },
+  inputSourceLabel: {
+    type: String,
+    default: "",
+  },
   sourceOptions: {
     type: Array,
     default: () => [],
@@ -30,16 +38,27 @@ const props = defineProps({
     type: String,
     default: "",
   },
+  highlightSubmitButton: {
+    type: Boolean,
+    default: false,
+  },
+  submitCalloutText: {
+    type: String,
+    default: "",
+  },
   disableAnimations: {
     type: Boolean,
     default: false,
   },
 });
 
-const emit = defineEmits(["select-source", "connect-source"]);
+const emit = defineEmits(["select-source", "connect-source", "submit"]);
 
 const inactiveSources = computed(() => (
   props.sourceOptions.filter((source) => !props.activeSources.includes(source))
+));
+const showInputSourceContext = computed(() => (
+  Boolean(props.inputSourceIcon && props.inputSourceLabel)
 ));
 
 function handleSelectSource(source) {
@@ -48,6 +67,10 @@ function handleSelectSource(source) {
 
 function handleConnectSource(source) {
   emit("connect-source", source);
+}
+
+function handleSubmit() {
+  emit("submit", chatInput.value?.value || "");
 }
 
 defineExpose({
@@ -63,7 +86,13 @@ defineExpose({
       <div class="position-absolute start-0 top-50 translate-middle-y ms-4 text-muted d-flex align-items-center">
         <img src="../../assets/plus-round.svg" width="16" height="16" class="me-3">
         <div class="d-flex align-items-center ivy-placeholder" @click="chatInput.focus()">
-          <img src="../../assets/nav-resources-alt.svg" width="24" height="24" class="me-2">
+          <template v-if="showInputSourceContext">
+            <span class="d-inline-flex align-items-center rounded-pill bg-light px-2 py-1 me-2">
+              <img :src="inputSourceIcon" width="20" height="20" class="me-1">
+              <span class="chat-input-source-name">{{ inputSourceLabel }}</span>
+            </span>
+          </template>
+          <img v-else src="../../assets/nav-resources-alt.svg" width="24" height="24" class="me-2">
           <span>{{ chatPlaceholder }}</span>
         </div>
       </div>
@@ -71,9 +100,21 @@ defineExpose({
         <button class="btn btn-sm border-0 rounded-pill d-flex align-items-center justify-content-center me-2">
           <img src="../../assets/voice.svg" width="20" height="20">
         </button>
-        <button class="btn btn-primary btn-sm border-0 rounded-pill p-1 d-flex align-items-center justify-content-center">
-          <img src="../../assets/arrow-right-c.svg" width="20" height="20">
-        </button>
+        <div class="position-relative d-flex align-items-center">
+          <button
+            class="btn btn-primary btn-sm border-0 rounded-pill p-1 d-flex align-items-center justify-content-center"
+            :class="{ 'chat-submit-btn--highlight': highlightSubmitButton }"
+            @click="handleSubmit"
+          >
+            <img src="../../assets/arrow-right-c.svg" width="20" height="20">
+          </button>
+          <div
+            v-if="highlightSubmitButton && submitCalloutText"
+            class="chat-quick-action-callout chat-submit-callout reduced bg-dark text-white rounded-pill px-2 py-1"
+          >
+            {{ submitCalloutText }}
+          </div>
+        </div>
       </div>
     </div>
 
@@ -89,7 +130,7 @@ defineExpose({
       </div>
       <div class="chat-quick-action rounded-pill px-3 py-1 d-flex align-items-center">
         <img src="../../assets/nav-resources.svg" height="16" width="16" class="me-1">
-        Actions
+        Assistants
         <img src="../../assets/arrow-down-b.svg" height="12" width="12" class="ms-2 pill-dropdown-arrow">
       </div>
       <div class="position-relative chat-source-focus">
@@ -122,7 +163,7 @@ defineExpose({
         </div>
         <div
           v-if="highlightSourcesPill && sourcesCalloutText"
-          class="chat-quick-action-callout smallest bg-dark text-white rounded-pill px-2 py-1"
+          class="chat-quick-action-callout reduced bg-dark text-white rounded-pill px-2 py-1"
         >
           {{ sourcesCalloutText }}
         </div>
@@ -152,6 +193,12 @@ defineExpose({
   cursor: text;
   opacity: 0;
   transition: opacity 100ms cubic-bezier(0.4, 0, 1, 1);
+}
+
+.chat-input-source-name {
+  color: var(--bs-gray-600);
+  font-size: 0.875rem;
+  font-weight: 500;
 }
 
 .chat-prompt-input {
@@ -213,7 +260,7 @@ defineExpose({
 
 .chat-quick-action-callout {
   animation: sources-callout-float 0.95s ease-in-out infinite;
-  font-weight: 600;
+  font-weight: 500;
   left: 50%;
   pointer-events: none;
   position: absolute;
@@ -233,6 +280,15 @@ defineExpose({
   }
 }
 
+.chat-submit-btn--highlight {
+  animation: sources-pill-pulse 1.05s ease-in-out infinite;
+  box-shadow: inset 0 0 0 1px var(--bs-primary), 0 0 0 4px rgba(13, 110, 253, 0.25);
+}
+
+.chat-submit-callout {
+  left: 50%;
+}
+
 .chat-box--no-motion {
   .chat-quick-action,
   .ivy-placeholder {
@@ -240,7 +296,8 @@ defineExpose({
   }
 
   .chat-quick-action--highlight,
-  .chat-quick-action-callout {
+  .chat-quick-action-callout,
+  .chat-submit-btn--highlight {
     animation: none;
   }
 }

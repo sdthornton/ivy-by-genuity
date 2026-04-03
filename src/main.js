@@ -12,9 +12,11 @@ import Assistants from "./components/Assistants.vue";
 import AssistantsIndex from "./components/AssistantsIndex.vue";
 import Collections from "./components/Collections.vue";
 import Onboarding from "./components/Onboarding.vue";
+import IntegratedOnboarding from "./components/IntegratedOnboarding.vue";
+import OnboardingChat from "./components/OnboardingChat.vue";
 
 const routes = [
-  { path: "/", component: HomePage, name: "Home" },
+  { path: "/", component: HomePage, name: "Home", meta: { homeLayout: true } },
   { path: "/chat", component: Chat, name: "Chat" },
   { path: "/prompt-library", component: PromptLibrary, name: "Prompt Library" },
   { path: "/assistants", component: AssistantsIndex, name: "Assistants" },
@@ -23,6 +25,8 @@ const routes = [
   { path: "/assistants-index", redirect: "/assistants" },
   { path: "/collections", component: Collections, name: "Collections" },
   { path: "/onboarding", component: Onboarding, name: "Onboarding", meta: { hideLeftNav: true } },
+  { path: "/chats/ivy-onboarding", component: OnboardingChat, name: "Onboarding Chat" },
+  { path: "/integrated-onboarding", component: IntegratedOnboarding, name: "Integrated Onboarding", meta: { homeLayout: true } },
 ];
 
 const router = createRouter({

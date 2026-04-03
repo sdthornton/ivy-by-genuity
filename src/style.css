@@ -440,7 +440,7 @@ h5, .h5 {
   font-size: 0.9375rem;
 }
 
-.active-sync-check {
+/* .active-sync-check {
   align-items: center;
   background-color: var(--bs-green);
   box-shadow: 0 1px 3px -1px rgba(0,0,0,0.5);
@@ -451,4 +451,4 @@ h5, .h5 {
   padding: 0.25rem;
   position: absolute;
   top: 0.5rem;
-}
+} */
