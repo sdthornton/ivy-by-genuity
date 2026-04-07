@@ -8,6 +8,9 @@ import { resolveSourceIcon } from "./sourceCatalog";
 import ChatBox from "./ChatBox.vue";
 import OnboardingStepStatus from "./OnboardingStepStatus.vue";
 import IvyTypewriterMessage from "./IvyTypewriterMessage.vue";
+import SourcesIcon from "../../assets/nav-connectors.svg";
+import LibraryIcon from "../../assets/nav-prompt-library.svg";
+import AssistantsIcon from "../../assets/nav-resources.svg";
 
 const props = defineProps({
   alwaysShowChatBox: {
@@ -42,6 +45,8 @@ const hasShownSuggestedPromptsNudge = ref(false);
 const showOnboardingQuickActions = ref(false);
 const showIvyThinking = ref(false);
 const showPostSubmitIvyMessages = ref(false);
+const showPostStep3WrapUpMessage = ref(false);
+const showPostStep3WrapUpOptions = ref(false);
 const showSourceSelectionUi = ref(false);
 const showSourceDetailsSetupUi = ref(false);
 const showSourceSelectionCallout = ref(false);
@@ -64,6 +69,7 @@ let activeSourceSelectionRevealTimer = null;
 let activeSourceDetailsRevealTimer = null;
 let activeSourceStepSwitchTimer = null;
 let activeStep1DetailsIntroTimer = null;
+let activePostStep3WrapUpTimer = null;
 const sourceForm = reactive({
   accountEmail: "",
   apiToken: "",
@@ -76,6 +82,7 @@ const uploadSourceIcon = resolveSourceIcon("IT Meeting Notes");
 const TOTAL_ONBOARDING_STEPS = 3;
 const INTERACTIVE_REVEAL_DELAY_MS = 220;
 const CARD_SWAP_DURATION_MS = 200;
+const POST_STEP3_WRAP_UP_DELAY_MS = 420;
 const ONBOARDING_IVY_TYPING_TIMING = {
   startDelay: 80,
   minDelay: 12,
@@ -91,6 +98,7 @@ const ONBOARDING_SAMPLE_RESPONSE_TYPING_TIMING = {
   whitespaceMaxDelay: 2,
 };
 const IVY_PROMPT_NUDGE_MESSAGE = "Good work. See those suggested prompts that just popped up? <strong>Try selecting a prompt</strong> and I'll give you a quick demo of what I can do.";
+const IVY_WRAP_UP_MESSAGE = "Nice work. You finished your first sync and explored a sample response with me. <strong>Choose what you’d like to do next</strong>.";
 const INTRO_MARKUP = `
   <h1 class="fw-bold mb-1">Welcome, Sarith Rigsby</h1>
   <h2 class="h4 fw-bold mb-4 text-ivy-gradient d-inline-block">
@@ -158,6 +166,33 @@ const shouldShowStep2CardShell = computed(() => (
   isDetailsStepActive.value
   && (showSourceDetailsSetupUi.value || sourceDetailsSubmitted.value)
 ));
+
+const completionActionOptions = [
+  {
+    description: "Connect more sources so I can combine context and give you stronger insights.",
+    key: "sources",
+    title: "Add Some Additional Sources",
+    bgClass: "bg-chat-highlight",
+    icon: SourcesIcon,
+    iconBg: "bg-chat-gradient",
+  },
+  {
+    description: "This is where commonly used prompts live, and I’ve already added starter ones for you.",
+    key: "prompt-library",
+    title: "Check Out the Prompt Library",
+    bgClass: "bg-library-highlight",
+    icon: LibraryIcon,
+    iconBg: "bg-library-gradient",
+  },
+  {
+    description: "Review prebuilt assistants tailored to common workflows based on your synced sources.",
+    key: "assistants",
+    title: "Review Templated Assistants",
+    bgClass: "bg-actions-highlight",
+    icon: AssistantsIcon,
+    iconBg: "bg-actions-gradient",
+  },
+];
 
 const selectedSourceLabel = computed(() => (
   selectedSource.value || uploadedFileName.value || "your source"
@@ -339,10 +374,17 @@ function resetPromptGuidanceState() {
   hasSelectedSourceInChatPill.value = false;
   awaitingSuggestedPromptSubmit.value = false;
   showIvyThinking.value = false;
+  showPostStep3WrapUpMessage.value = false;
+  showPostStep3WrapUpOptions.value = false;
   showPostSubmitIvyMessages.value = false;
   showSourceSelectionCallout.value = false;
   showSuggestedPrompts.value = false;
   hasShownSuggestedPromptsNudge.value = false;
+
+  if (activePostStep3WrapUpTimer) {
+    window.clearTimeout(activePostStep3WrapUpTimer);
+    activePostStep3WrapUpTimer = null;
+  }
 }
 
 function resetConversationState() {
@@ -700,11 +742,51 @@ function handleSampleResponseTypingDone(messageId) {
     ...sampleResponseCompletionById.value,
     [messageId]: true,
   };
+
+  if (showPostStep3WrapUpMessage.value || showPostStep3WrapUpOptions.value) {
+    return;
+  }
+
+  const latestSampleResponse = [...onboardingChatThread.value]
+    .reverse()
+    .find((message) => message.kind === "sample-response");
+  if (!latestSampleResponse || latestSampleResponse.id !== messageId) {
+    return;
+  }
+
+  if (activePostStep3WrapUpTimer) {
+    window.clearTimeout(activePostStep3WrapUpTimer);
+  }
+
+  activePostStep3WrapUpTimer = window.setTimeout(() => {
+    showPostStep3WrapUpMessage.value = true;
+    activePostStep3WrapUpTimer = null;
+  }, POST_STEP3_WRAP_UP_DELAY_MS);
 }
 
 function handleConversationIvyTypingDone(messageId) {
   if (messageId === "ivy-source-sync") {
     showSourceSelectionCallout.value = true;
+  }
+}
+
+function handlePostStep3WrapUpTypingDone() {
+  showPostStep3WrapUpOptions.value = true;
+}
+
+function handlePostStep3ActionSelect(actionKey) {
+  if (actionKey === "sources") {
+    router.push("/sources");
+    return;
+  }
+
+  if (actionKey === "prompt-library") {
+    router.push("/prompt-library");
+    return;
+  }
+
+  if (actionKey === "assistants") {
+    router.push("/assistants");
   }
 }
 
@@ -919,6 +1001,10 @@ onBeforeUnmount(() => {
   if (activeStep1DetailsIntroTimer) {
     window.clearTimeout(activeStep1DetailsIntroTimer);
     activeStep1DetailsIntroTimer = null;
+  }
+  if (activePostStep3WrapUpTimer) {
+    window.clearTimeout(activePostStep3WrapUpTimer);
+    activePostStep3WrapUpTimer = null;
   }
 });
 
@@ -1163,16 +1249,7 @@ watch(suggestedPromptSpacerHeight, (nextHeight, previousHeight) => {
                       <div class="fw-semibold text-truncate">{{ selectedSourceLabel }}</div>
                       <div class="smallest text-secondary">Sync status: Syncing</div>
                     </div>
-                    <div class="ms-auto d-flex flex-column align-items-end justify-content-center">
-                      <div class="badge text-bg-success">Synced</div>
-                      <button
-                        type="button"
-                        class="btn btn-sm border-0 text-muted true-small ms-auto p-0 mt-2"
-                        @click="addAnotherSource"
-                      >
-                        + Add another source
-                      </button>
-                    </div>
+                    <div class="badge text-bg-success ms-auto">Synced</div>
                   </div>
                 </div>
               </Transition>
@@ -1233,6 +1310,45 @@ watch(suggestedPromptSpacerHeight, (nextHeight, previousHeight) => {
             <span class="ivy-thinking-text">Ivy is thinking...</span>
           </article>
         </div>
+
+        <IvyTypewriterMessage
+          v-if="showPostStep3WrapUpMessage"
+          class="assistant-chat-message ivy-chat-width mb-4"
+          :markup="IVY_WRAP_UP_MESSAGE"
+          rerun-key="ivy-wrap-up"
+          :timing="ONBOARDING_IVY_TYPING_TIMING"
+          @done="handlePostStep3WrapUpTypingDone"
+        />
+
+        <Transition name="onboarding-step-shell-fade">
+          <div v-if="showPostStep3WrapUpOptions" class="mb-5">
+            <div class="row g-3">
+              <div
+                v-for="option in completionActionOptions"
+                :key="option.key"
+                class="col-md-4"
+              >
+                <button
+                  type="button"
+                  class="border p-3 rounded w-100 h-100 text-start onboarding-completion-option"
+                  :class="[option.bgClass]"
+                  @click="handlePostStep3ActionSelect(option.key)"
+                >
+                  <div class="d-flex gap-2">
+                    <div 
+                      class="p-2 rounded d-flex align-items-center justify-content-center"
+                      :class="[option.iconBg]"
+                    >
+                      <img :src="option.icon" height="20" width="20">
+                    </div>
+                    <h5 class="lead">{{ option.title }}</h5>
+                  </div>
+                  <p class="smallest text-secondary mb-0">{{ option.description }}</p>
+                </button>
+              </div>
+            </div>
+          </div>
+        </Transition>
       </div>
 
       <input
@@ -1361,6 +1477,15 @@ watch(suggestedPromptSpacerHeight, (nextHeight, previousHeight) => {
 
 .onboarding-step-shell-fade-enter-to {
   opacity: 1;
+}
+
+.onboarding-completion-option {
+  transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+
+  &:hover {
+    border-color: var(--bs-primary);
+    box-shadow: 0 0 0 1px var(--bs-primary);
+  }
 }
 
 .onboarding-sources {

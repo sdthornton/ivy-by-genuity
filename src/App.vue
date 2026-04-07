@@ -177,6 +177,7 @@ watch(
     inset: 0;
     opacity: 0.15;
     position: absolute;
+    pointer-events: none;
   }
 }
 

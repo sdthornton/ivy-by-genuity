@@ -90,10 +90,10 @@ watch(route, to => {
         <img src="../assets/nav-collections.svg" width="18" height="18" />
         <span class="left-nav-link-text">Collections</span>
       </RouterLink>
-      <a href="#" class="left-nav-link">
+      <RouterLink to="/sources" class="left-nav-link">
         <img src="../assets/nav-connectors.svg" width="18" height="18" />
         <span class="left-nav-link-text">Sources</span>
-      </a>
+      </RouterLink>
       <a href="#" class="left-nav-link">
         <img src="../assets/history.svg" width="18" height="18" />
         <span class="left-nav-link-text">History</span>

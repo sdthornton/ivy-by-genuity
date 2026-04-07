@@ -1,9 +1,12 @@
 <script setup>
 
-import { computed, useTemplateRef } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from "vue";
 import SourceSelectorDropdown from "./SourceSelectorDropdown.vue";
 
 const chatInput = useTemplateRef("chatInput");
+const inputSourcePrefix = useTemplateRef("inputSourcePrefix");
+const dynamicInputPaddingLeft = ref("");
+let inputSourcePrefixResizeObserver = null;
 
 const props = defineProps({
   showQuickActions: {
@@ -73,6 +76,70 @@ function handleSubmit() {
   emit("submit", chatInput.value?.value || "");
 }
 
+function updateDynamicInputPadding() {
+  if (!showInputSourceContext.value) {
+    dynamicInputPaddingLeft.value = "";
+    return;
+  }
+
+  const inputEl = chatInput.value;
+  const prefixEl = inputSourcePrefix.value;
+  if (!inputEl || !prefixEl) {
+    return;
+  }
+
+  const inputRect = inputEl.getBoundingClientRect();
+  const prefixRect = prefixEl.getBoundingClientRect();
+  const spacingAfterPill = 8;
+  const nextPadding = Math.ceil(prefixRect.right - inputRect.left + spacingAfterPill);
+  dynamicInputPaddingLeft.value = `${nextPadding}px`;
+}
+
+function disconnectInputSourcePrefixResizeObserver() {
+  if (!inputSourcePrefixResizeObserver) {
+    return;
+  }
+
+  inputSourcePrefixResizeObserver.disconnect();
+  inputSourcePrefixResizeObserver = null;
+}
+
+function connectInputSourcePrefixResizeObserver() {
+  disconnectInputSourcePrefixResizeObserver();
+
+  if (!showInputSourceContext.value || !inputSourcePrefix.value) {
+    return;
+  }
+
+  inputSourcePrefixResizeObserver = new ResizeObserver(() => {
+    updateDynamicInputPadding();
+  });
+  inputSourcePrefixResizeObserver.observe(inputSourcePrefix.value);
+}
+
+onMounted(async () => {
+  await nextTick();
+  updateDynamicInputPadding();
+  connectInputSourcePrefixResizeObserver();
+  window.addEventListener("resize", updateDynamicInputPadding);
+});
+
+onBeforeUnmount(() => {
+  disconnectInputSourcePrefixResizeObserver();
+  window.removeEventListener("resize", updateDynamicInputPadding);
+});
+
+watch(showInputSourceContext, async () => {
+  await nextTick();
+  updateDynamicInputPadding();
+  connectInputSourcePrefixResizeObserver();
+});
+
+watch(() => props.inputSourceLabel, async () => {
+  await nextTick();
+  updateDynamicInputPadding();
+});
+
 defineExpose({
   chatInput,
 });
@@ -82,17 +149,27 @@ defineExpose({
 <template>
   <div class="text-center search-wrap" :class="{ 'chat-box--no-motion': disableAnimations }">
     <div class="position-relative">
-      <input type="text" class="mx-auto chat-prompt-input form-control py-3 pe-4 rounded-pill" ref="chatInput" placeholder="">
+      <input
+        type="text"
+        class="mx-auto chat-prompt-input form-control py-3 pe-4 rounded-pill"
+        :style="{ paddingLeft: dynamicInputPaddingLeft || undefined }"
+        ref="chatInput"
+        placeholder=""
+      >
       <div class="position-absolute start-0 top-50 translate-middle-y ms-4 text-muted d-flex align-items-center">
-        <img src="../../assets/plus-round.svg" width="16" height="16" class="me-3">
+        <div ref="inputSourcePrefix" class="d-flex align-items-center">
+          <img src="../../assets/plus-round.svg" width="16" height="16" class="me-3">
+          <span
+            v-if="showInputSourceContext"
+            class="chat-input-source-pill d-inline-flex align-items-center rounded-pill bg-light px-2 py-1 me-2"
+            @click="chatInput.focus()"
+          >
+            <img :src="inputSourceIcon" width="20" height="20" class="me-1">
+            <span class="chat-input-source-name">{{ inputSourceLabel }}</span>
+          </span>
+        </div>
         <div class="d-flex align-items-center ivy-placeholder" @click="chatInput.focus()">
-          <template v-if="showInputSourceContext">
-            <span class="d-inline-flex align-items-center rounded-pill bg-light px-2 py-1 me-2">
-              <img :src="inputSourceIcon" width="20" height="20" class="me-1">
-              <span class="chat-input-source-name">{{ inputSourceLabel }}</span>
-            </span>
-          </template>
-          <img v-else src="../../assets/nav-resources-alt.svg" width="24" height="24" class="me-2">
+          <img v-if="!showInputSourceContext" src="../../assets/nav-resources-alt.svg" width="24" height="24" class="me-2">
           <span>{{ chatPlaceholder }}</span>
         </div>
       </div>
@@ -199,6 +276,15 @@ defineExpose({
   color: var(--bs-gray-600);
   font-size: 0.875rem;
   font-weight: 500;
+  max-width: 8rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chat-input-source-pill {
+  cursor: text;
+  max-width: 13rem;
 }
 
 .chat-prompt-input {
@@ -207,17 +293,19 @@ defineExpose({
   padding-left: 3.5rem;
   width: 100%;
 
-  &:placeholder-shown ~ .position-absolute {
-    > .btn-primary {
-      background-color: var(--bs-dark) !important;
-    }
-
-    > .ivy-placeholder {
-      opacity: 1;
-    }
+  &:placeholder-shown ~ .position-absolute .ivy-placeholder {
+    opacity: 1;
   }
 
-  &:focus + .position-absolute > .ivy-placeholder {
+  &:placeholder-shown ~ .position-absolute .btn-primary {
+    background-color: var(--bs-dark) !important;
+  }
+
+  &:not(:placeholder-shown) ~ .position-absolute .ivy-placeholder {
+    opacity: 0;
+  }
+
+  &:focus ~ .position-absolute .ivy-placeholder {
     opacity: 0;
   }
 }
