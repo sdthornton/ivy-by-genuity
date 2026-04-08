@@ -19,6 +19,10 @@ const props = defineProps({
     type: Object,
     default: () => ({}),
   },
+  instant: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 const emit = defineEmits(["done"]);
@@ -30,6 +34,14 @@ let runCounter = 0;
 async function runTypewriter() {
   const element = rootEl.value;
   if (!element) {
+    return;
+  }
+
+  if (props.instant) {
+    activeController?.abort();
+    activeController = null;
+    element.innerHTML = props.markup;
+    emit("done");
     return;
   }
 
@@ -63,7 +75,7 @@ onMounted(() => {
 });
 
 watch(
-  () => [props.markup, props.rerunKey],
+  () => [props.instant, props.markup, props.rerunKey],
   () => {
     runTypewriter();
   },

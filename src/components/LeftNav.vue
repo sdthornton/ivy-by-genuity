@@ -94,10 +94,17 @@ watch(route, to => {
         <img src="../assets/nav-connectors.svg" width="18" height="18" />
         <span class="left-nav-link-text">Sources</span>
       </RouterLink>
-      <a href="#" class="left-nav-link">
+      <!-- <a href="#" class="left-nav-link">
         <img src="../assets/history.svg" width="18" height="18" />
         <span class="left-nav-link-text">History</span>
-      </a>
+      </a> -->
+      <div class="opacity-50 text-white text-uppercase tiny mt-4 ps-2">
+        Recent History
+      </div>
+      <RouterLink to="/chats/ivy-onboarding" class="left-nav-link d-flex align-items-center gap-2">
+        <span class="text-white not-as-small">Ivy Onboarding</span>
+        <img src="../assets/pinned-chat.svg" height="12" width="12" class="invert-to-white ms-auto">
+      </RouterLink>
     </div>
     <div class="mt-auto left-nav__bottom">
       <a href="#" class="left-nav-link">

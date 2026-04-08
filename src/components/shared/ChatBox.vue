@@ -53,6 +53,14 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  showGenericOnboarding: {
+    type: Boolean,
+    default: true,
+  },
+  showInitialOnboarding: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 const emit = defineEmits(["select-source", "connect-source", "submit"]);
@@ -161,7 +169,7 @@ defineExpose({
           <img src="../../assets/plus-round.svg" width="16" height="16" class="me-3">
           <span
             v-if="showInputSourceContext"
-            class="chat-input-source-pill d-inline-flex align-items-center rounded-pill bg-light px-2 py-1 me-2"
+            class="chat-input-source-pill d-inline-flex align-items-center rounded-pill px-2 py-1 me-2"
             @click="chatInput.focus()"
           >
             <img :src="inputSourceIcon" width="20" height="20" class="me-1">
@@ -218,7 +226,7 @@ defineExpose({
           :inactive-source-options="inactiveSources"
           placement="bottom-start"
           menu-class="chat-source-dropdown-menu"
-          title="Select Your Source(s)"
+          title="Filter Ivy response by source..."
           @select-source="handleSelectSource"
           @connect-source="handleConnectSource"
         >
@@ -249,10 +257,21 @@ defineExpose({
         <img src="../../assets/global-search.svg" height="16" width="16" class="me-1">
         <span>Search the Web</span>
       </div>
-      <div class="chat-quick-action chat-quick-action--help bg-secondary-subtle rounded-pill px-3 py-1 d-flex align-items-center ms-auto">
+      <div 
+        v-if="showGenericOnboarding && !showInitialOnboarding"
+        class="chat-quick-action chat-quick-action--help bg-secondary-subtle rounded-pill px-3 py-1 d-flex align-items-center ms-auto"
+      >
         <img src="../../assets/help-circled-2.svg" height="16" width="16" class="me-1">
         <span>What can you do?</span>
       </div>
+      <RouterLink
+        v-else-if="showInitialOnboarding"
+        to="/chats/ivy-onboarding"
+        class="chat-quick-action chat-quick-action--help text-white bg-ivy-accent rounded-pill px-3 py-1 d-flex align-items-center ms-auto"
+      >
+        <img src="../../assets/nav-resources-nav.svg" height="16" width="16" class="me-1" style="mix-blend-mode: unset;">
+        <span>Quick Start</span>
+      </RouterLink>
     </div>
   </div>
 </template>
@@ -283,8 +302,8 @@ defineExpose({
 }
 
 .chat-input-source-pill {
+  background-color: var(--bs-gray-200);
   cursor: text;
-  max-width: 13rem;
 }
 
 .chat-prompt-input {
@@ -321,6 +340,7 @@ defineExpose({
 .chat-quick-action {
   background-color: $iceberg-blue;
   cursor: pointer;
+  text-decoration: none;
   transition: all 0.2s ease-in-out;
 
   &:hover {

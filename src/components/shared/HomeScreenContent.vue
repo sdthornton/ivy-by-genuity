@@ -133,7 +133,7 @@ onBeforeUnmount(() => {
       </div>
     </div>
 
-    <ChatBox ref="chatBox" class="mb-5" />
+    <ChatBox ref="chatBox" class="mb-5" show-initial-onboarding />
 
     <h6 class="mb-2 not-as-small fw-bold">
       Quick Actions

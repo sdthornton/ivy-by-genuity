@@ -11,6 +11,7 @@ import IvyTypewriterMessage from "./IvyTypewriterMessage.vue";
 import SourcesIcon from "../../assets/nav-connectors.svg";
 import LibraryIcon from "../../assets/nav-prompt-library.svg";
 import AssistantsIcon from "../../assets/nav-resources.svg";
+import IvySphere from "./IvySphere.vue";
 
 const props = defineProps({
   alwaysShowChatBox: {
@@ -79,6 +80,7 @@ const sourceForm = reactive({
 });
 
 const uploadSourceIcon = resolveSourceIcon("IT Meeting Notes");
+const FORCE_COMPLETED_ONBOARDING_PREVIEW = true;
 const TOTAL_ONBOARDING_STEPS = 3;
 const INTERACTIVE_REVEAL_DELAY_MS = 220;
 const CARD_SWAP_DURATION_MS = 200;
@@ -98,7 +100,7 @@ const ONBOARDING_SAMPLE_RESPONSE_TYPING_TIMING = {
   whitespaceMaxDelay: 2,
 };
 const IVY_PROMPT_NUDGE_MESSAGE = "Good work. See those suggested prompts that just popped up? <strong>Try selecting a prompt</strong> and I'll give you a quick demo of what I can do.";
-const IVY_WRAP_UP_MESSAGE = "Nice work. You finished your first sync and explored a sample response with me. <strong>Choose what you’d like to do next</strong>.";
+const IVY_WRAP_UP_MESSAGE = "Amazing work, you finished onboarding! 🎉 You synced your first source and tested a sample workflow with me. There's no more to this initial walkthrough, but <strong>pick your next move below and I’ll be ready to help with anything.</strong>";
 const INTRO_MARKUP = `
   <h1 class="fw-bold mb-1">Welcome, Sarith Rigsby</h1>
   <h2 class="h4 fw-bold mb-4 text-ivy-gradient d-inline-block">
@@ -171,7 +173,7 @@ const completionActionOptions = [
   {
     description: "Connect more sources so I can combine context and give you stronger insights.",
     key: "sources",
-    title: "Add Some Additional Sources",
+    title: "Add Additional Sources",
     bgClass: "bg-chat-highlight",
     icon: SourcesIcon,
     iconBg: "bg-chat-gradient",
@@ -538,6 +540,8 @@ async function submitOnboardingPrompt(rawPrompt) {
   const chatInput = onboardingChatBox.value?.chatInput;
   onboardingChatThread.value.push({
     id: `user-${Date.now()}`,
+    filterSourceIcon: hasSelectedSourceInChatPill.value ? (selectedSourceIcon.value || "") : "",
+    filterSourceLabel: hasSelectedSourceInChatPill.value ? selectedSourceLabel.value : "",
     format: "text",
     role: "user",
     text: prompt,
@@ -566,8 +570,10 @@ async function submitOnboardingPrompt(rawPrompt) {
   onboardingChatThread.value.push({
     id: responseMessageId,
     format: "html",
+    intro: buildSuggestedPromptIntro(selectedSourceLabel.value),
     kind: "sample-response",
     role: "ivy",
+    sourceLabel: selectedSourceLabel.value,
     text: buildSuggestedPromptResponse(prompt, selectedSourceLabel.value),
   });
 }
@@ -837,13 +843,16 @@ function buildSourceSyncIvyMessage(source) {
   return `Great work setting up your first source! 🎉 While I'm finalizing the ${source} sync, why not explore just some of the ways I can navigate your data. <strong>Try clicking the "sources" pill highlighted below and select your newly-added ${source} app.</strong> ⬇️ ⬇️ ⬇️`;
 }
 
+function buildSuggestedPromptIntro(source) {
+  return `Great prompt choice. I'll write out a sample response for <strong>${source}</strong> and I'll update this doc it with real data as soon as I can.`;
+}
+
 function buildSuggestedPromptResponse(prompt, source) {
   const lowerPrompt = String(prompt || "").toLowerCase();
   const timestamp = "Mar 31, 2026 • 11:22 AM PT";
 
   if (lowerPrompt.includes("draft")) {
     return `
-      <p>Absolutely. Here’s a full draft you could send right now. ✅</p>
       <p><strong>📄 Daily ${source} Ops Brief</strong><br><span class="text-secondary">🕒 Generated: ${timestamp}</span></p>
       <p><strong>1) Executive Summary</strong></p>
       <ul>
@@ -875,7 +884,6 @@ function buildSuggestedPromptResponse(prompt, source) {
 
   if (lowerPrompt.includes("summarize") || lowerPrompt.includes("summary")) {
     return `
-      <p>Here’s a full summary from <strong>${source}</strong> based on the latest synced data. 👇</p>
       <p><strong>🗓️ Summary Window</strong></p>
       <ul>
         <li>Last 24 hours (rolling)</li>
@@ -906,7 +914,6 @@ function buildSuggestedPromptResponse(prompt, source) {
 
   if (lowerPrompt.includes("show me") || lowerPrompt.includes("highlight")) {
     return `
-      <p>Great prompt. Here are the top findings from <strong>${source}</strong> right now. 👇</p>
       <p><strong>🔎 Top Findings</strong></p>
       <ol>
         <li>
@@ -943,7 +950,6 @@ function buildSuggestedPromptResponse(prompt, source) {
   }
 
   return `
-    <p>I checked <strong>${source}</strong> and put together a full first-pass analysis. ✅</p>
     <p><strong>📍 Current State</strong></p>
     <ul>
       <li>Environment appears operational with no confirmed outage indicators.</li>
@@ -965,9 +971,65 @@ function buildSuggestedPromptResponse(prompt, source) {
   `;
 }
 
+function applyCompletedOnboardingPreviewState() {
+  const previewPrompt = "Show me messages that include urgent security keywords.";
+  const previewSampleResponseId = "ivy-preview-sample-response";
+
+  onboardingStep.value = "details";
+  selectedSource.value = "Slack";
+  uploadedFileName.value = "";
+  sourceSelectionConfirmed.value = true;
+  sourceDetailsSubmitted.value = true;
+  showSourceSelectionUi.value = true;
+  showStep1CompletedCard.value = true;
+  showStep1DetailsIntro.value = true;
+  showSourceDetailsSetupUi.value = true;
+  showPostSubmitIvyMessages.value = true;
+  hasShownSuggestedPromptsNudge.value = true;
+  hasSelectedSourceInChatPill.value = true;
+  showSuggestedPrompts.value = true;
+  showOnboardingQuickActions.value = true;
+  showSourceSelectionCallout.value = false;
+  showIvyThinking.value = false;
+  awaitingSuggestedPromptSubmit.value = false;
+  showPostStep3WrapUpMessage.value = true;
+  showPostStep3WrapUpOptions.value = true;
+  step1CardTone.value = "complete";
+  step2CardTone.value = "complete";
+
+  onboardingChatThread.value = [
+    {
+      id: "user-preview-prompt",
+      filterSourceIcon: resolveSourceIcon("Slack") || "",
+      filterSourceLabel: "Slack",
+      format: "text",
+      role: "user",
+      text: previewPrompt,
+    },
+    {
+      id: previewSampleResponseId,
+      format: "html",
+      intro: buildSuggestedPromptIntro("Slack"),
+      kind: "sample-response",
+      role: "ivy",
+      sourceLabel: "Slack",
+      text: buildSuggestedPromptResponse(previewPrompt, "Slack"),
+    },
+  ];
+  sampleResponseCompletionById.value = {
+    [previewSampleResponseId]: true,
+  };
+}
+
 onMounted(() => {
   if (props.hideNavigationOnMount) {
     hideOnboardingNavigation();
+  }
+
+  if (FORCE_COMPLETED_ONBOARDING_PREVIEW) {
+    applyCompletedOnboardingPreviewState();
+    connectSuggestedPromptObserver();
+    return;
   }
 
   showSourceSelectionUi.value = onboardingStep.value !== "source";
@@ -1025,10 +1087,13 @@ watch(suggestedPromptSpacerHeight, (nextHeight, previousHeight) => {
 <template>
   <section class="onboarding-page" :class="{ 'onboarding-page--embedded': embedded }">
     <div class="onboarding-content">
+      <IvySphere />
+
       <IvyTypewriterMessage
         class="ivy-chat-width mb-5"
         :markup="INTRO_MARKUP"
         :timing="ONBOARDING_IVY_TYPING_TIMING"
+        :instant="FORCE_COMPLETED_ONBOARDING_PREVIEW"
         @done="handleIntroTypingDone"
       />
 
@@ -1150,6 +1215,7 @@ watch(suggestedPromptSpacerHeight, (nextHeight, previousHeight) => {
           :markup="sourceDetailsIntroMarkup"
           :rerun-key="selectedSourceLabel"
           :timing="ONBOARDING_IVY_TYPING_TIMING"
+          :instant="FORCE_COMPLETED_ONBOARDING_PREVIEW"
           @done="handleSourceDetailsIntroTypingDone"
         />
 
@@ -1268,12 +1334,26 @@ watch(suggestedPromptSpacerHeight, (nextHeight, previousHeight) => {
             />
           </div>
         </div>
-        <div v-if="conversationLogMessages.length || showIvyThinking" class="mb-4 mt-5">
+        <div v-if="conversationLogMessages.length || showIvyThinking" class="my-5">
           <template v-for="message in conversationLogMessages" :key="message.id">
             <article
               v-if="message.role === 'user'"
-              class="user-chat-bubble rounded bg-iceberg-blue px-3 py-2 mb-4"
+              class="user-chat-bubble rounded bg-iceberg-blue px-3 py-2 mb-4 position-relative"
             >
+              <div
+                v-if="message.filterSourceLabel"
+                class="user-chat-filter-info d-inline-flex align-items-center rounded-pill bg-light px-2 py-1 mb-2"
+              >
+                <img
+                  v-if="message.filterSourceIcon"
+                  :src="message.filterSourceIcon"
+                  :alt="message.filterSourceLabel"
+                  width="16"
+                  height="16"
+                  class="me-1"
+                >
+                <span class="smallest text-secondary">{{ message.filterSourceLabel }}</span>
+              </div>
               <p class="mb-0" style="white-space: pre-line;">{{ message.text }}</p>
             </article>
             <div
@@ -1281,13 +1361,33 @@ watch(suggestedPromptSpacerHeight, (nextHeight, previousHeight) => {
               class="mb-4 w-100"
             >
               <IvyTypewriterMessage
-                class="w-100"
-                as="div"
-                :markup="`<div class='border rounded p-3 mx-0 bg-white onboarding-interactive-box w-100'>${message.text}</div>`"
-                :rerun-key="message.id"
-                :timing="ONBOARDING_SAMPLE_RESPONSE_TYPING_TIMING"
-                @done="handleSampleResponseTypingDone(message.id)"
+                class="assistant-chat-message ivy-chat-width"
+                :markup="message.intro || ''"
+                :rerun-key="`${message.id}-intro`"
+                :timing="ONBOARDING_IVY_TYPING_TIMING"
+                :instant="FORCE_COMPLETED_ONBOARDING_PREVIEW"
               />
+              <hr class="my-4">
+              <div class="position-relative onboarding-sample-response-card">
+                <div class="onboarding-sample-response-note smallest text-secondary">
+                  Sample data. Updates when {{ message.sourceLabel || selectedSourceLabel }} sync completes.
+                </div>
+                <div 
+                  class="chat-document-action"
+                  v-tooltip="{ content: 'Download', placement: 'bottom' }"
+                >
+                  <img src="../../assets/download.svg" height="20" width="20">
+                </div>
+                <IvyTypewriterMessage
+                  class="w-100"
+                  as="div"
+                  :markup="`<div class='border rounded px-5 py-4 pt-5 mx-0 bg-white onboarding-interactive-box w-100'>${message.text}</div>`"
+                  :rerun-key="message.id"
+                  :timing="ONBOARDING_SAMPLE_RESPONSE_TYPING_TIMING"
+                  :instant="FORCE_COMPLETED_ONBOARDING_PREVIEW"
+                  @done="handleSampleResponseTypingDone(message.id)"
+                />
+              </div>
               <div class="true-small text-secondary mt-2">
                 <OnboardingStepStatus
                   :transition-key="message.id"
@@ -1299,10 +1399,11 @@ watch(suggestedPromptSpacerHeight, (nextHeight, previousHeight) => {
             </div>
             <IvyTypewriterMessage
               v-else
-              class="assistant-chat-message ivy-chat-width mb-5"
+              class="assistant-chat-message ivy-chat-width mb-4"
               :markup="message.text"
               :rerun-key="message.id"
               :timing="ONBOARDING_IVY_TYPING_TIMING"
+              :instant="FORCE_COMPLETED_ONBOARDING_PREVIEW"
               @done="handleConversationIvyTypingDone(message.id)"
             />
           </template>
@@ -1311,12 +1412,15 @@ watch(suggestedPromptSpacerHeight, (nextHeight, previousHeight) => {
           </article>
         </div>
 
+        <hr class="mt-4 mb-5">
+
         <IvyTypewriterMessage
           v-if="showPostStep3WrapUpMessage"
           class="assistant-chat-message ivy-chat-width mb-4"
           :markup="IVY_WRAP_UP_MESSAGE"
           rerun-key="ivy-wrap-up"
           :timing="ONBOARDING_IVY_TYPING_TIMING"
+          :instant="FORCE_COMPLETED_ONBOARDING_PREVIEW"
           @done="handlePostStep3WrapUpTypingDone"
         />
 
@@ -1332,18 +1436,19 @@ watch(suggestedPromptSpacerHeight, (nextHeight, previousHeight) => {
                   type="button"
                   class="border p-3 rounded w-100 h-100 text-start onboarding-completion-option"
                   :class="[option.bgClass]"
+                  v-tooltip="{ content: option.description, placement: 'bottom' }"
                   @click="handlePostStep3ActionSelect(option.key)"
                 >
-                  <div class="d-flex gap-2">
+                  <div class="d-flex gap-3 align-items-center">
                     <div 
                       class="p-2 rounded d-flex align-items-center justify-content-center"
                       :class="[option.iconBg]"
                     >
-                      <img :src="option.icon" height="20" width="20">
+                      <img :src="option.icon" height="20" width="20" class="invert-to-white">
                     </div>
-                    <h5 class="lead">{{ option.title }}</h5>
+                    <h6 class="reduced mb-0 text-wrap-balance">{{ option.title }}</h6>
+                    <img src="../../assets/arrow-right-c-dark.svg" height="14" width="14">
                   </div>
-                  <p class="smallest text-secondary mb-0">{{ option.description }}</p>
                 </button>
               </div>
             </div>
@@ -1486,6 +1591,18 @@ watch(suggestedPromptSpacerHeight, (nextHeight, previousHeight) => {
     border-color: var(--bs-primary);
     box-shadow: 0 0 0 1px var(--bs-primary);
   }
+}
+
+.onboarding-sample-response-card {
+  position: relative;
+}
+
+.onboarding-sample-response-note {
+  position: absolute;
+  left: 1rem;
+  text-align: right;
+  top: 0.75rem;
+  z-index: 2;
 }
 
 .onboarding-sources {

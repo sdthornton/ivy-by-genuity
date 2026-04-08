@@ -88,28 +88,36 @@ watch(
   font-size: 0.75rem;
 }
 
+.tiny {
+  font-size: 0.6875rem;
+}
+
 .flatten-line-height {
   line-height: 1rem;
 }
 
 .bg-iceberg-blue {
-  background-color: $iceberg-blue;
+  background-color: $iceberg-blue !important;
 }
 
 .bg-lighter {
-  background-color: #f8f9fa;
+  background-color: #f8f9fa !important;
 }
 
 .bg-maastricht-blue {
-  background-color: $maastricht-blue;
+  background-color: $maastricht-blue !important;
 }
 
 .bg-dark-blue {
-  background-color: $dark-blue;
+  background-color: $dark-blue !important;
 }
 
 .bg-titan-white {
-  background-color: $titan-white;
+  background-color: $titan-white !important;
+}
+
+.bg-ivy-accent {
+  background-color: #161950 !important;
 }
 
 .text-dark-blue {
@@ -289,6 +297,24 @@ body {
 
 .heading-icon--workspace {
   background-image: linear-gradient(in oklab to bottom right, $yellow, $orange);
+}
+
+.chat-document-action {
+  align-items: center;
+  background-color: transparent;
+  border-radius: 50%;
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  padding: 0.5rem;
+  position: absolute;
+  right: 0.75rem;
+  top: 0.5rem;
+  transition: all 0.2s ease-in-out;
+
+  &:hover {
+    background-color: var(--bs-gray-200);
+  }
 }
 
 </style>
