@@ -10,7 +10,7 @@
     },
     animationDuration: {
       type: String,
-      default: "1.4s",
+      default: "1s",
     },
   });
 </script>

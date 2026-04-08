@@ -53,7 +53,11 @@ const showSourceDetailsSetupUi = ref(false);
 const showSourceSelectionCallout = ref(false);
 const showStep1CompletedCard = ref(false);
 const showStep1DetailsIntro = ref(false);
+const showIvyLoader = ref(true);
+const isIvyLoaderExiting = ref(false);
+const hasStartedIntro = ref(false);
 const sampleResponseCompletionById = ref({});
+const sampleResponseIntroCompletionById = ref({});
 const suggestedPromptSpacerHeight = ref(0);
 const isSourceStepFadingOut = ref(false);
 const step1CardShell = ref(null);
@@ -71,6 +75,8 @@ let activeSourceDetailsRevealTimer = null;
 let activeSourceStepSwitchTimer = null;
 let activeStep1DetailsIntroTimer = null;
 let activePostStep3WrapUpTimer = null;
+let activeIvyLoaderStartTimer = null;
+let activeIvyLoaderExitTimer = null;
 const sourceForm = reactive({
   accountEmail: "",
   apiToken: "",
@@ -80,11 +86,12 @@ const sourceForm = reactive({
 });
 
 const uploadSourceIcon = resolveSourceIcon("IT Meeting Notes");
-const FORCE_COMPLETED_ONBOARDING_PREVIEW = true;
 const TOTAL_ONBOARDING_STEPS = 3;
 const INTERACTIVE_REVEAL_DELAY_MS = 220;
 const CARD_SWAP_DURATION_MS = 200;
 const POST_STEP3_WRAP_UP_DELAY_MS = 420;
+const LOADER_INITIAL_DURATION_MS = 3000;
+const LOADER_EXIT_DURATION_MS = 450;
 const ONBOARDING_IVY_TYPING_TIMING = {
   startDelay: 80,
   minDelay: 12,
@@ -397,6 +404,7 @@ function resetConversationState() {
 
   onboardingChatThread.value = [];
   sampleResponseCompletionById.value = {};
+  sampleResponseIntroCompletionById.value = {};
   resetPromptGuidanceState();
 }
 
@@ -565,6 +573,10 @@ async function submitOnboardingPrompt(rawPrompt) {
   const responseMessageId = `ivy-${Date.now()}`;
   sampleResponseCompletionById.value = {
     ...sampleResponseCompletionById.value,
+    [responseMessageId]: false,
+  };
+  sampleResponseIntroCompletionById.value = {
+    ...sampleResponseIntroCompletionById.value,
     [responseMessageId]: false,
   };
   onboardingChatThread.value.push({
@@ -770,6 +782,17 @@ function handleSampleResponseTypingDone(messageId) {
   }, POST_STEP3_WRAP_UP_DELAY_MS);
 }
 
+function hasSampleResponseIntroCompleted(messageId) {
+  return Boolean(sampleResponseIntroCompletionById.value[messageId]);
+}
+
+function handleSampleResponseIntroTypingDone(messageId) {
+  sampleResponseIntroCompletionById.value = {
+    ...sampleResponseIntroCompletionById.value,
+    [messageId]: true,
+  };
+}
+
 function handleConversationIvyTypingDone(messageId) {
   if (messageId === "ivy-source-sync") {
     showSourceSelectionCallout.value = true;
@@ -971,65 +994,9 @@ function buildSuggestedPromptResponse(prompt, source) {
   `;
 }
 
-function applyCompletedOnboardingPreviewState() {
-  const previewPrompt = "Show me messages that include urgent security keywords.";
-  const previewSampleResponseId = "ivy-preview-sample-response";
-
-  onboardingStep.value = "details";
-  selectedSource.value = "Slack";
-  uploadedFileName.value = "";
-  sourceSelectionConfirmed.value = true;
-  sourceDetailsSubmitted.value = true;
-  showSourceSelectionUi.value = true;
-  showStep1CompletedCard.value = true;
-  showStep1DetailsIntro.value = true;
-  showSourceDetailsSetupUi.value = true;
-  showPostSubmitIvyMessages.value = true;
-  hasShownSuggestedPromptsNudge.value = true;
-  hasSelectedSourceInChatPill.value = true;
-  showSuggestedPrompts.value = true;
-  showOnboardingQuickActions.value = true;
-  showSourceSelectionCallout.value = false;
-  showIvyThinking.value = false;
-  awaitingSuggestedPromptSubmit.value = false;
-  showPostStep3WrapUpMessage.value = true;
-  showPostStep3WrapUpOptions.value = true;
-  step1CardTone.value = "complete";
-  step2CardTone.value = "complete";
-
-  onboardingChatThread.value = [
-    {
-      id: "user-preview-prompt",
-      filterSourceIcon: resolveSourceIcon("Slack") || "",
-      filterSourceLabel: "Slack",
-      format: "text",
-      role: "user",
-      text: previewPrompt,
-    },
-    {
-      id: previewSampleResponseId,
-      format: "html",
-      intro: buildSuggestedPromptIntro("Slack"),
-      kind: "sample-response",
-      role: "ivy",
-      sourceLabel: "Slack",
-      text: buildSuggestedPromptResponse(previewPrompt, "Slack"),
-    },
-  ];
-  sampleResponseCompletionById.value = {
-    [previewSampleResponseId]: true,
-  };
-}
-
 onMounted(() => {
   if (props.hideNavigationOnMount) {
     hideOnboardingNavigation();
-  }
-
-  if (FORCE_COMPLETED_ONBOARDING_PREVIEW) {
-    applyCompletedOnboardingPreviewState();
-    connectSuggestedPromptObserver();
-    return;
   }
 
   showSourceSelectionUi.value = onboardingStep.value !== "source";
@@ -1037,6 +1004,16 @@ onMounted(() => {
   showStep1DetailsIntro.value = onboardingStep.value !== "source";
   step1CardTone.value = getCardTone(step1Status.value);
   step2CardTone.value = getCardTone(step2Status.value);
+  activeIvyLoaderStartTimer = window.setTimeout(() => {
+    hasStartedIntro.value = true;
+    isIvyLoaderExiting.value = true;
+    activeIvyLoaderStartTimer = null;
+
+    activeIvyLoaderExitTimer = window.setTimeout(() => {
+      showIvyLoader.value = false;
+      activeIvyLoaderExitTimer = null;
+    }, LOADER_EXIT_DURATION_MS);
+  }, LOADER_INITIAL_DURATION_MS);
   connectSuggestedPromptObserver();
 });
 
@@ -1068,6 +1045,14 @@ onBeforeUnmount(() => {
     window.clearTimeout(activePostStep3WrapUpTimer);
     activePostStep3WrapUpTimer = null;
   }
+  if (activeIvyLoaderStartTimer) {
+    window.clearTimeout(activeIvyLoaderStartTimer);
+    activeIvyLoaderStartTimer = null;
+  }
+  if (activeIvyLoaderExitTimer) {
+    window.clearTimeout(activeIvyLoaderExitTimer);
+    activeIvyLoaderExitTimer = null;
+  }
 });
 
 watch(showSuggestedPrompts, () => {
@@ -1087,18 +1072,24 @@ watch(suggestedPromptSpacerHeight, (nextHeight, previousHeight) => {
 <template>
   <section class="onboarding-page" :class="{ 'onboarding-page--embedded': embedded }">
     <div class="onboarding-content">
-      <IvySphere />
+      <div
+        v-if="showIvyLoader"
+        class="onboarding-loader"
+        :class="{ 'onboarding-loader--exiting': isIvyLoaderExiting }"
+      >
+        <IvySphere />
+      </div>
 
       <IvyTypewriterMessage
+        v-if="hasStartedIntro"
         class="ivy-chat-width mb-5"
         :markup="INTRO_MARKUP"
         :timing="ONBOARDING_IVY_TYPING_TIMING"
-        :instant="FORCE_COMPLETED_ONBOARDING_PREVIEW"
         @done="handleIntroTypingDone"
       />
 
       <div
-        v-if="shouldShowStep1Wrapper"
+        v-if="hasStartedIntro && shouldShowStep1Wrapper"
         class="onboarding-step-wrapper"
         :class="{
           'onboarding-sources': isSourceStepActive,
@@ -1208,14 +1199,13 @@ watch(suggestedPromptSpacerHeight, (nextHeight, previousHeight) => {
         </div>
       </div>
 
-      <div v-if="shouldShowStep2Wrapper" :class="detailsStepClass">
+      <div v-if="hasStartedIntro && shouldShowStep2Wrapper" :class="detailsStepClass">
         <IvyTypewriterMessage
           v-if="showStep1DetailsIntro"
           class="ivy-chat-width mt-5 mb-4"
           :markup="sourceDetailsIntroMarkup"
           :rerun-key="selectedSourceLabel"
           :timing="ONBOARDING_IVY_TYPING_TIMING"
-          :instant="FORCE_COMPLETED_ONBOARDING_PREVIEW"
           @done="handleSourceDetailsIntroTypingDone"
         />
 
@@ -1368,10 +1358,13 @@ watch(suggestedPromptSpacerHeight, (nextHeight, previousHeight) => {
                 :markup="message.intro || ''"
                 :rerun-key="`${message.id}-intro`"
                 :timing="ONBOARDING_IVY_TYPING_TIMING"
-                :instant="FORCE_COMPLETED_ONBOARDING_PREVIEW"
+                @done="handleSampleResponseIntroTypingDone(message.id)"
               />
-              <hr class="my-4">
-              <div class="position-relative onboarding-sample-response-card">
+              <hr v-if="hasSampleResponseIntroCompleted(message.id)" class="my-4">
+              <div
+                v-if="hasSampleResponseIntroCompleted(message.id)"
+                class="position-relative onboarding-sample-response-card"
+              >
                 <div class="onboarding-sample-response-note smallest text-secondary">
                   Sample data. Updates when {{ message.sourceLabel || selectedSourceLabel }} sync completes.
                 </div>
@@ -1387,7 +1380,6 @@ watch(suggestedPromptSpacerHeight, (nextHeight, previousHeight) => {
                   :markup="`<div class='border rounded px-5 py-4 pt-5 mx-0 bg-white onboarding-interactive-box w-100'>${message.text}</div>`"
                   :rerun-key="message.id"
                   :timing="ONBOARDING_SAMPLE_RESPONSE_TYPING_TIMING"
-                  :instant="FORCE_COMPLETED_ONBOARDING_PREVIEW"
                   @done="handleSampleResponseTypingDone(message.id)"
                 />
               </div>
@@ -1406,7 +1398,6 @@ watch(suggestedPromptSpacerHeight, (nextHeight, previousHeight) => {
               :markup="message.text"
               :rerun-key="message.id"
               :timing="ONBOARDING_IVY_TYPING_TIMING"
-              :instant="FORCE_COMPLETED_ONBOARDING_PREVIEW"
               @done="handleConversationIvyTypingDone(message.id)"
             />
           </template>
@@ -1415,7 +1406,10 @@ watch(suggestedPromptSpacerHeight, (nextHeight, previousHeight) => {
           </article>
         </div>
 
-        <hr class="mt-4 mb-5">
+        <hr
+          v-if="showPostStep3WrapUpMessage || showPostStep3WrapUpOptions"
+          class="mt-4 mb-5"
+        >
 
         <IvyTypewriterMessage
           v-if="showPostStep3WrapUpMessage"
@@ -1423,7 +1417,6 @@ watch(suggestedPromptSpacerHeight, (nextHeight, previousHeight) => {
           :markup="IVY_WRAP_UP_MESSAGE"
           rerun-key="ivy-wrap-up"
           :timing="ONBOARDING_IVY_TYPING_TIMING"
-          :instant="FORCE_COMPLETED_ONBOARDING_PREVIEW"
           @done="handlePostStep3WrapUpTypingDone"
         />
 
@@ -1468,7 +1461,7 @@ watch(suggestedPromptSpacerHeight, (nextHeight, previousHeight) => {
       <div class="suggested-prompt-chat-spacer" :style="{ height: `${suggestedPromptSpacerHeight}px` }"></div>
 
       <div
-        v-if="alwaysShowChatBox || onboardingStep !== 'source'"
+        v-if="hasStartedIntro && (alwaysShowChatBox || onboardingStep !== 'source')"
         class="mt-auto"
         :class="chatContainerClass"
       >
@@ -1520,6 +1513,22 @@ watch(suggestedPromptSpacerHeight, (nextHeight, previousHeight) => {
   position: relative;
   width: min(100%, 48rem);
   z-index: 1;
+}
+
+.onboarding-loader {
+  left: 0;
+  opacity: 1;
+  pointer-events: none;
+  position: absolute;
+  top: 0;
+  transform: translateX(0);
+  transition: all 0.45s ease-in-out;
+  z-index: 10;
+}
+
+.onboarding-loader--exiting {
+  opacity: 0;
+  transform: translateX(10rem);
 }
 
 .ivy-chat-width {
