@@ -1306,16 +1306,18 @@ watch(suggestedPromptSpacerHeight, (nextHeight, previousHeight) => {
                   <div class="d-flex align-items-center gap-3 position-relative">
                     <img
                       v-if="selectedSourceIcon"
-                      :src="selectedSourceIcon"
-                      :alt="selectedSourceLabel"
+                      src="../../assets/syncing.svg"
                       width="40"
                       height="40"
                     >
                     <div class="min-w-0">
-                      <div class="fw-semibold text-truncate">{{ selectedSourceLabel }}</div>
+                      <div class="fw-semibold text-truncate d-flex align-items-center gap-2">
+                        <img :src="selectedSourceIcon" height="16" width="16">
+                        {{ selectedSourceLabel }}
+                      </div>
                       <div class="smallest text-secondary">Sync status: Syncing</div>
                     </div>
-                    <div class="badge text-bg-success ms-auto">Synced</div>
+                    <div class="badge text-bg-warning ms-auto fw-medium">Syncing&hellip;</div>
                   </div>
                 </div>
               </Transition>
@@ -1342,17 +1344,18 @@ watch(suggestedPromptSpacerHeight, (nextHeight, previousHeight) => {
             >
               <div
                 v-if="message.filterSourceLabel"
-                class="user-chat-filter-info d-inline-flex align-items-center rounded-pill bg-light px-2 py-1 mb-2"
+                class="d-flex align-items-center mb-0"
               >
+                <span class="smallest text-dark opacity-50 me-2">Source:</span>
                 <img
                   v-if="message.filterSourceIcon"
                   :src="message.filterSourceIcon"
                   :alt="message.filterSourceLabel"
-                  width="16"
-                  height="16"
+                  width="14"
+                  height="14"
                   class="me-1"
                 >
-                <span class="smallest text-secondary">{{ message.filterSourceLabel }}</span>
+                <span class="smallest text-dark opacity-75">{{ message.filterSourceLabel }}</span>
               </div>
               <p class="mb-0" style="white-space: pre-line;">{{ message.text }}</p>
             </article>
