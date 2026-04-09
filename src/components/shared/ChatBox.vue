@@ -49,10 +49,6 @@ const props = defineProps({
     type: String,
     default: "",
   },
-  disableAnimations: {
-    type: Boolean,
-    default: false,
-  },
   showGenericOnboarding: {
     type: Boolean,
     default: true,
@@ -155,7 +151,7 @@ defineExpose({
 </script>
 
 <template>
-  <div class="text-center search-wrap" :class="{ 'chat-box--no-motion': disableAnimations }">
+  <div class="text-center search-wrap">
     <div class="position-relative">
       <input
         type="text"
@@ -205,7 +201,7 @@ defineExpose({
 
     <div 
       v-if="showQuickActions"
-      class="chat-quick-actions mt-3 d-flex text-biscay-blue true-small d-flex"
+      class="chat-quick-actions mt-3 d-flex text-biscay-blue true-small"
       :class="{ 'chat-quick-actions--focus-sources': highlightSourcesPill }"
     >
       <div class="chat-quick-action rounded-pill px-3 py-1 d-flex align-items-center">
@@ -395,19 +391,6 @@ defineExpose({
 
 .chat-submit-callout {
   left: 50%;
-}
-
-.chat-box--no-motion {
-  .chat-quick-action,
-  .ivy-placeholder {
-    transition: none;
-  }
-
-  .chat-quick-action--highlight,
-  .chat-quick-action-callout,
-  .chat-submit-btn--highlight {
-    animation: none;
-  }
 }
 
 @keyframes sources-pill-pulse {

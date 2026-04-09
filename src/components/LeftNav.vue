@@ -1,62 +1,31 @@
 <script setup>
-import { computed, onBeforeMount, watch } from 'vue';
+import { watch } from 'vue';
 import { useRoute } from 'vue-router';
-import { useAppLayoutState } from '../composables/useAppLayoutState';
 
 const toggleLeftNav = () => {
   document.body.classList.toggle('left-nav-open');
-}
+};
 
 const route = useRoute();
-const { onboardingNavStage } = useAppLayoutState();
-const isOnboardingRoute = computed(() => route.name === "Onboarding");
-const showToggle = computed(() => !isOnboardingRoute.value || onboardingNavStage.value === "full");
-const leftNavOnboardingClass = computed(() => {
-  if (!isOnboardingRoute.value) {
-    return null;
-  }
 
-  if (onboardingNavStage.value === "profile") {
-    return "left-nav--onboarding-profile";
-  }
-
-  if (onboardingNavStage.value === "company") {
-    return "left-nav--onboarding-company";
-  }
-
-  if (onboardingNavStage.value === "main") {
-    return "left-nav--onboarding-main";
-  }
-
-  return null;
-});
-onBeforeMount(() => {
-  if (!route.meta?.splitContent && !route.meta?.hideLeftNav) {
-    document.body.classList.add('left-nav-open');
-  }
-});
-
-watch(route, to => {
-  if (to.meta?.splitContent) {
+watch(() => route.meta?.splitContent, (isSplitContent) => {
+  if (isSplitContent) {
     document.body.classList.remove('left-nav-open');
     document.body.classList.add('split-content-page');
-  } else if (to.meta?.hideLeftNav) {
-    document.body.classList.remove('left-nav-open');
-    document.body.classList.remove('split-content-page');
   } else {
     document.body.classList.add('left-nav-open');
     document.body.classList.remove('split-content-page');
   }
-});
+}, { immediate: true });
 </script>
 
 <template>
-  <a v-if="showToggle" href="#" class="toggle-left-nav" @click.prevent.stop="toggleLeftNav">
+  <a href="#" class="toggle-left-nav" @click.prevent.stop="toggleLeftNav">
     <img src="../assets/toggle-left-nav-box.svg" class="toggle-left-nav__box">
     <img src="../assets/toggle-left-nav-line.svg" class="toggle-left-nav__line">
     <img src="../assets/toggle-left-nav-arrow.svg" class="toggle-left-nav__arrow">
   </a>
-  <div class="left-nav pt-3 d-flex flex-column" :class="leftNavOnboardingClass">
+  <div class="left-nav pt-3 d-flex flex-column">
     
     <div class="company-drawer">
       <div class="company-drawer__logo" style="background-image: url('https://s3.amazonaws.com/nulodgic-static-assets/images/location_defaults/default5_thumbnail.png');"></div>
@@ -80,7 +49,6 @@ watch(route, to => {
       <RouterLink to="/prompt-library" class="left-nav-link">
         <img src="../assets/nav-prompt-library.svg" width="18" height="18" />
         <span class="left-nav-link-text">Prompt Library</span>
-        <!-- <img src="./assets/drodpown.svg" width="12" height="12" class="ms-auto opacity-50"> -->
       </RouterLink>
       <RouterLink to="/assistants" class="left-nav-link">
         <img src="../assets/nav-resources.svg" width="18" height="18" />
@@ -94,10 +62,6 @@ watch(route, to => {
         <img src="../assets/nav-connectors.svg" width="18" height="18" />
         <span class="left-nav-link-text">Sources</span>
       </RouterLink>
-      <!-- <a href="#" class="left-nav-link">
-        <img src="../assets/history.svg" width="18" height="18" />
-        <span class="left-nav-link-text">History</span>
-      </a> -->
       <div class="opacity-50 text-white text-uppercase tiny mt-4 ps-2">
         Recent History
       </div>
@@ -252,33 +216,6 @@ watch(route, to => {
   }
 }
 
-.left-nav--onboarding-profile {
-  .company-drawer,
-  .left-nav-inner-wrap,
-  .left-nav__bottom {
-    display: none;
-  }
-}
-
-.left-nav--onboarding-company {
-  .left-nav-inner-wrap,
-  .left-nav__bottom {
-    display: none;
-  }
-}
-
-.left-nav--onboarding-main {
-  .left-nav__bottom {
-    opacity: 0;
-    pointer-events: none;
-    transform: translateY(0.5rem);
-  }
-
-  .left-nav-link-text {
-    transition-delay: 0.22s;
-  }
-}
-
 .left-nav-link {
   align-items: center;
   border-radius: 0.5rem;
@@ -326,7 +263,6 @@ watch(route, to => {
 }
 
 .left-nav-link-text {
-  // color: var(--bs-dark);
   color: white;
   font-size: 0.875rem;
   margin-left: 0.75rem;
@@ -363,7 +299,6 @@ watch(route, to => {
 
 .profile-menu-toggle {
   background: rgba(255,255,255,0.075);
-  // background: rgba(0,0,0,0.075);
   border-radius: 0.5rem;
   padding: 0.75rem;
 }

@@ -1,67 +1,23 @@
 <script setup>
-import { computed, watch } from "vue";
+import { computed } from "vue";
 import { useRoute } from "vue-router";
 import LeftNav from "./components/LeftNav.vue";
-import { resetOnboardingNavigationRevealState, useAppLayoutState } from "./composables/useAppLayoutState";
 
 const route = useRoute();
-const { onboardingNavStage } = useAppLayoutState();
-
-const isOnboardingRoute = computed(() => route.name === "Onboarding");
 const isChatRoute = computed(() => route.path.includes("/chats/"));
-const hideLeftNav = computed(() => {
-  if (isOnboardingRoute.value && route.meta?.hideLeftNav) {
-    return onboardingNavStage.value === "hidden";
-  }
-
-  return Boolean(route.meta?.hideLeftNav);
-});
 const isSplitContent = computed(() => Boolean(route.meta?.splitContent));
 const isHomePage = computed(() => Boolean(route.meta?.homeLayout));
-
-watch(
-  () => route.name,
-  (routeName) => {
-    if (routeName !== "Onboarding") {
-      resetOnboardingNavigationRevealState();
-    }
-  },
-  { immediate: true },
-);
-
-watch(
-  hideLeftNav,
-  (hidden) => {
-    if (hidden) {
-      document.body.classList.remove("left-nav-open");
-      document.body.classList.remove("split-content-page");
-    }
-  },
-  { immediate: true },
-);
 </script>
 
 <template>
-  <LeftNav v-if="!hideLeftNav" />
+  <LeftNav />
   <div 
     class="content-container d-flex justify-content-center"
     :class="[
-      (isOnboardingRoute || isChatRoute) ? 'bg-white' : 'bg-titan-white',
-      {
-        'px-0': isSplitContent,
-        'content-container--standalone': hideLeftNav,
-      },
+      isChatRoute ? 'bg-white' : 'bg-titan-white',
+      { 'px-0': isSplitContent },
     ]"
   >
-    <img
-      v-if="hideLeftNav"
-      src="./assets/bg-grid-effect.svg"
-      class="bg-grid-effect onboarding-page__grid-effect"
-    >
-    <div 
-      v-if="hideLeftNav" 
-      class="onboarding-content-gradient" 
-    />
     <main 
       class="page-content"
       :class="isHomePage ? 'my-auto text-content-wrap' : 'w-100'"
@@ -152,10 +108,6 @@ watch(
   padding-right: 0.75rem;
 }
 
-/* 
- * Begin New CSS 
- */
-
 .bg-chat-gradient {
   background-color: $azure-blue;
   background-image: linear-gradient(to right, $azure-blue, $blue);
@@ -174,8 +126,6 @@ watch(
 .bg-chat-highlight,
 .bg-library-highlight,
 .bg-actions-highlight {
-  // background-color: var(--bs-gray-100);
-  // background-color: $titan-white;
   background-color: white;
   overflow: hidden;
   position: relative;
@@ -281,7 +231,6 @@ watch(
 
 body {
   background: $left-nav-background;
-  // background-image: linear-gradient(45deg, $left-nav-background, $biscay-blue, $maastricht-blue);
   height: 100vh;
   width: 100vw;
 }
@@ -320,8 +269,6 @@ body {
 </style>
 
 <style scoped lang="scss">
-@use "sass:color";
-
 .content-container {
   border-radius: 0.75rem;
   box-shadow: 0 4px 12px -4px rgba(0,0,0,0.15);
@@ -339,107 +286,10 @@ body {
   .left-nav-open & {
     left: $left-nav-open-width;
   }
-
-  // &:before {
-  //   background-image: 
-  //     linear-gradient(
-  //       25deg,
-  //       hsl(0deg 0% 100%) 0%,
-  //       hsl(300deg 100% 100%) 34%,
-  //       hsl(300deg 100% 100%) 54%,
-  //       hsl(239deg 100% 94%) 71%,
-  //       hsl(233deg 100% 80%) 86%,
-  //       hsl(216deg 98% 52%) 100%
-  //     );
-  //   content: "";
-  //   // filter: blur(10px);
-  //   inset: 0;
-  //   opacity: 0.1;
-  //   pointer-events: none;
-  //   position: absolute;
-  //   z-index: -1;
-  // }
-
-  &.content-container--standalone {
-    left: $content-inset;
-
-    // &:before,
-    // &:after {
-    //   background-image: url('./assets/gradient-bg-1.png');
-    //   background-size: 100% 100%;
-    //   background-position: left top;
-    //   content: "";
-    //   inset: 0;
-    //   opacity: 1;
-    //   position: absolute;
-    //   z-index: -1;
-    // }
-
-    // &:after {
-    //   background-image: url('./assets/gradient-bg-2.png');
-    //   content: "";
-    //   opacity: 1;
-    // }
-  }
-}
-
-.onboarding-content-gradient {
-  background-image: 
-    linear-gradient(
-      -30deg,
-      hsla(0deg, 0%, 100%, 1) 0%,
-      hsla(240deg, 20%, 98%, 1) 70%,
-      hsla(211deg, 39%, 95%, 1) 80%,
-      hsla(227deg, 89%, 83%, 1) 90%,
-      hsla(232deg, 100%, 64%, 1) 100%
-    );
-  inset: $content-inset;
-  opacity: 0.3125;
-  pointer-events: none;
-  position: fixed;
-  z-index: -1;
 }
 
 .text-content-wrap {
   max-width: 48rem;
   width: 100%;
 }
-
-.onboarding-page__grid-effect {
-  border-top-left-radius: 0.5rem;
-  filter: invert(1);
-  left: $content-inset;
-  mix-blend-mode: unset;
-  opacity: 0.3125;
-  pointer-events: none;
-  position: fixed;
-  top: $content-inset;
-}
-
-// .footer-line {
-//   background-color: $left-nav-background;
-//   background: linear-gradient(to right, $left-nav-background 5%, #ced4da 45%);
-//   bottom: 0;
-//   height: 0.5rem;
-//   left: 4rem;
-//   right: 0;
-//   position: fixed;
-//   transition: all 0.2s ease-in-out;
-//   z-index: 41;
-
-//   &:before {
-//     background-color: transparent;
-//     border-bottom-left-radius: 1rem;
-//     bottom: 0.5rem;
-//     box-shadow: 0 1.5rem 0 0 $left-nav-background;
-//     content: "";
-//     position: absolute;
-//     height: 3rem;
-//     width: 1.5rem;
-//   }
-
-//   .left-nav-open & {
-//     left: 15rem;
-//   }
-// }
 </style>
