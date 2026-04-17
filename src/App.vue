@@ -1,12 +1,27 @@
 <script setup>
-import { computed } from "vue";
+import { computed, watch } from "vue";
 import { useRoute } from "vue-router";
 import LeftNav from "./components/LeftNav.vue";
+import { useOnboardingSyncToast } from "./composables/onboardingSyncToast";
+import { resolveSourceIcon } from "./components/shared/sourceCatalog";
 
 const route = useRoute();
-const isChatRoute = computed(() => route.path.includes("/chats/"));
+const { closeToast, state: onboardingSyncToastState, syncRouteVisibility } = useOnboardingSyncToast();
+const isChatRoute = computed(() => (
+  route.path === "/chat"
+  || route.path.includes("/chats/")
+  || route.path.startsWith("/ivy-in-action/")
+));
 const isSplitContent = computed(() => Boolean(route.meta?.splitContent));
 const isHomePage = computed(() => Boolean(route.meta?.homeLayout));
+const isOnboardingChatRoute = computed(() => route.path === "/chats/ivy-onboarding");
+const syncToastSourceIcon = computed(() => (
+  resolveSourceIcon(onboardingSyncToastState.sourceLabel)
+));
+
+watch(() => route.path, () => {
+  syncRouteVisibility(isOnboardingChatRoute.value);
+}, { immediate: true });
 </script>
 
 <template>
@@ -25,6 +40,47 @@ const isHomePage = computed(() => Boolean(route.meta?.homeLayout));
       <RouterView />
     </main>
   </div>
+
+  <Transition name="sync-toast-fade">
+    <aside
+      v-if="onboardingSyncToastState.showToast"
+      class="onboarding-sync-toast bg-white rounded p-3"
+      role="status"
+      aria-live="polite"
+    >
+      <button
+        type="button"
+        class="btn lead fw-medium border-0 p-1 onboarding-sync-toast__dismiss"
+        v-tooltip="'Feel free to dismiss this. Ivy will let you know when the sync is finished.'"
+        @click="closeToast"
+      >
+        &times;
+      </button>
+      <div class="d-flex align-items-start gap-3">
+        <div class="rounded border p-2 d-flex align-items-center justify-content-center onboarding-sync-toast__icon-wrap">
+          <img src="./assets/syncing.svg" width="20" height="20" alt="">
+        </div>
+        <div class="min-w-0 pe-4">
+          <h6 class="fw-semibold mb-1 d-flex align-items-center gap-1">
+            <img
+              v-if="syncToastSourceIcon"
+              :src="syncToastSourceIcon"
+              :alt="`${onboardingSyncToastState.sourceLabel} icon`"
+              width="16"
+              height="16"
+            >
+            <span class="text-truncate">Syncing {{ onboardingSyncToastState.sourceLabel }}&hellip;</span>
+          </h6>
+          <p class="mb-2 text-secondary not-as-small">
+            Ivy is still importing your source data in the background.
+          </p>
+          <div class="progress" role="progressbar" aria-label="sync progress">
+            <div class="progress-bar" :style="{ width: `${onboardingSyncToastState.progress}%` }"></div>
+          </div>
+        </div>
+      </div>
+    </aside>
+  </Transition>
 </template>
 
 <style lang="scss">
@@ -70,6 +126,15 @@ const isHomePage = computed(() => Boolean(route.meta?.homeLayout));
 
 .bg-titan-white {
   background-color: $titan-white !important;
+}
+
+body.ivy-in-action-entry .content-container {
+  background-color: $titan-white !important;
+}
+
+body.ivy-in-action-hide-cursor .content-container,
+body.ivy-in-action-hide-cursor .content-container * {
+  cursor: none !important;
 }
 
 .bg-ivy-accent {
@@ -281,7 +346,8 @@ body {
   padding-left: 3rem;
   padding-right: 3rem;
   position: fixed;
-  transition: left 0.2s ease-in-out;
+  scroll-behavior: smooth;
+  transition: background-color 0.35s ease-in-out, left 0.2s ease-in-out;
 
   .left-nav-open & {
     left: $left-nav-open-width;
@@ -291,5 +357,39 @@ body {
 .text-content-wrap {
   max-width: 48rem;
   width: 100%;
+}
+
+.onboarding-sync-toast {
+  bottom: 1rem + $content-inset;
+  box-shadow: 0 10px 28px -12px rgba(15, 23, 42, 0.45);
+  box-shadow: 0 16px 24px 2px rgba(0,0,0,0.14), 0 6px 30px 5px rgba(0,0,0,0.12), 0 8px 10px -5px rgba(0,0,0,0.20);
+  max-width: 30rem;
+  position: fixed;
+  right: 1rem + $content-inset;
+  width: calc(100vw - 3rem);
+  z-index: 1250;
+}
+
+.onboarding-sync-toast__dismiss {
+  color: var(--bs-secondary-color);
+  line-height: 1;
+  position: absolute;
+  right: 0.5rem;
+  top: 0.375rem;
+}
+
+.onboarding-sync-toast__icon-wrap {
+  width: 2.5rem;
+}
+
+.sync-toast-fade-enter-active,
+.sync-toast-fade-leave-active {
+  transition: opacity 0.2s ease-in-out, transform 0.2s ease-in-out;
+}
+
+.sync-toast-fade-enter-from,
+.sync-toast-fade-leave-to {
+  opacity: 0;
+  transform: translateY(0.5rem);
 }
 </style>

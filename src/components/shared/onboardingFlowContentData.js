@@ -1,6 +1,4 @@
-export const IVY_PROMPT_NUDGE_MESSAGE = "Good work. See those suggested prompts that just popped up? <strong>Try selecting a prompt</strong> and I'll give you a quick demo of what I can do.";
-
-export const IVY_WRAP_UP_MESSAGE = "Amazing work, you finished onboarding! 🎉 You synced your first source and tested a sample workflow with me. There's no more to this initial walkthrough, but <strong>pick your next move below and I’ll be ready to help with anything.</strong>";
+export const IVY_WRAP_UP_MESSAGE = "And with that, you’re done with onboarding. Nice work. ✨ <strong>Ivy works best with synced data, and your first source is already on its way.</strong> Your next move is simple: check out what Ivy can do with curated sample data, or jump straight into the rest of the platform.";
 
 export const INTRO_MARKUP = `
   <h1 class="fw-bold mb-1">Welcome, Sarith Rigsby</h1>
@@ -111,7 +109,7 @@ export function getSuggestedPrompts(selectedSource, uploadedFileName) {
 }
 
 export function buildSourceSyncIvyMessage(source) {
-  return `Great work setting up your first source! 🎉 While I'm finalizing the ${source} sync, why not explore just some of the ways I can navigate your data. <strong>Try clicking the "sources" pill highlighted below and select your newly-added ${source} app.</strong> ⬇️ ⬇️ ⬇️`;
+  return `Great setup. I’m now syncing <strong>${source}</strong> and I’ll keep you posted on status changes as the sync completes.`;
 }
 
 export function buildSuggestedPromptIntro(source) {

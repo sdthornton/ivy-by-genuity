@@ -1,21 +1,56 @@
 <script setup>
-import { watch } from 'vue';
-import { useRoute } from 'vue-router';
+import { computed, watch } from "vue";
+import { useRoute } from "vue-router";
 
-const toggleLeftNav = () => {
-  document.body.classList.toggle('left-nav-open');
-};
+const LEFT_NAV_OPEN_CLASS = "left-nav-open";
+const SPLIT_CONTENT_CLASS = "split-content-page";
+const GLOBAL_NAV_STORAGE_KEY = "ivy-left-nav-open-global";
+const BUILDER_NAV_STORAGE_KEY = "ivy-left-nav-open-builder";
 
 const route = useRoute();
+const isBuilderRoute = computed(() => Boolean(route.meta?.splitContent));
 
-watch(() => route.meta?.splitContent, (isSplitContent) => {
-  if (isSplitContent) {
-    document.body.classList.remove('left-nav-open');
-    document.body.classList.add('split-content-page');
-  } else {
-    document.body.classList.add('left-nav-open');
-    document.body.classList.remove('split-content-page');
+function setLeftNavOpen(open) {
+  document.body.classList.toggle(LEFT_NAV_OPEN_CLASS, open);
+}
+
+function getStoredLeftNavOpen(storageKey) {
+  const storedValue = localStorage.getItem(storageKey);
+  if (storedValue === null) {
+    return null;
   }
+
+  return storedValue === "true";
+}
+
+function getPreferredLeftNavOpenForRoute() {
+  if (isBuilderRoute.value) {
+    const builderPreference = getStoredLeftNavOpen(BUILDER_NAV_STORAGE_KEY);
+    return builderPreference ?? false;
+  }
+
+  const globalPreference = getStoredLeftNavOpen(GLOBAL_NAV_STORAGE_KEY);
+  return globalPreference ?? true;
+}
+
+function persistLeftNavOpenForRoute(open) {
+  const storageKey = isBuilderRoute.value ? BUILDER_NAV_STORAGE_KEY : GLOBAL_NAV_STORAGE_KEY;
+  localStorage.setItem(storageKey, String(open));
+}
+
+function applyLeftNavStateForRoute() {
+  document.body.classList.toggle(SPLIT_CONTENT_CLASS, isBuilderRoute.value);
+  setLeftNavOpen(getPreferredLeftNavOpenForRoute());
+}
+
+function toggleLeftNav() {
+  const nextOpen = !document.body.classList.contains(LEFT_NAV_OPEN_CLASS);
+  setLeftNavOpen(nextOpen);
+  persistLeftNavOpenForRoute(nextOpen);
+}
+
+watch(() => route.meta?.splitContent, () => {
+  applyLeftNavStateForRoute();
 }, { immediate: true });
 </script>
 
@@ -62,13 +97,19 @@ watch(() => route.meta?.splitContent, (isSplitContent) => {
         <img src="../assets/nav-connectors.svg" width="18" height="18" />
         <span class="left-nav-link-text">Sources</span>
       </RouterLink>
-      <div class="opacity-50 text-white text-uppercase tiny mt-4 ps-2">
-        Recent History
-      </div>
-      <RouterLink to="/chats/ivy-onboarding" class="left-nav-link d-flex align-items-center gap-2">
-        <span class="text-white not-as-small">Ivy Onboarding</span>
-        <img src="../assets/pinned-chat.svg" height="12" width="12" class="invert-to-white ms-auto">
-      </RouterLink>
+      <span class="hide-when-nav-closed">
+        <div class="opacity-50 text-white text-uppercase tiny mt-4 ps-2">
+          Recent History
+        </div>
+        <RouterLink to="/chats/ivy-onboarding" class="left-nav-link d-flex align-items-center gap-2">
+          <span class="text-white not-as-small">Get Started with Ivy</span>
+          <img src="../assets/pinned-chat.svg" height="12" width="12" class="invert-to-white ms-auto">
+        </RouterLink>
+        <RouterLink to="/ivy-in-action" class="left-nav-link d-flex align-items-center gap-2">
+          <span class="text-white not-as-small">Ivy in Action</span>
+          <img src="../assets/pinned-chat.svg" height="12" width="12" class="invert-to-white ms-auto">
+        </RouterLink>
+      </span>
     </div>
     <div class="mt-auto left-nav__bottom">
       <a href="#" class="left-nav-link">
@@ -312,5 +353,20 @@ watch(() => route.meta?.splitContent, (isSplitContent) => {
   line-height: 2.25rem;
   text-align: center;
   width: 2.25rem;
+}
+
+.router-link-active {
+  background-color: rgba(255,255,255,0.125);
+}
+
+.hide-when-nav-closed {
+  display: block;
+  opacity: 0;
+  transition: opacity 0.2s ease-in-out;
+  width: $left-nav-open-width - ($content-inset * 2);
+
+  .left-nav-open & {
+    opacity: 1;
+  }
 }
 </style>

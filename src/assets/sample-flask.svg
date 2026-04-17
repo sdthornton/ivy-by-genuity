@@ -1,0 +1,73 @@
+<svg width="20" height="20" viewBox="0 0 20 20" fill="none"
+     xmlns="http://www.w3.org/2000/svg"
+     aria-hidden="true"
+     style="overflow: visible;">
+  <style>
+    .bubble {
+      transform-box: fill-box;
+      transform-origin: center;
+      animation: rise 1.8s ease-in-out infinite;
+      opacity: 0;
+    }
+
+    .b1 { animation-delay: 0s; }
+    .b2 { animation-delay: 0.5s; }
+    .b3 { animation-delay: 1s; }
+
+    @keyframes rise {
+      0% {
+        opacity: 0;
+        transform: translateY(0) scale(0.72);
+      }
+      15% { opacity: 1; }
+      70% { opacity: 1; }
+      100% {
+        opacity: 0;
+        transform: translateY(-4.2px) scale(1);
+      }
+    }
+
+    .liquid {
+      animation: glow 2.4s ease-in-out infinite;
+    }
+
+    @keyframes glow {
+      0%, 100% { opacity: 0.96; }
+      50% { opacity: 1; }
+    }
+  </style>
+
+  <!-- bubbles -->
+  <circle class="bubble b1" cx="10" cy="4.95" r="0.85" fill="#33D386"/>
+  <circle class="bubble b2" cx="8.0" cy="5.65" r="0.6" fill="#FEC84B"/>
+  <circle class="bubble b3" cx="12.05" cy="6.05" r="0.55" fill="#ffffff"/>
+
+  <!-- liquid (left edge pushed out slightly) -->
+  <path
+    class="liquid"
+    d="M6.0 12.15
+       L5.7 12.75
+       C5.2 13.7 6.1 14.95 7.8 14.95
+       H12.2
+       C13.8 14.95 14.6 13.7 14.1 12.75
+       L13.85 11.35
+       C12.8 11.8 11.45 12.05 10 12.05
+       C8.55 12.05 7.25 11.8 6.0 12.15Z"
+    fill="#465FFF"
+  />
+
+  <!-- flask -->
+  <path
+    d="M8 2.95H12
+       M9 2.95V5.95
+       L5.75 11.9
+       C5.35 12.7 6.1 15.3 7.7 15.3
+       H12.3
+       C13.9 15.3 14.65 12.7 14.25 11.9
+       L11 5.95V2.95"
+    stroke="currentColor"
+    stroke-width="0.75"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+</svg>

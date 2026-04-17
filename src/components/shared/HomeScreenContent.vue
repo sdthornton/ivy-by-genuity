@@ -7,7 +7,7 @@ const chatBox = useTemplateRef("chatBox");
 const greetingHeading = ref(null);
 const greetingSubheading = ref(null);
 
-const greetingHeadingText = "Good afternoon, Sarith";
+const greetingHeadingText = "Good afternoon, <span class=\"text-primary\">Sarith</span>";
 const greetingSubheadingText = "How can I help your IT work today?";
 
 let activeGreetingTypewriterController = null;
@@ -74,9 +74,9 @@ onBeforeUnmount(() => {
 
 <template>
   <section class="my-5 py-5">
-    <div class="text-center mb-5 pb-3">
+    <div class="text-center mb-5">
       <div class="position-relative">
-        <div class="h2 fw-semibold mb-1" style="color: transparent;">Good Afternoon, Sarith</div>
+        <div class="h2 fw-semibold mb-1" style="color: transparent;">Good Afternoon, Sarith Rigsby</div>
         <h2 ref="greetingHeading" class="fw-semibold mb-1 position-absolute top-0 start-0 w-100" />
       </div>
       <div class="position-relative">

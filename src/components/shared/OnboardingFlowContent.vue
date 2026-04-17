@@ -1,8 +1,8 @@
 <script setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from "vue";
-import { useRouter } from "vue-router";
-import typewriter from "../../utils/typewriter";
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from "vue";
+import { onBeforeRouteLeave, useRouter } from "vue-router";
 import { sourceOptions } from "../assistants/stepRuntime";
+import { useOnboardingSyncToast } from "../../composables/onboardingSyncToast";
 import { resolveSourceIcon } from "./sourceCatalog";
 import ChatBox from "./ChatBox.vue";
 import OnboardingStepStatus from "./OnboardingStepStatus.vue";
@@ -10,63 +10,44 @@ import IvyTypewriterMessage from "./IvyTypewriterMessage.vue";
 import SourcesIcon from "../../assets/nav-connectors.svg";
 import LibraryIcon from "../../assets/nav-prompt-library.svg";
 import AssistantsIcon from "../../assets/nav-resources.svg";
-import IvySphere from "./IvySphere.vue";
+import SampleIcon from "../../assets/nav-resources-alt.svg";
 import {
   buildSourceSyncIvyMessage,
-  buildSuggestedPromptIntro,
-  buildSuggestedPromptResponse,
-  getSuggestedPrompts,
   INTRO_MARKUP,
-  IVY_PROMPT_NUDGE_MESSAGE,
   IVY_WRAP_UP_MESSAGE,
 } from "./onboardingFlowContentData";
 
 const router = useRouter();
+const { showToastNow, startSync } = useOnboardingSyncToast();
+
 const fileInputEl = ref(null);
-const onboardingChatBox = ref(null);
-const suggestedPromptPanelEl = ref(null);
 const onboardingStep = ref("source");
 const sourceSelectionConfirmed = ref(false);
 const sourceDetailsSubmitted = ref(false);
 const selectedSource = ref("");
-const hasSelectedSourceInChatPill = ref(false);
-const onboardingChatThread = ref([]);
-const awaitingSuggestedPromptSubmit = ref(false);
-const showSuggestedPrompts = ref(false);
-const hasShownSuggestedPromptsNudge = ref(false);
-const showIvyThinking = ref(false);
-const showPostSubmitIvyMessages = ref(false);
-const showPostStep3WrapUpMessage = ref(false);
-const showPostStep3WrapUpOptions = ref(false);
-const showSourceSelectionUi = ref(false);
+const selectedChatSource = ref("");
+const showPostSubmitIvyMessage = ref(false);
 const showSourceDetailsSetupUi = ref(false);
-const showSourceSelectionCallout = ref(false);
+const showSourceSelectionUi = ref(false);
 const showStep1CompletedCard = ref(false);
 const showStep1DetailsIntro = ref(false);
-const showIvyLoader = ref(true);
-const isIvyLoaderExiting = ref(false);
-const hasStartedIntro = ref(false);
-const sampleResponseCompletionById = ref({});
-const sampleResponseIntroCompletionById = ref({});
-const suggestedPromptSpacerHeight = ref(0);
+const showStep3WrapUpMessage = ref(false);
+const showStep3WrapUpOptions = ref(false);
+const hasStartedIntro = ref(true);
 const isSourceStepFadingOut = ref(false);
 const step1CardShell = ref(null);
-const step1PreviousCardHeight = ref(0);
 const step1CardTone = ref("in-progress");
+const step1PreviousCardHeight = ref(0);
 const step2CardShell = ref(null);
-const step2PreviousCardHeight = ref(0);
 const step2CardTone = ref("in-progress");
+const step2PreviousCardHeight = ref(0);
 const uploadedFileName = ref("");
-let activePromptTypewriterController = null;
-let suggestedPromptResizeObserver = null;
-let activeOnboardingThinkingTimer = null;
 let activeSourceSelectionRevealTimer = null;
 let activeSourceDetailsRevealTimer = null;
 let activeSourceStepSwitchTimer = null;
 let activeStep1DetailsIntroTimer = null;
-let activePostStep3WrapUpTimer = null;
-let activeIvyLoaderStartTimer = null;
-let activeIvyLoaderExitTimer = null;
+let activeStep3WrapUpRevealTimer = null;
+
 const sourceForm = reactive({
   accountEmail: "",
   apiToken: "",
@@ -79,22 +60,13 @@ const uploadSourceIcon = resolveSourceIcon("IT Meeting Notes");
 const TOTAL_ONBOARDING_STEPS = 3;
 const INTERACTIVE_REVEAL_DELAY_MS = 220;
 const CARD_SWAP_DURATION_MS = 200;
-const POST_STEP3_WRAP_UP_DELAY_MS = 420;
-const LOADER_INITIAL_DURATION_MS = 3000;
-const LOADER_EXIT_DURATION_MS = 450;
+const SOURCE_SYNC_TO_WRAP_UP_DELAY_MS = 320;
 const ONBOARDING_IVY_TYPING_TIMING = {
   startDelay: 80,
   minDelay: 12,
   maxDelay: 20,
   whitespaceMinDelay: 0,
   whitespaceMaxDelay: 4,
-};
-const ONBOARDING_SAMPLE_RESPONSE_TYPING_TIMING = {
-  startDelay: 40,
-  minDelay: 5,
-  maxDelay: 10,
-  whitespaceMinDelay: 0,
-  whitespaceMaxDelay: 2,
 };
 
 const onboardingSources = computed(() => (
@@ -110,15 +82,11 @@ const onboardingChatSourceOptions = computed(() => {
 });
 
 const onboardingChatActiveSources = computed(() => {
-  if (selectedSource.value) {
-    return [selectedSource.value];
+  if (!selectedChatSource.value) {
+    return [];
   }
 
-  if (uploadedFileName.value) {
-    return [uploadedFileName.value];
-  }
-
-  return [];
+  return [selectedChatSource.value];
 });
 
 const isSourceStepActive = computed(() => onboardingStep.value === "source");
@@ -128,7 +96,11 @@ const step1Status = computed(() => (
   isSourceStepActive.value && !sourceSelectionConfirmed.value ? "In-Progress" : "Complete"
 ));
 const step2Status = computed(() => (sourceDetailsSubmitted.value ? "Complete" : "In-Progress"));
+const step3Status = computed(() => (showStep3WrapUpOptions.value ? "Complete" : "In-Progress"));
 const shouldShowStep2Status = computed(() => showSourceDetailsSetupUi.value || sourceDetailsSubmitted.value);
+const shouldShowStep3Status = computed(() => (
+  sourceDetailsSubmitted.value && (showStep3WrapUpMessage.value || showStep3WrapUpOptions.value)
+));
 const shouldShowStep1Wrapper = computed(() => isSourceStepActive.value || showStep1CompletedCard.value);
 const shouldShowStep2Wrapper = computed(() => isDetailsStepActive.value);
 const shouldShowStep1InProgressCard = computed(() => isSourceStepActive.value);
@@ -140,30 +112,38 @@ const shouldShowStep2CardShell = computed(() => (
   && (showSourceDetailsSetupUi.value || sourceDetailsSubmitted.value)
 ));
 
+const nextPathPrimaryOption = {
+  bgClass: "bg-chat-highlight",
+  description: "Run an interactive guided demo using curated sample data.",
+  icon: SampleIcon,
+  key: "ivy-in-action",
+  title: "See Ivy in Action",
+};
+
 const completionActionOptions = [
   {
-    description: "Connect more sources so I can combine context and give you stronger insights.",
-    key: "sources",
-    title: "Add Additional Sources",
     bgClass: "bg-chat-highlight",
+    description: "Connect more sources so I can combine context and give you stronger insights.",
     icon: SourcesIcon,
     iconBg: "bg-chat-gradient",
+    key: "sources",
+    title: "Add Additional Sources",
   },
   {
-    description: "This is where commonly used prompts live, and I’ve already added starter ones for you.",
-    key: "prompt-library",
-    title: "Check Out the Prompt Library",
     bgClass: "bg-library-highlight",
+    description: "This is where commonly used prompts live, and I’ve already added starter ones for you.",
     icon: LibraryIcon,
     iconBg: "bg-library-gradient",
+    key: "prompt-library",
+    title: "Check Out the Prompt Library",
   },
   {
-    description: "Review prebuilt assistants tailored to common workflows based on your synced sources.",
-    key: "assistants",
-    title: "Review Templated Assistants",
     bgClass: "bg-actions-highlight",
+    description: "Review prebuilt assistants tailored to common workflows based on your synced sources.",
     icon: AssistantsIcon,
     iconBg: "bg-actions-gradient",
+    key: "assistants",
+    title: "Review Templated Assistants",
   },
 ];
 
@@ -183,53 +163,22 @@ const selectedSourceIcon = computed(() => {
   return null;
 });
 
-function isSampleResponseComplete(messageId) {
-  return Boolean(sampleResponseCompletionById.value[messageId]);
-}
-
-function getStep3Status(messageId) {
-  return isSampleResponseComplete(messageId) ? "Complete" : "In-Progress";
-}
-
-function getCardTone(status) {
-  return status === "Complete" ? "complete" : "in-progress";
-}
-
 const sourceDetailsIntroMarkup = computed(() => (
   `Nice choice with ${selectedSourceLabel.value}. When you’re ready, <strong>fill in the connection details below</strong> and I’ll get your first sync prepared.`
 ));
 
-const conversationLogMessages = computed(() => {
-  const messages = [];
-
-  if (sourceDetailsSubmitted.value && showPostSubmitIvyMessages.value) {
-    messages.push({
-      id: "ivy-source-sync",
-      format: "html",
-      role: "ivy",
-      text: buildSourceSyncIvyMessage(selectedSourceLabel.value),
-    });
-  }
-
-  if (
-    sourceDetailsSubmitted.value
-    && showPostSubmitIvyMessages.value
-    && hasShownSuggestedPromptsNudge.value
-  ) {
-    messages.push({
-      id: "ivy-suggested-prompts",
-      format: "html",
-      role: "ivy",
-      text: IVY_PROMPT_NUDGE_MESSAGE,
-    });
-  }
-
-  return [...messages, ...onboardingChatThread.value];
-});
-
-const suggestedPrompts = computed(() => (
-  getSuggestedPrompts(selectedSource.value, uploadedFileName.value)
+const sourceSyncMessageMarkup = computed(() => (
+  buildSourceSyncIvyMessage(selectedSourceLabel.value)
 ));
+
+const chatInputSourceLabel = computed(() => selectedChatSource.value || "");
+const chatInputSourceIcon = computed(() => (
+  selectedChatSource.value ? resolveSourceIcon(selectedChatSource.value) : ""
+));
+
+function getCardTone(status) {
+  return status === "Complete" ? "complete" : "in-progress";
+}
 
 function selectSource(source) {
   selectedSource.value = source;
@@ -252,33 +201,16 @@ function onFileChange(event) {
   sourceSelectionConfirmed.value = false;
 }
 
-function resetPromptGuidanceState() {
-  hasSelectedSourceInChatPill.value = false;
-  awaitingSuggestedPromptSubmit.value = false;
-  showIvyThinking.value = false;
-  showPostStep3WrapUpMessage.value = false;
-  showPostStep3WrapUpOptions.value = false;
-  showPostSubmitIvyMessages.value = false;
-  showSourceSelectionCallout.value = false;
-  showSuggestedPrompts.value = false;
-  hasShownSuggestedPromptsNudge.value = false;
+function clearStep3FlowState() {
+  selectedChatSource.value = "";
+  showPostSubmitIvyMessage.value = false;
+  showStep3WrapUpMessage.value = false;
+  showStep3WrapUpOptions.value = false;
 
-  if (activePostStep3WrapUpTimer) {
-    window.clearTimeout(activePostStep3WrapUpTimer);
-    activePostStep3WrapUpTimer = null;
+  if (activeStep3WrapUpRevealTimer) {
+    window.clearTimeout(activeStep3WrapUpRevealTimer);
+    activeStep3WrapUpRevealTimer = null;
   }
-}
-
-function resetConversationState() {
-  if (activeOnboardingThinkingTimer) {
-    window.clearTimeout(activeOnboardingThinkingTimer);
-    activeOnboardingThinkingTimer = null;
-  }
-
-  onboardingChatThread.value = [];
-  sampleResponseCompletionById.value = {};
-  sampleResponseIntroCompletionById.value = {};
-  resetPromptGuidanceState();
 }
 
 function continueToDashboard() {
@@ -303,7 +235,7 @@ function continueToDashboard() {
   activeSourceStepSwitchTimer = window.setTimeout(() => {
     onboardingStep.value = "details";
     showSourceDetailsSetupUi.value = false;
-    resetConversationState();
+    clearStep3FlowState();
     sourceDetailsSubmitted.value = false;
     isSourceStepFadingOut.value = false;
     showStep1CompletedCard.value = true;
@@ -324,112 +256,26 @@ function backToSourceSelection() {
   showStep1DetailsIntro.value = false;
   showSourceDetailsSetupUi.value = false;
   isSourceStepFadingOut.value = false;
-  resetPromptGuidanceState();
+  clearStep3FlowState();
 }
 
 function submitSourceDetails() {
-  resetConversationState();
+  clearStep3FlowState();
   sourceDetailsSubmitted.value = true;
+  startSync(selectedSourceLabel.value);
 }
 
 function skipToDashboard() {
   router.push("/");
 }
 
-async function applySuggestedPrompt(prompt) {
-  const chatInput = onboardingChatBox.value?.chatInput;
-  if (!chatInput) {
-    return;
-  }
-
-  const controller = new AbortController();
-  activePromptTypewriterController?.abort();
-  activePromptTypewriterController = controller;
-
-  chatInput.value = "";
-  chatInput.focus();
-  awaitingSuggestedPromptSubmit.value = false;
-  showSuggestedPrompts.value = false;
-
-  try {
-    await typewriter(chatInput, prompt, {
-      clearElementFirst: true,
-      signal: controller.signal,
-      timing: {
-        startDelay: 0,
-        minDelay: 5,
-        maxDelay: 11,
-        whitespaceMinDelay: 0,
-        whitespaceMaxDelay: 2,
-      },
-    });
-  } catch (error) {
-    if (error?.name !== "AbortError") {
-      throw error;
-    }
-    return;
-  } finally {
-    if (activePromptTypewriterController === controller) {
-      activePromptTypewriterController = null;
-    }
-  }
-
-  awaitingSuggestedPromptSubmit.value = true;
-}
-
-async function submitOnboardingPrompt(rawPrompt) {
-  if (!awaitingSuggestedPromptSubmit.value) {
-    return;
-  }
-
+function submitOnboardingPrompt(rawPrompt) {
   const prompt = String(rawPrompt || "").trim();
   if (!prompt) {
     return;
   }
 
-  const chatInput = onboardingChatBox.value?.chatInput;
-  onboardingChatThread.value.push({
-    id: `user-${Date.now()}`,
-    filterSourceIcon: hasSelectedSourceInChatPill.value ? (selectedSourceIcon.value || "") : "",
-    filterSourceLabel: hasSelectedSourceInChatPill.value ? selectedSourceLabel.value : "",
-    format: "text",
-    role: "user",
-    text: prompt,
-  });
-
-  if (chatInput) {
-    chatInput.value = "";
-    chatInput.focus();
-  }
-
-  awaitingSuggestedPromptSubmit.value = false;
-  hasSelectedSourceInChatPill.value = false;
-  showSourceSelectionCallout.value = false;
-  showIvyThinking.value = true;
-  await new Promise((resolve) => {
-    activeOnboardingThinkingTimer = window.setTimeout(resolve, 520);
-  });
-  activeOnboardingThinkingTimer = null;
-  showIvyThinking.value = false;
-
-  const responseMessageId = `ivy-${Date.now()}`;
-  sampleResponseCompletionById.value = {
-    ...sampleResponseCompletionById.value,
-    [responseMessageId]: false,
-  };
-  sampleResponseIntroCompletionById.value = {
-    ...sampleResponseIntroCompletionById.value,
-    [responseMessageId]: false,
-  };
-  onboardingChatThread.value.push({
-    id: responseMessageId,
-    format: "html",
-    intro: buildSuggestedPromptIntro(selectedSourceLabel.value),
-    kind: "sample-response",
-    role: "ivy",
-    sourceLabel: selectedSourceLabel.value,
-    text: buildSuggestedPromptResponse(prompt, selectedSourceLabel.value),
-  });
+  selectedChatSource.value = "";
 }
 
 function handleOnboardingChatSourceSelect(source) {
@@ -437,15 +283,11 @@ function handleOnboardingChatSourceSelect(source) {
   const selectedFromPill = String(source || "").trim().toLowerCase();
   const hasMatchingSource = Boolean(
     sourceDetailsSubmitted.value
-      && selectedSourceName
-      && selectedFromPill
-      && selectedSourceName === selectedFromPill
+    && selectedSourceName
+    && selectedFromPill
+    && selectedSourceName === selectedFromPill
   );
-  hasSelectedSourceInChatPill.value = hasMatchingSource;
-  showSuggestedPrompts.value = hasMatchingSource;
-  if (hasMatchingSource) {
-    hasShownSuggestedPromptsNudge.value = true;
-  }
+  selectedChatSource.value = hasMatchingSource ? source : "";
 }
 
 function handleIntroTypingDone() {
@@ -494,13 +336,52 @@ function handleStep1CompletedCardEntered() {
   }, 300);
 }
 
+function handleSourceSyncMessageDone() {
+  if (!sourceDetailsSubmitted.value) {
+    return;
+  }
+
+  if (activeStep3WrapUpRevealTimer) {
+    window.clearTimeout(activeStep3WrapUpRevealTimer);
+  }
+
+  activeStep3WrapUpRevealTimer = window.setTimeout(() => {
+    showStep3WrapUpMessage.value = true;
+    activeStep3WrapUpRevealTimer = null;
+  }, SOURCE_SYNC_TO_WRAP_UP_DELAY_MS);
+}
+
 function handleStep2CardEntered() {
   if (!sourceDetailsSubmitted.value) {
     return;
   }
 
-  showSourceSelectionCallout.value = false;
-  showPostSubmitIvyMessages.value = true;
+  showPostSubmitIvyMessage.value = true;
+}
+
+function handleStep3WrapUpTypingDone() {
+  showStep3WrapUpOptions.value = true;
+}
+
+function handlePostStep3ActionSelect(actionKey) {
+  if (actionKey === "ivy-in-action") {
+    router.push("/ivy-in-action");
+    return;
+  }
+
+  if (actionKey === "sources") {
+    router.push("/sources");
+    return;
+  }
+
+  if (actionKey === "prompt-library") {
+    router.push("/prompt-library");
+    return;
+  }
+
+  if (actionKey === "assistants") {
+    router.push("/assistants");
+  }
 }
 
 function captureCardHeight(shellRef, heightRef) {
@@ -597,140 +478,21 @@ function handleStep2CardEnter(el, done) {
   });
 }
 
-function handleSampleResponseTypingDone(messageId) {
-  sampleResponseCompletionById.value = {
-    ...sampleResponseCompletionById.value,
-    [messageId]: true,
-  };
-
-  if (showPostStep3WrapUpMessage.value || showPostStep3WrapUpOptions.value) {
-    return;
-  }
-
-  const latestSampleResponse = [...onboardingChatThread.value]
-    .reverse()
-    .find((message) => message.kind === "sample-response");
-  if (!latestSampleResponse || latestSampleResponse.id !== messageId) {
-    return;
-  }
-
-  if (activePostStep3WrapUpTimer) {
-    window.clearTimeout(activePostStep3WrapUpTimer);
-  }
-
-  activePostStep3WrapUpTimer = window.setTimeout(() => {
-    showPostStep3WrapUpMessage.value = true;
-    activePostStep3WrapUpTimer = null;
-  }, POST_STEP3_WRAP_UP_DELAY_MS);
-}
-
-function hasSampleResponseIntroCompleted(messageId) {
-  return Boolean(sampleResponseIntroCompletionById.value[messageId]);
-}
-
-function handleSampleResponseIntroTypingDone(messageId) {
-  sampleResponseIntroCompletionById.value = {
-    ...sampleResponseIntroCompletionById.value,
-    [messageId]: true,
-  };
-}
-
-function handleConversationIvyTypingDone(messageId) {
-  if (messageId === "ivy-source-sync") {
-    showSourceSelectionCallout.value = true;
-  }
-}
-
-function handlePostStep3WrapUpTypingDone() {
-  showPostStep3WrapUpOptions.value = true;
-}
-
-function handlePostStep3ActionSelect(actionKey) {
-  if (actionKey === "sources") {
-    router.push("/sources");
-    return;
-  }
-
-  if (actionKey === "prompt-library") {
-    router.push("/prompt-library");
-    return;
-  }
-
-  if (actionKey === "assistants") {
-    router.push("/assistants");
-  }
-}
-
-function disconnectSuggestedPromptObserver() {
-  if (!suggestedPromptResizeObserver) {
-    return;
-  }
-
-  suggestedPromptResizeObserver.disconnect();
-  suggestedPromptResizeObserver = null;
-}
-
-function syncSuggestedPromptSpacerHeight() {
-  const panelEl = suggestedPromptPanelEl.value;
-  if (!showSuggestedPrompts.value || !panelEl) {
-    suggestedPromptSpacerHeight.value = 0;
-    return;
-  }
-
-  suggestedPromptSpacerHeight.value = panelEl.offsetHeight;
-}
-
-async function connectSuggestedPromptObserver() {
-  if (!showSuggestedPrompts.value) {
-    disconnectSuggestedPromptObserver();
-    suggestedPromptSpacerHeight.value = 0;
-    return;
-  }
-
-  await nextTick();
-
-  const panelEl = suggestedPromptPanelEl.value;
-  if (!panelEl) {
-    suggestedPromptSpacerHeight.value = 0;
-    return;
-  }
-
-  disconnectSuggestedPromptObserver();
-
-  suggestedPromptResizeObserver = new ResizeObserver(() => {
-    syncSuggestedPromptSpacerHeight();
-  });
-  suggestedPromptResizeObserver.observe(panelEl);
-  syncSuggestedPromptSpacerHeight();
-}
-
 onMounted(() => {
   showSourceSelectionUi.value = onboardingStep.value !== "source";
   showStep1CompletedCard.value = onboardingStep.value !== "source";
   showStep1DetailsIntro.value = onboardingStep.value !== "source";
   step1CardTone.value = getCardTone(step1Status.value);
   step2CardTone.value = getCardTone(step2Status.value);
-  activeIvyLoaderStartTimer = window.setTimeout(() => {
-    hasStartedIntro.value = true;
-    isIvyLoaderExiting.value = true;
-    activeIvyLoaderStartTimer = null;
+});
 
-    activeIvyLoaderExitTimer = window.setTimeout(() => {
-      showIvyLoader.value = false;
-      activeIvyLoaderExitTimer = null;
-    }, LOADER_EXIT_DURATION_MS);
-  }, LOADER_INITIAL_DURATION_MS);
-  connectSuggestedPromptObserver();
+onBeforeRouteLeave(() => {
+  if (sourceDetailsSubmitted.value) {
+    showToastNow();
+  }
 });
 
 onBeforeUnmount(() => {
-  activePromptTypewriterController?.abort();
-  activePromptTypewriterController = null;
-  disconnectSuggestedPromptObserver();
-  if (activeOnboardingThinkingTimer) {
-    window.clearTimeout(activeOnboardingThinkingTimer);
-    activeOnboardingThinkingTimer = null;
-  }
   if (activeSourceSelectionRevealTimer) {
     window.clearTimeout(activeSourceSelectionRevealTimer);
     activeSourceSelectionRevealTimer = null;
@@ -747,45 +509,16 @@ onBeforeUnmount(() => {
     window.clearTimeout(activeStep1DetailsIntroTimer);
     activeStep1DetailsIntroTimer = null;
   }
-  if (activePostStep3WrapUpTimer) {
-    window.clearTimeout(activePostStep3WrapUpTimer);
-    activePostStep3WrapUpTimer = null;
-  }
-  if (activeIvyLoaderStartTimer) {
-    window.clearTimeout(activeIvyLoaderStartTimer);
-    activeIvyLoaderStartTimer = null;
-  }
-  if (activeIvyLoaderExitTimer) {
-    window.clearTimeout(activeIvyLoaderExitTimer);
-    activeIvyLoaderExitTimer = null;
-  }
-});
-
-watch(showSuggestedPrompts, () => {
-  connectSuggestedPromptObserver();
-});
-
-watch(suggestedPromptSpacerHeight, (nextHeight, previousHeight) => {
-  if (nextHeight > previousHeight && nextHeight > 0) {
-    const contentContainer = document.querySelector(".content-container");
-    if (contentContainer) {
-      contentContainer.scrollTop += nextHeight;
-    }
+  if (activeStep3WrapUpRevealTimer) {
+    window.clearTimeout(activeStep3WrapUpRevealTimer);
+    activeStep3WrapUpRevealTimer = null;
   }
 });
 </script>
 
 <template>
   <section class="onboarding-page">
-    <div class="onboarding-content">
-      <div
-        v-if="showIvyLoader"
-        class="onboarding-loader"
-        :class="{ 'onboarding-loader--exiting': isIvyLoaderExiting }"
-      >
-        <IvySphere />
-      </div>
-
+    <div class="chat-content">
       <IvyTypewriterMessage
         v-if="hasStartedIntro"
         class="ivy-chat-width mb-5"
@@ -858,6 +591,7 @@ watch(suggestedPromptSpacerHeight, (nextHeight, previousHeight) => {
                 <button
                   type="button"
                   class="btn not-as-small text-muted"
+                  v-tooltip="{ content: 'You can revisit this onboarding chat at any time.', placement: 'top' }"
                   @click="skipToDashboard"
                 >
                   Skip to dashboard
@@ -984,6 +718,7 @@ watch(suggestedPromptSpacerHeight, (nextHeight, previousHeight) => {
                       <button
                         type="button"
                         class="btn not-as-small text-muted ms-auto"
+                        v-tooltip="{ content: 'You can revisit this onboarding chat at any time.', placement: 'top' }"
                         @click="skipToDashboard"
                       >
                         Skip to dashboard
@@ -1032,130 +767,85 @@ watch(suggestedPromptSpacerHeight, (nextHeight, previousHeight) => {
             />
           </div>
         </div>
-        <div v-if="conversationLogMessages.length || showIvyThinking" class="my-5">
-          <template v-for="message in conversationLogMessages" :key="message.id">
-            <article
-              v-if="message.role === 'user'"
-              class="user-chat-bubble rounded bg-iceberg-blue px-3 py-2 mb-4 position-relative"
-            >
-              <div
-                v-if="message.filterSourceLabel"
-                class="d-flex align-items-center mb-0"
-              >
-                <span class="smallest text-dark opacity-50 me-2">Source:</span>
-                <img
-                  v-if="message.filterSourceIcon"
-                  :src="message.filterSourceIcon"
-                  :alt="message.filterSourceLabel"
-                  width="14"
-                  height="14"
-                  class="me-1"
-                >
-                <span class="smallest text-dark opacity-75">{{ message.filterSourceLabel }}</span>
-              </div>
-              <p class="mb-0" style="white-space: pre-line;">{{ message.text }}</p>
-            </article>
-            <div
-              v-else-if="message.kind === 'sample-response'"
-              class="mb-4 w-100"
-            >
-              <IvyTypewriterMessage
-                class="assistant-chat-message ivy-chat-width"
-                :markup="message.intro || ''"
-                :rerun-key="`${message.id}-intro`"
-                :timing="ONBOARDING_IVY_TYPING_TIMING"
-                @done="handleSampleResponseIntroTypingDone(message.id)"
-              />
-              <hr v-if="hasSampleResponseIntroCompleted(message.id)" class="my-4">
-              <div
-                v-if="hasSampleResponseIntroCompleted(message.id)"
-                class="position-relative onboarding-sample-response-card"
-              >
-                <div class="onboarding-sample-response-note smallest text-secondary">
-                  Sample data. Updates when {{ message.sourceLabel || selectedSourceLabel }} sync completes.
-                </div>
-                <div 
-                  class="chat-document-action"
-                  v-tooltip="{ content: 'Download', placement: 'bottom' }"
-                >
-                  <img src="../../assets/download.svg" height="20" width="20">
-                </div>
-                <IvyTypewriterMessage
-                  class="w-100"
-                  as="div"
-                  :markup="`<div class='border rounded px-5 py-4 pt-5 mx-0 bg-white onboarding-interactive-box w-100'>${message.text}</div>`"
-                  :rerun-key="message.id"
-                  :timing="ONBOARDING_SAMPLE_RESPONSE_TYPING_TIMING"
-                  @done="handleSampleResponseTypingDone(message.id)"
-                />
-              </div>
-              <div class="true-small text-secondary mt-2">
-                <OnboardingStepStatus
-                  :transition-key="message.id"
-                  :status="getStep3Status(message.id)"
-                  :step-number="3"
-                  :total-steps="TOTAL_ONBOARDING_STEPS"
-                />
-              </div>
-            </div>
-            <IvyTypewriterMessage
-              v-else
-              class="assistant-chat-message ivy-chat-width mb-4"
-              :markup="message.text"
-              :rerun-key="message.id"
-              :timing="ONBOARDING_IVY_TYPING_TIMING"
-              @done="handleConversationIvyTypingDone(message.id)"
-            />
-          </template>
-          <article v-if="showIvyThinking" class="assistant-chat-message ivy-chat-width mb-4">
-            <span class="ivy-thinking-text">Ivy is thinking...</span>
-          </article>
+
+        <div v-if="showPostSubmitIvyMessage" class="my-5">
+          <IvyTypewriterMessage
+            class="assistant-chat-message ivy-chat-width mb-4"
+            :markup="sourceSyncMessageMarkup"
+            rerun-key="ivy-source-sync"
+            :timing="ONBOARDING_IVY_TYPING_TIMING"
+            @done="handleSourceSyncMessageDone"
+          />
         </div>
 
-        <hr
-          v-if="showPostStep3WrapUpMessage || showPostStep3WrapUpOptions"
-          class="mt-4 mb-5"
-        >
+        <div v-if="showStep3WrapUpMessage || showStep3WrapUpOptions" class="onboarding-step-wrapper mb-5">
+          <hr class="mt-4 mb-5">
 
-        <IvyTypewriterMessage
-          v-if="showPostStep3WrapUpMessage"
-          class="assistant-chat-message ivy-chat-width mb-4"
-          :markup="IVY_WRAP_UP_MESSAGE"
-          rerun-key="ivy-wrap-up"
-          :timing="ONBOARDING_IVY_TYPING_TIMING"
-          @done="handlePostStep3WrapUpTypingDone"
-        />
+          <IvyTypewriterMessage
+            v-if="showStep3WrapUpMessage"
+            class="assistant-chat-message ivy-chat-width mb-4"
+            :markup="IVY_WRAP_UP_MESSAGE"
+            rerun-key="ivy-wrap-up"
+            :timing="ONBOARDING_IVY_TYPING_TIMING"
+            @done="handleStep3WrapUpTypingDone"
+          />
 
-        <Transition name="onboarding-step-shell-fade">
-          <div v-if="showPostStep3WrapUpOptions" class="mb-5">
-            <div class="row g-3">
-              <div
-                v-for="option in completionActionOptions"
-                :key="option.key"
-                class="col-md-4"
+          <Transition name="onboarding-step-shell-fade">
+            <div v-if="showStep3WrapUpOptions" class="mb-4">
+              <button
+                type="button"
+                class="border p-4 rounded w-100 text-start mb-3 onboarding-completion-option onboarding-next-path-primary"
+                :class="nextPathPrimaryOption.bgClass"
+                @click="handlePostStep3ActionSelect(nextPathPrimaryOption.key)"
               >
-                <button
-                  type="button"
-                  class="border p-3 rounded w-100 h-100 text-start onboarding-completion-option"
-                  :class="[option.bgClass]"
-                  v-tooltip="{ content: option.description, placement: 'bottom' }"
-                  @click="handlePostStep3ActionSelect(option.key)"
-                >
-                  <div class="d-flex gap-3 align-items-center">
-                    <div 
-                      class="p-2 rounded d-flex align-items-center justify-content-center"
-                      :class="[option.iconBg]"
-                    >
-                      <img :src="option.icon" height="20" width="20" class="invert-to-white">
-                    </div>
-                    <h6 class="reduced mb-0 text-wrap-balance">{{ option.title }}</h6>
-                    <img src="../../assets/arrow-right-c-dark.svg" height="14" width="14">
+                <div class="d-flex gap-3 align-items-center position-relative">
+                  <img :src="nextPathPrimaryOption.icon" height="28" width="28">
+                  <div>
+                    <h6 class=" mb-0 text-wrap-balance">{{ nextPathPrimaryOption.title }}</h6>
+                    <p class="not-as-small text-secondary mb-0">{{ nextPathPrimaryOption.description }}</p>
                   </div>
-                </button>
+                  <img src="../../assets/arrow-right-c-dark.svg" height="14" width="14" class="ms-auto">
+                </div>
+              </button>
+
+              <div class="row g-3">
+                <div
+                  v-for="option in completionActionOptions"
+                  :key="option.key"
+                  class="col-md-4"
+                >
+                  <button
+                    type="button"
+                    class="border p-3 rounded w-100 h-100 text-start onboarding-completion-option"
+                    :class="option.bgClass"
+                    v-tooltip="{ content: option.description, placement: 'bottom' }"
+                    @click="handlePostStep3ActionSelect(option.key)"
+                  >
+                    <div class="d-flex gap-3 align-items-center position-relative">
+                      <div
+                        class="p-2 rounded d-flex align-items-center justify-content-center"
+                        :class="option.iconBg"
+                      >
+                        <img :src="option.icon" height="16" width="16" class="invert-to-white">
+                      </div>
+                      <h6 class="reduced mb-0 text-wrap-balance">{{ option.title }}</h6>
+                      <img src="../../assets/arrow-right-c-dark.svg" height="14" width="14" class="ms-auto">
+                    </div>
+                  </button>
+                </div>
               </div>
             </div>
+          </Transition>
+
+          <div v-if="shouldShowStep3Status" class="mt-2">
+            <OnboardingStepStatus
+              transition-key="step-3"
+              :status="step3Status"
+              :step-number="3"
+              :total-steps="TOTAL_ONBOARDING_STEPS"
+            />
           </div>
-        </Transition>
+        </div>
       </div>
 
       <input
@@ -1164,42 +854,17 @@ watch(suggestedPromptSpacerHeight, (nextHeight, previousHeight) => {
         class="d-none"
         @change="onFileChange"
       >
-      <div class="suggested-prompt-chat-spacer" :style="{ height: `${suggestedPromptSpacerHeight}px` }"></div>
 
       <div class="mt-auto onboarding-details-chat onboarding-details-chat--container-anchored">
-        <div
-          v-if="sourceDetailsSubmitted && showSuggestedPrompts"
-          ref="suggestedPromptPanelEl"
-          class="chat-suggested-prompts p-3 bg-light rounded reduced onboarding-interactive-box"
-        >
-          <h6 class="border-bottom pb-2 d-flex align-items-center gap-2">
-            <img src="../../assets/nav-resources-alt.svg" height="16" width="16">
-            Suggested Prompts
-          </h6>
-          <div
-            v-for="prompt in suggestedPrompts"
-            :key="prompt"
-            class="chat-suggested-prompt d-flex align-items-center gap-2 rounded-sm px-2 py-1"
-            @click="applySuggestedPrompt(prompt)"
-          >
-            <span>{{ prompt }}</span>
-            <img src="../../assets/arrow-right-c-dark.svg" class="ms-auto" width="14" height="14">
-          </div>
-        </div>
-
         <ChatBox
-          ref="onboardingChatBox"
           class="w-100 onboarding-interactive-box"
           show-quick-actions
-          :chat-placeholder="sourceDetailsSubmitted ? 'Ask Ivy anything...' : 'Need a hand? Ask Ivy or paste your details here...'"
-          :input-source-icon="hasSelectedSourceInChatPill ? (selectedSourceIcon || '') : ''"
-          :input-source-label="hasSelectedSourceInChatPill ? selectedSourceLabel : ''"
+          :chat-placeholder="sourceDetailsSubmitted ? 'Ask Ivy anything...' : 'Need a hand? Ask Ivy or just enter your source details here...'"
+          :input-source-icon="chatInputSourceIcon"
+          :input-source-label="chatInputSourceLabel"
           :source-options="onboardingChatSourceOptions"
           :active-sources="onboardingChatActiveSources"
-          :highlight-sources-pill="sourceDetailsSubmitted && showSourceSelectionCallout && !hasSelectedSourceInChatPill"
-          :sources-callout-text="sourceDetailsSubmitted && showSourceSelectionCallout && !hasSelectedSourceInChatPill ? 'Select your new source first.' : ''"
-          :highlight-submit-button="awaitingSuggestedPromptSubmit"
-          :submit-callout-text="awaitingSuggestedPromptSubmit ? 'Click send to run this prompt.' : ''"
+          :show-generic-onboarding="false"
           @select-source="handleOnboardingChatSourceSelect"
           @submit="submitOnboardingPrompt"
         />
@@ -1209,34 +874,6 @@ watch(suggestedPromptSpacerHeight, (nextHeight, previousHeight) => {
 </template>
 
 <style scoped lang="scss">
-.onboarding-content {
-  margin: 0 auto;
-  max-width: 48rem;
-  position: relative;
-  width: min(100%, 48rem);
-  z-index: 1;
-}
-
-.onboarding-loader {
-  left: 0;
-  opacity: 1;
-  pointer-events: none;
-  position: absolute;
-  top: 0;
-  transform: translateX(0);
-  transition: all 0.45s ease-in-out;
-  z-index: 10;
-}
-
-.onboarding-loader--exiting {
-  opacity: 0;
-  transform: translateX(10rem);
-}
-
-.ivy-chat-width {
-  max-width: 40rem;
-}
-
 .onboarding-page {
   display: flex;
   justify-content: center;
@@ -1302,16 +939,8 @@ watch(suggestedPromptSpacerHeight, (nextHeight, previousHeight) => {
   }
 }
 
-.onboarding-sample-response-card {
-  position: relative;
-}
-
-.onboarding-sample-response-note {
-  position: absolute;
-  left: 1rem;
-  text-align: right;
-  top: 0.75rem;
-  z-index: 2;
+.onboarding-next-path-primary {
+  display: block;
 }
 
 .onboarding-sources {
@@ -1361,8 +990,8 @@ watch(suggestedPromptSpacerHeight, (nextHeight, previousHeight) => {
 
 .onboarding-details-chat {
   background-color: white;
-  border-top-left-radius: 1.8125rem;  // Matches the rendered radius of the chat box.
-  border-top-right-radius: 1.8125rem; // Matches the rendered radius of the chat box.
+  border-top-left-radius: 1.8125rem;
+  border-top-right-radius: 1.8125rem;
   bottom: $content-inset;
   left: 50%;
   max-width: 48rem;
@@ -1375,8 +1004,8 @@ watch(suggestedPromptSpacerHeight, (nextHeight, previousHeight) => {
   &:before {
     background-color: white;
     content: "";
-    position: absolute;
     inset: 0 -6rem;
+    position: absolute;
     z-index: -1;
   }
 }
@@ -1416,38 +1045,4 @@ watch(suggestedPromptSpacerHeight, (nextHeight, previousHeight) => {
     width: calc(100vw - 2rem);
   }
 }
-
-.chat-suggested-prompts {
-  bottom: calc(100% + 1.5rem);
-  left: 1.5rem;
-  position: absolute;
-  width: calc(100% - 3rem);
-
-  &:before {
-    background: $maastricht-blue;
-    border-radius: 1rem;
-    box-shadow: 0 4px 24px -2px rgba(0, 0, 0, 1);
-    content: "";
-    inset: -1.5rem -1.5rem -4rem;
-    opacity: 0.25;
-    position: absolute;
-    z-index: -1;
-  }
-}
-
-.chat-suggested-prompt {
-  cursor: pointer;
-  transition: all 0.2s ease-in-out;
-
-  &:hover {
-    background-color: $iceberg-blue;
-  }
-}
-
-.suggested-prompt-chat-spacer {
-  height: 0;
-  transition: height 0.2s ease-in-out;
-  width: 100%;
-}
-
 </style>

@@ -1,17 +1,26 @@
 <script setup>
-
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, useTemplateRef, watch } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, useSlots, useTemplateRef, watch } from "vue";
 import SourceSelectorDropdown from "./SourceSelectorDropdown.vue";
 
 const chatInput = useTemplateRef("chatInput");
 const inputSourcePrefix = useTemplateRef("inputSourcePrefix");
+const submitButton = useTemplateRef("submitButton");
+const disabledTooltipHost = useTemplateRef("disabledTooltipHost");
 const dynamicInputPaddingLeft = ref("");
+const disabledInputTooltipVisible = ref(false);
+const disabledInputTooltipX = ref(0);
+const disabledInputTooltipY = ref(0);
 let inputSourcePrefixResizeObserver = null;
+const slots = useSlots();
 
 const props = defineProps({
   showQuickActions: {
     type: Boolean,
     default: true,
+  },
+  hideQuickActions: {
+    type: Boolean,
+    default: false,
   },
   chatPlaceholder: {
     type: String,
@@ -57,6 +66,26 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  submitLabel: {
+    type: String,
+    default: "",
+  },
+  forceSubmitHover: {
+    type: Boolean,
+    default: false,
+  },
+  forceSubmitActive: {
+    type: Boolean,
+    default: false,
+  },
+  disableInputMouseInteractions: {
+    type: Boolean,
+    default: false,
+  },
+  inputDisabledTooltip: {
+    type: String,
+    default: "",
+  },
 });
 
 const emit = defineEmits(["select-source", "connect-source", "submit"]);
@@ -66,6 +95,10 @@ const inactiveSources = computed(() => (
 ));
 const showInputSourceContext = computed(() => (
   Boolean(props.inputSourceIcon && props.inputSourceLabel)
+));
+const hasBelowContent = computed(() => Boolean(slots["below-content"]));
+const showInputDisabledOverlay = computed(() => (
+  Boolean(props.disableInputMouseInteractions && props.inputDisabledTooltip)
 ));
 
 function handleSelectSource(source) {
@@ -77,7 +110,32 @@ function handleConnectSource(source) {
 }
 
 function handleSubmit() {
-  emit("submit", chatInput.value?.value || "");
+  const submittedValue = chatInput.value?.value || "";
+  emit("submit", submittedValue);
+  if (chatInput.value) {
+    chatInput.value.value = "";
+  }
+}
+
+function showDisabledInputTooltip(event) {
+  if (!showInputDisabledOverlay.value || !disabledTooltipHost.value) {
+    return;
+  }
+
+  const hostRect = disabledTooltipHost.value.getBoundingClientRect();
+  const clientX = typeof event?.clientX === "number"
+    ? event.clientX
+    : hostRect.left + (hostRect.width / 2);
+  const clientY = typeof event?.clientY === "number"
+    ? event.clientY
+    : hostRect.top + (hostRect.height / 2);
+  disabledInputTooltipX.value = Math.round(clientX - hostRect.left);
+  disabledInputTooltipY.value = Math.round(clientY - hostRect.top);
+  disabledInputTooltipVisible.value = true;
+}
+
+function hideDisabledInputTooltip() {
+  disabledInputTooltipVisible.value = false;
 }
 
 function updateDynamicInputPadding() {
@@ -146,20 +204,41 @@ watch(() => props.inputSourceLabel, async () => {
 
 defineExpose({
   chatInput,
+  submitButton,
 });
 
 </script>
 
 <template>
   <div class="text-center search-wrap">
-    <div class="position-relative">
+    <div ref="disabledTooltipHost" class="position-relative">
       <input
         type="text"
         class="mx-auto chat-prompt-input form-control py-3 pe-4 rounded-pill"
         :style="{ paddingLeft: dynamicInputPaddingLeft || undefined }"
         ref="chatInput"
+        :readonly="disableInputMouseInteractions"
+        :tabindex="disableInputMouseInteractions ? -1 : 0"
         placeholder=""
       >
+      <div
+        v-if="showInputDisabledOverlay"
+        class="chat-input-disabled-overlay"
+        @mouseenter="showDisabledInputTooltip"
+        @mouseleave="hideDisabledInputTooltip"
+      ></div>
+      <div
+        v-if="showInputDisabledOverlay"
+        class="chat-input-disabled-tooltip-anchor"
+        :style="{ left: `${disabledInputTooltipX}px`, top: `${disabledInputTooltipY}px` }"
+        v-tooltip="{
+          content: inputDisabledTooltip,
+          placement: 'bottom',
+          shown: disabledInputTooltipVisible,
+          triggers: [],
+        }"
+      >
+      </div>
       <div class="position-absolute start-0 top-50 translate-middle-y ms-4 text-muted d-flex align-items-center">
         <div ref="inputSourcePrefix" class="d-flex align-items-center">
           <img src="../../assets/plus-round.svg" width="16" height="16" class="me-3">
@@ -182,12 +261,33 @@ defineExpose({
           <img src="../../assets/voice.svg" width="20" height="20">
         </button>
         <div class="position-relative d-flex align-items-center">
+          <div
+            v-if="showInputDisabledOverlay"
+            class="chat-submit-disabled-overlay"
+            @mouseenter="showDisabledInputTooltip"
+            @mouseleave="hideDisabledInputTooltip"
+          ></div>
           <button
+            ref="submitButton"
             class="btn btn-primary btn-sm border-0 rounded-pill p-1 d-flex align-items-center justify-content-center"
-            :class="{ 'chat-submit-btn--highlight': highlightSubmitButton }"
+            :class="{
+              'chat-submit-btn--text': submitLabel,
+              'chat-submit-btn--highlight': highlightSubmitButton,
+              'chat-submit-btn--forced-hover': forceSubmitHover,
+              'chat-submit-btn--forced-active': forceSubmitActive,
+            }"
             @click="handleSubmit"
           >
-            <img src="../../assets/arrow-right-c.svg" width="20" height="20">
+            <template v-if="submitLabel">
+              <span>{{ submitLabel }}</span>
+              <img
+                src="../../assets/arrow-right-c.svg"
+                width="16"
+                height="16"
+                class="ms-1"
+              >
+            </template>
+            <img v-else src="../../assets/arrow-right-c.svg" width="20" height="20">
           </button>
           <div
             v-if="highlightSubmitButton && submitCalloutText"
@@ -199,75 +299,78 @@ defineExpose({
       </div>
     </div>
 
-    <div 
-      v-if="showQuickActions"
-      class="chat-quick-actions mt-3 d-flex text-biscay-blue true-small"
-      :class="{ 'chat-quick-actions--focus-sources': highlightSourcesPill }"
-    >
-      <div class="chat-quick-action rounded-pill px-3 py-1 d-flex align-items-center">
-        <img src="../../assets/nav-prompt-library.svg" height="16" width="16" class="me-1">
-        Library
-        <img src="../../assets/arrow-down-b.svg" height="12" width="12" class="ms-2 pill-dropdown-arrow">
-      </div>
-      <div class="chat-quick-action rounded-pill px-3 py-1 d-flex align-items-center">
-        <img src="../../assets/nav-resources.svg" height="16" width="16" class="me-1">
-        Assistants
-        <img src="../../assets/arrow-down-b.svg" height="12" width="12" class="ms-2 pill-dropdown-arrow">
-      </div>
-      <div class="position-relative chat-source-focus">
-        <SourceSelectorDropdown
-          v-if="sourceOptions.length"
-          :source-options="sourceOptions"
-          :active-source-options="activeSources"
-          :inactive-source-options="inactiveSources"
-          placement="bottom-start"
-          menu-class="chat-source-dropdown-menu"
-          title="Filter Ivy response by source..."
-          @select-source="handleSelectSource"
-          @connect-source="handleConnectSource"
-        >
-          <template #trigger>
-            <div
-              class="chat-quick-action rounded-pill px-3 py-1 d-flex align-items-center"
-              :class="{ 'chat-quick-action--highlight': highlightSourcesPill }"
-            >
-              <img src="../../assets/nav-connectors.svg" height="16" width="16" class="me-1">
-              Sources
-              <img src="../../assets/arrow-down-b.svg" height="12" width="12" class="ms-2 pill-dropdown-arrow">
-            </div>
-          </template>
-        </SourceSelectorDropdown>
-        <div v-else class="chat-quick-action rounded-pill px-3 py-1 d-flex align-items-center">
-          <img src="../../assets/nav-connectors.svg" height="16" width="16" class="me-1">
-          Sources
+    <div v-if="hasBelowContent || showQuickActions || hideQuickActions" class="chat-below-content mt-3">
+      <slot v-if="hasBelowContent" name="below-content" />
+      <div
+        v-else
+        class="chat-quick-actions d-flex text-biscay-blue true-small"
+        :class="{
+          'chat-quick-actions--focus-sources': highlightSourcesPill,
+          'chat-quick-actions--hidden': hideQuickActions && !showQuickActions,
+        }"
+      >
+        <div class="chat-quick-action rounded-pill px-3 py-1 d-flex align-items-center">
+          <img src="../../assets/nav-prompt-library.svg" height="16" width="16" class="me-1">
+          Library
           <img src="../../assets/arrow-down-b.svg" height="12" width="12" class="ms-2 pill-dropdown-arrow">
         </div>
-        <div
-          v-if="highlightSourcesPill && sourcesCalloutText"
-          class="chat-quick-action-callout reduced bg-dark text-white rounded-pill px-2 py-1"
-        >
-          {{ sourcesCalloutText }}
+        <div class="chat-quick-action rounded-pill px-3 py-1 d-flex align-items-center">
+          <img src="../../assets/nav-resources.svg" height="16" width="16" class="me-1">
+          Assistants
+          <img src="../../assets/arrow-down-b.svg" height="12" width="12" class="ms-2 pill-dropdown-arrow">
         </div>
+        <div class="position-relative chat-source-focus">
+          <SourceSelectorDropdown
+            v-if="sourceOptions.length"
+            :source-options="sourceOptions"
+            :active-source-options="activeSources"
+            :inactive-source-options="inactiveSources"
+            placement="bottom-start"
+            menu-class="chat-source-dropdown-menu"
+            title="Filter Ivy response by source..."
+            @select-source="handleSelectSource"
+            @connect-source="handleConnectSource"
+          >
+            <template #trigger>
+              <div
+                class="chat-quick-action rounded-pill px-3 py-1 d-flex align-items-center"
+                :class="{ 'chat-quick-action--highlight': highlightSourcesPill }"
+              >
+                <img src="../../assets/nav-connectors.svg" height="16" width="16" class="me-1">
+                Sources
+                <img src="../../assets/arrow-down-b.svg" height="12" width="12" class="ms-2 pill-dropdown-arrow">
+              </div>
+            </template>
+          </SourceSelectorDropdown>
+          <div v-else class="chat-quick-action rounded-pill px-3 py-1 d-flex align-items-center">
+            <img src="../../assets/nav-connectors.svg" height="16" width="16" class="me-1">
+            Sources
+            <img src="../../assets/arrow-down-b.svg" height="12" width="12" class="ms-2 pill-dropdown-arrow">
+          </div>
+          <div
+            v-if="highlightSourcesPill && sourcesCalloutText"
+            class="chat-quick-action-callout reduced bg-dark text-white rounded-pill px-2 py-1"
+          >
+            {{ sourcesCalloutText }}
+          </div>
+        </div>
+        <RouterLink
+          v-if="showGenericOnboarding && !showInitialOnboarding"
+          to="/chats/see-what-ivy-can-do"
+          class="chat-quick-action chat-quick-action--help bg-secondary-subtle rounded-pill px-3 py-1 d-flex align-items-center ms-auto"
+        >
+          <img src="../../assets/help-circled-2.svg" height="16" width="16" class="me-1">
+          <span class="text-dark">What can you do?</span>
+        </RouterLink>
+        <RouterLink
+          v-else-if="showInitialOnboarding"
+          to="/chats/ivy-onboarding"
+          class="chat-quick-action chat-quick-action--help text-white bg-ivy-accent rounded-pill px-3 py-1 d-flex align-items-center ms-auto"
+        >
+          <img src="../../assets/nav-resources-nav.svg" height="16" width="16" class="me-1" style="mix-blend-mode: unset;">
+          <span>Quick Start</span>
+        </RouterLink>
       </div>
-      <div class="chat-quick-action rounded-pill px-3 py-1 d-flex align-items-center">
-        <img src="../../assets/global-search.svg" height="16" width="16" class="me-1">
-        <span>Search the Web</span>
-      </div>
-      <div 
-        v-if="showGenericOnboarding && !showInitialOnboarding"
-        class="chat-quick-action chat-quick-action--help bg-secondary-subtle rounded-pill px-3 py-1 d-flex align-items-center ms-auto"
-      >
-        <img src="../../assets/help-circled-2.svg" height="16" width="16" class="me-1">
-        <span>What can you do?</span>
-      </div>
-      <RouterLink
-        v-else-if="showInitialOnboarding"
-        to="/chats/ivy-onboarding"
-        class="chat-quick-action chat-quick-action--help text-white bg-ivy-accent rounded-pill px-3 py-1 d-flex align-items-center ms-auto"
-      >
-        <img src="../../assets/nav-resources-nav.svg" height="16" width="16" class="me-1" style="mix-blend-mode: unset;">
-        <span>Quick Start</span>
-      </RouterLink>
     </div>
   </div>
 </template>
@@ -325,12 +428,45 @@ defineExpose({
   }
 }
 
+.chat-input-disabled-overlay {
+  bottom: 0.25rem;
+  cursor: default;
+  left: 0.75rem;
+  position: absolute;
+  right: 8.75rem;
+  top: 0.25rem;
+  z-index: 3;
+}
+
+.chat-input-disabled-tooltip-anchor {
+  height: 1px;
+  left: 0;
+  pointer-events: none;
+  position: absolute;
+  top: 0;
+  width: 1px;
+  z-index: 5;
+}
+
+.chat-submit-disabled-overlay {
+  cursor: default;
+  inset: 0;
+  position: absolute;
+  z-index: 4;
+}
+
 .chat-quick-actions {
   gap: 0.5rem;
 
   img {
     mix-blend-mode: color-burn;
   }
+}
+
+.chat-quick-actions--hidden {
+  opacity: 0;
+  pointer-events: none;
+  visibility: hidden;
 }
 
 .chat-quick-action {
@@ -387,6 +523,24 @@ defineExpose({
 .chat-submit-btn--highlight {
   animation: sources-pill-pulse 1.05s ease-in-out infinite;
   box-shadow: inset 0 0 0 1px var(--bs-primary), 0 0 0 4px rgba(13, 110, 253, 0.25);
+}
+
+.chat-submit-btn--text {
+  font-size: 0.75rem;
+  font-weight: 600;
+  min-height: 1.875rem;
+  padding: 0.25rem 0.75rem !important;
+}
+
+.chat-submit-btn--forced-hover {
+  background-color: #0b5ed7 !important;
+  border-color: #0a58ca !important;
+}
+
+.chat-submit-btn--forced-active {
+  background-color: #0a58ca !important;
+  border-color: #0a53be !important;
+  transform: translateY(1px);
 }
 
 .chat-submit-callout {

@@ -126,6 +126,46 @@
   --bs-border-color: var(--bs-gray-200);
 
   --bs-body-font-family: Outfit, Lato, system-ui, Avenir, Helvetica, Arial, sans-serif;
+
+  --bs-primary-rgb: 70, 95, 255;
+  --bs-progress-bar-bg: #465FFF;
+}
+
+.progress, .progress-stacked {
+  --bs-progress-bar-bg: #465FFF;
+}
+
+@keyframes shine-progress {
+  0% {
+    transform: translateX(-100%);
+  }
+  50% {
+    transform: translateX(100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.progress-bar {
+  overflow: hidden;
+  position: relative;
+}
+
+.progress-bar:after {
+  animation: shine-progress 2.2s ease-in-out infinite;
+  background: linear-gradient(
+    120deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.05) 30%,
+    rgba(255, 255, 255, 0.25) 50%,
+    rgba(255, 255, 255, 0.05) 70%,
+    transparent 100%
+  );
+  content: "";
+  inset: 0;
+  position: absolute;
+  transform: translateX(-100%);
 }
 
 h1, .h1 {
@@ -303,6 +343,10 @@ h5, .h5 {
     );
 }
 
+.bg-primary-subtle {
+  background-color: rgba(var(--bs-primary-rgb), 0.15) !important;
+}
+
 .text-wrap-balance {
   text-wrap: balance;
 }
@@ -382,6 +426,18 @@ h5, .h5 {
   margin-left: auto;
   max-width: 84%;
   width: fit-content;
+}
+
+.chat-content {
+  margin: 0 auto;
+  max-width: 48rem;
+  position: relative;
+  width: min(100%, 48rem);
+  z-index: 1;
+}
+
+.ivy-chat-width {
+  max-width: 40rem;
 }
 
 .label-spacing {
