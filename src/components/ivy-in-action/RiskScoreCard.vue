@@ -147,7 +147,6 @@ const sparklineAreaPath = computed(() => {
 .what-ivy-risk-score-card__sparkline {
   display: block;
   height: 4.25rem;
-  max-width: 40rem; // matches ivy text max-width
   width: 100%;
 }
 

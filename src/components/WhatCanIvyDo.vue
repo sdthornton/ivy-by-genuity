@@ -126,9 +126,6 @@ const showThinkingIvyResponse = computed(() => (
 const completedActionsCount = computed(() => (
   selectedActions.value.filter(Boolean).length
 ));
-const visibleExecutionLines = computed(() => (
-  scenarioData.value.executionLines.slice(0, executionProgress.value)
-));
 const demoCursorStyle = computed(() => ({
   "--demo-cursor-end-x": `${demoCursorEndX.value}px`,
   "--demo-cursor-end-y": `${demoCursorEndY.value}px`,
@@ -201,49 +198,11 @@ function setRealCursorHidden(hidden) {
 }
 
 function getTopPromptInputElement() {
-  const chatBoxComponent = topPromptChatBox.value;
-  if (!chatBoxComponent) {
-    return null;
-  }
-
-  const exposedInput = chatBoxComponent.chatInput;
-  if (!exposedInput) {
-    return null;
-  }
-
-  if (typeof HTMLInputElement !== "undefined" && exposedInput instanceof HTMLInputElement) {
-    return exposedInput;
-  }
-
-  const maybeInput = exposedInput.value;
-  if (typeof HTMLInputElement !== "undefined" && maybeInput instanceof HTMLInputElement) {
-    return maybeInput;
-  }
-
-  return null;
+  return topPromptChatBox.value?.chatInput?.value || null;
 }
 
 function getTopPromptSubmitButtonElement() {
-  const chatBoxComponent = topPromptChatBox.value;
-  if (!chatBoxComponent) {
-    return null;
-  }
-
-  const exposedButton = chatBoxComponent.submitButton;
-  if (!exposedButton) {
-    return null;
-  }
-
-  if (typeof HTMLButtonElement !== "undefined" && exposedButton instanceof HTMLButtonElement) {
-    return exposedButton;
-  }
-
-  const maybeButton = exposedButton.value;
-  if (typeof HTMLButtonElement !== "undefined" && maybeButton instanceof HTMLButtonElement) {
-    return maybeButton;
-  }
-
-  return null;
+  return topPromptChatBox.value?.submitButton?.value || null;
 }
 
 async function fillTopPromptInput(prompt) {
@@ -390,7 +349,6 @@ async function chooseQuery(queryOption, event) {
       await router.push(queryOption.path);
     }
 
-    selectedQuery.value = queryOption.query;
     setRealCursorHidden(true);
     await fillTopPromptInput(queryOption.query);
     await playDemoCursorAnimation();
@@ -797,7 +755,7 @@ onBeforeUnmount(() => {
             v-if="!selectedFollowUpResponses.email && discoveryStep === 1"
             class="d-flex justify-content-end"
           >
-            <button type="button" class="btn btn-white border rounded px-3 py-2 what-ivy-user-action what-ivy-followup-option" @click="selectEmailFollowUp">
+            <button type="button" class="btn btn-white border rounded px-3 py-2 what-ivy-followup-option" @click="selectEmailFollowUp">
               {{ scenarioUserActions.email }}
             </button>
           </div>
@@ -849,7 +807,7 @@ onBeforeUnmount(() => {
               v-if="!selectedFollowUpResponses.endpoints && discoveryStep === 2"
               class="d-flex justify-content-end"
             >
-              <button type="button" class="btn btn-white border rounded px-3 py-2 what-ivy-user-action what-ivy-followup-option" @click="selectEndpointsFollowUp">
+              <button type="button" class="btn btn-white border rounded px-3 py-2 what-ivy-followup-option" @click="selectEndpointsFollowUp">
                 {{ scenarioUserActions.endpoints }}
               </button>
             </div>
@@ -902,7 +860,7 @@ onBeforeUnmount(() => {
               v-if="!selectedFollowUpResponses.correlate && discoveryStep === 3"
               class="d-flex justify-content-end"
             >
-              <button type="button" class="btn btn-white border rounded px-3 py-2 what-ivy-user-action what-ivy-followup-option" @click="selectCorrelateFollowUp">
+              <button type="button" class="btn btn-white border rounded px-3 py-2 what-ivy-followup-option" @click="selectCorrelateFollowUp">
                 {{ scenarioUserActions.correlate }}
               </button>
             </div>
@@ -1000,7 +958,7 @@ onBeforeUnmount(() => {
               v-if="!selectedFollowUpResponses.remediation && assistantStep === 0"
               class="d-flex justify-content-end"
             >
-              <button type="button" class="btn btn-white border rounded px-3 py-2 what-ivy-user-action what-ivy-followup-option" @click="selectRemediationFollowUp">
+              <button type="button" class="btn btn-white border rounded px-3 py-2 what-ivy-followup-option" @click="selectRemediationFollowUp">
                 {{ scenarioUserActions.remediation }}
               </button>
             </div>
@@ -1069,7 +1027,7 @@ onBeforeUnmount(() => {
             <div v-if="hasShownAssistantIntroDetails && assistantStep === 1" class="d-flex justify-content-end">
               <button
                 type="button"
-                class="btn btn-white border rounded px-3 py-2 what-ivy-user-action"
+                class="btn btn-white border rounded px-3 py-2"
                 @click="continueAssistantIntro"
               >
                 Build action plan
@@ -1127,7 +1085,7 @@ onBeforeUnmount(() => {
             <div v-if="hasShownAssistantPlanDetails && assistantStep === 2" class="d-flex justify-content-end">
               <button
                 type="button"
-                class="btn btn-white border rounded px-3 py-2 what-ivy-user-action"
+                class="btn btn-white border rounded px-3 py-2"
                 @click="continueToAssistantConfirm"
               >
                 Review and confirm
@@ -1144,10 +1102,10 @@ onBeforeUnmount(() => {
               <strong>Apply the selected actions now?</strong>
             </p>
             <div v-if="assistantStep === 3" class="d-flex justify-content-end flex-wrap gap-2">
-              <button type="button" class="btn btn-white border rounded px-3 py-2 what-ivy-user-action" @click="runAssistantPlan">
+              <button type="button" class="btn btn-white border rounded px-3 py-2" @click="runAssistantPlan">
                 Apply Selected
               </button>
-              <button type="button" class="btn btn-white border rounded px-3 py-2 what-ivy-user-action" @click="reviewAssistantPlan">
+              <button type="button" class="btn btn-white border rounded px-3 py-2" @click="reviewAssistantPlan">
                 Review First
               </button>
             </div>
@@ -1180,7 +1138,7 @@ onBeforeUnmount(() => {
             <div v-if="hasShownAssistantRunDetails && assistantStep === 4" class="d-flex justify-content-end">
               <button
                 type="button"
-                class="btn btn-white border rounded px-3 py-2 what-ivy-user-action"
+                class="btn btn-white border rounded px-3 py-2"
                 @click="skipExecutionToResult"
               >
                 Run all now
@@ -1287,7 +1245,6 @@ onBeforeUnmount(() => {
                         <h6 class="fw-medium mb-0 text-start">
                           {{ queryOption.query }}
                         </h6>
-                        <!-- <img src="../assets/arrow-right-c-dark.svg" height="16" width="16" class="opacity-75"> -->
                       </div>
                     </div>
                   </div>
@@ -1403,10 +1360,6 @@ onBeforeUnmount(() => {
 .what-ivy-query-option--active {
   border-color: #465FFF !important;
   box-shadow: inset 0 0 0 1px #465FFF;
-}
-
-.what-ivy-user-action {
-  background-color: var(--bs-white);
 }
 
 .what-ivy-table__row {

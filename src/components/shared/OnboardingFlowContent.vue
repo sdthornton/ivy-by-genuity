@@ -1,5 +1,5 @@
 <script setup>
-import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref } from "vue";
+import { computed, nextTick, onBeforeUnmount, reactive, ref } from "vue";
 import { onBeforeRouteLeave, useRouter } from "vue-router";
 import { sourceOptions } from "../assistants/stepRuntime";
 import { useOnboardingSyncToast } from "../../composables/onboardingSyncToast";
@@ -24,6 +24,7 @@ const fileInputEl = ref(null);
 const onboardingStep = ref("source");
 const sourceSelectionConfirmed = ref(false);
 const sourceDetailsSubmitted = ref(false);
+const showAllOnboardingSources = ref(false);
 const selectedSource = ref("");
 const selectedChatSource = ref("");
 const showPostSubmitIvyMessage = ref(false);
@@ -33,7 +34,6 @@ const showStep1CompletedCard = ref(false);
 const showStep1DetailsIntro = ref(false);
 const showStep3WrapUpMessage = ref(false);
 const showStep3WrapUpOptions = ref(false);
-const hasStartedIntro = ref(true);
 const isSourceStepFadingOut = ref(false);
 const step1CardShell = ref(null);
 const step1CardTone = ref("in-progress");
@@ -42,11 +42,13 @@ const step2CardShell = ref(null);
 const step2CardTone = ref("in-progress");
 const step2PreviousCardHeight = ref(0);
 const uploadedFileName = ref("");
-let activeSourceSelectionRevealTimer = null;
-let activeSourceDetailsRevealTimer = null;
-let activeSourceStepSwitchTimer = null;
-let activeStep1DetailsIntroTimer = null;
-let activeStep3WrapUpRevealTimer = null;
+const flowTimers = {
+  sourceDetailsReveal: null,
+  sourceSelectionReveal: null,
+  sourceStepSwitch: null,
+  step1DetailsIntro: null,
+  step3WrapUpReveal: null,
+};
 
 const sourceForm = reactive({
   accountEmail: "",
@@ -68,9 +70,41 @@ const ONBOARDING_IVY_TYPING_TIMING = {
   whitespaceMinDelay: 0,
   whitespaceMaxDelay: 4,
 };
+const IDENTITY_FIRST_SOURCE_OPTIONS = ["EntraID", "Google", "Okta", "OneLogin"];
+const SOURCE_ALIAS_MAP = {
+  "Entra ID": "EntraID",
+  "Google": "Google",
+};
 
 const onboardingSources = computed(() => (
-  sourceOptions.filter((source) => source !== "IT Meeting Notes")
+  Array.from(
+    new Set([
+      ...sourceOptions
+        .filter((source) => source !== "IT Meeting Notes")
+        .map((source) => SOURCE_ALIAS_MAP[source] || source),
+      "Okta",
+    ]),
+  )
+));
+
+const orderedOnboardingSources = computed(() => {
+  const prioritizedSources = IDENTITY_FIRST_SOURCE_OPTIONS.filter((source) => (
+    onboardingSources.value.includes(source)
+  ));
+  const remainingSources = onboardingSources.value.filter((source) => (
+    !prioritizedSources.includes(source)
+  ));
+  return [...prioritizedSources, ...remainingSources];
+});
+
+const visibleOnboardingSources = computed(() => (
+  showAllOnboardingSources.value
+    ? orderedOnboardingSources.value
+    : IDENTITY_FIRST_SOURCE_OPTIONS
+));
+
+const hasAdditionalOnboardingSources = computed(() => (
+  orderedOnboardingSources.value.length > IDENTITY_FIRST_SOURCE_OPTIONS.length
 ));
 
 const onboardingChatSourceOptions = computed(() => {
@@ -102,7 +136,6 @@ const shouldShowStep3Status = computed(() => (
   sourceDetailsSubmitted.value && (showStep3WrapUpMessage.value || showStep3WrapUpOptions.value)
 ));
 const shouldShowStep1Wrapper = computed(() => isSourceStepActive.value || showStep1CompletedCard.value);
-const shouldShowStep2Wrapper = computed(() => isDetailsStepActive.value);
 const shouldShowStep1InProgressCard = computed(() => isSourceStepActive.value);
 const shouldShowStep1CompleteCard = computed(() => isDetailsStepActive.value && showStep1CompletedCard.value);
 const shouldShowStep2InProgressCard = computed(() => isDetailsStepActive.value && showSourceDetailsSetupUi.value && !sourceDetailsSubmitted.value);
@@ -175,6 +208,35 @@ const chatInputSourceLabel = computed(() => selectedChatSource.value || "");
 const chatInputSourceIcon = computed(() => (
   selectedChatSource.value ? resolveSourceIcon(selectedChatSource.value) : ""
 ));
+const step3ActionRoutes = {
+  "assistants": "/assistants",
+  "ivy-in-action": "/ivy-in-action",
+  "prompt-library": "/prompt-library",
+  "sources": "/sources",
+};
+
+function clearFlowTimer(timerKey) {
+  if (!flowTimers[timerKey]) {
+    return;
+  }
+
+  window.clearTimeout(flowTimers[timerKey]);
+  flowTimers[timerKey] = null;
+}
+
+function clearAllFlowTimers() {
+  Object.keys(flowTimers).forEach((timerKey) => {
+    clearFlowTimer(timerKey);
+  });
+}
+
+function setFlowTimer(timerKey, callback, delayMs) {
+  clearFlowTimer(timerKey);
+  flowTimers[timerKey] = window.setTimeout(() => {
+    callback();
+    flowTimers[timerKey] = null;
+  }, delayMs);
+}
 
 function getCardTone(status) {
   return status === "Complete" ? "complete" : "in-progress";
@@ -206,11 +268,11 @@ function clearStep3FlowState() {
   showPostSubmitIvyMessage.value = false;
   showStep3WrapUpMessage.value = false;
   showStep3WrapUpOptions.value = false;
+  clearFlowTimer("step3WrapUpReveal");
+}
 
-  if (activeStep3WrapUpRevealTimer) {
-    window.clearTimeout(activeStep3WrapUpRevealTimer);
-    activeStep3WrapUpRevealTimer = null;
-  }
+function showAllSourceOptions() {
+  showAllOnboardingSources.value = true;
 }
 
 function continueToDashboard() {
@@ -222,36 +284,23 @@ function continueToDashboard() {
   showStep1CompletedCard.value = false;
   showStep1DetailsIntro.value = false;
   isSourceStepFadingOut.value = true;
-
-  if (activeSourceStepSwitchTimer) {
-    window.clearTimeout(activeSourceStepSwitchTimer);
-    activeSourceStepSwitchTimer = null;
-  }
-  if (activeSourceDetailsRevealTimer) {
-    window.clearTimeout(activeSourceDetailsRevealTimer);
-    activeSourceDetailsRevealTimer = null;
-  }
-
-  activeSourceStepSwitchTimer = window.setTimeout(() => {
+  clearFlowTimer("sourceDetailsReveal");
+  setFlowTimer("sourceStepSwitch", () => {
     onboardingStep.value = "details";
     showSourceDetailsSetupUi.value = false;
     clearStep3FlowState();
     sourceDetailsSubmitted.value = false;
     isSourceStepFadingOut.value = false;
     showStep1CompletedCard.value = true;
-
-    activeSourceStepSwitchTimer = null;
   }, CARD_SWAP_DURATION_MS);
 }
 
 function backToSourceSelection() {
-  if (activeSourceStepSwitchTimer) {
-    window.clearTimeout(activeSourceStepSwitchTimer);
-    activeSourceStepSwitchTimer = null;
-  }
+  clearFlowTimer("sourceStepSwitch");
 
   onboardingStep.value = "source";
   sourceSelectionConfirmed.value = false;
+  showAllOnboardingSources.value = false;
   showStep1CompletedCard.value = false;
   showStep1DetailsIntro.value = false;
   showSourceDetailsSetupUi.value = false;
@@ -296,13 +345,8 @@ function handleIntroTypingDone() {
     return;
   }
 
-  if (activeSourceSelectionRevealTimer) {
-    window.clearTimeout(activeSourceSelectionRevealTimer);
-  }
-
-  activeSourceSelectionRevealTimer = window.setTimeout(() => {
+  setFlowTimer("sourceSelectionReveal", () => {
     showSourceSelectionUi.value = true;
-    activeSourceSelectionRevealTimer = null;
   }, INTERACTIVE_REVEAL_DELAY_MS);
 }
 
@@ -311,13 +355,8 @@ function handleSourceDetailsIntroTypingDone() {
     return;
   }
 
-  if (activeSourceDetailsRevealTimer) {
-    window.clearTimeout(activeSourceDetailsRevealTimer);
-  }
-
-  activeSourceDetailsRevealTimer = window.setTimeout(() => {
+  setFlowTimer("sourceDetailsReveal", () => {
     showSourceDetailsSetupUi.value = true;
-    activeSourceDetailsRevealTimer = null;
   }, INTERACTIVE_REVEAL_DELAY_MS);
 }
 
@@ -326,13 +365,8 @@ function handleStep1CompletedCardEntered() {
     return;
   }
 
-  if (activeStep1DetailsIntroTimer) {
-    window.clearTimeout(activeStep1DetailsIntroTimer);
-  }
-
-  activeStep1DetailsIntroTimer = window.setTimeout(() => {
+  setFlowTimer("step1DetailsIntro", () => {
     showStep1DetailsIntro.value = true;
-    activeStep1DetailsIntroTimer = null;
   }, 300);
 }
 
@@ -341,13 +375,8 @@ function handleSourceSyncMessageDone() {
     return;
   }
 
-  if (activeStep3WrapUpRevealTimer) {
-    window.clearTimeout(activeStep3WrapUpRevealTimer);
-  }
-
-  activeStep3WrapUpRevealTimer = window.setTimeout(() => {
+  setFlowTimer("step3WrapUpReveal", () => {
     showStep3WrapUpMessage.value = true;
-    activeStep3WrapUpRevealTimer = null;
   }, SOURCE_SYNC_TO_WRAP_UP_DELAY_MS);
 }
 
@@ -364,23 +393,9 @@ function handleStep3WrapUpTypingDone() {
 }
 
 function handlePostStep3ActionSelect(actionKey) {
-  if (actionKey === "ivy-in-action") {
-    router.push("/ivy-in-action");
-    return;
-  }
-
-  if (actionKey === "sources") {
-    router.push("/sources");
-    return;
-  }
-
-  if (actionKey === "prompt-library") {
-    router.push("/prompt-library");
-    return;
-  }
-
-  if (actionKey === "assistants") {
-    router.push("/assistants");
+  const targetPath = step3ActionRoutes[actionKey];
+  if (targetPath) {
+    router.push(targetPath);
   }
 }
 
@@ -478,14 +493,6 @@ function handleStep2CardEnter(el, done) {
   });
 }
 
-onMounted(() => {
-  showSourceSelectionUi.value = onboardingStep.value !== "source";
-  showStep1CompletedCard.value = onboardingStep.value !== "source";
-  showStep1DetailsIntro.value = onboardingStep.value !== "source";
-  step1CardTone.value = getCardTone(step1Status.value);
-  step2CardTone.value = getCardTone(step2Status.value);
-});
-
 onBeforeRouteLeave(() => {
   if (sourceDetailsSubmitted.value) {
     showToastNow();
@@ -493,26 +500,7 @@ onBeforeRouteLeave(() => {
 });
 
 onBeforeUnmount(() => {
-  if (activeSourceSelectionRevealTimer) {
-    window.clearTimeout(activeSourceSelectionRevealTimer);
-    activeSourceSelectionRevealTimer = null;
-  }
-  if (activeSourceDetailsRevealTimer) {
-    window.clearTimeout(activeSourceDetailsRevealTimer);
-    activeSourceDetailsRevealTimer = null;
-  }
-  if (activeSourceStepSwitchTimer) {
-    window.clearTimeout(activeSourceStepSwitchTimer);
-    activeSourceStepSwitchTimer = null;
-  }
-  if (activeStep1DetailsIntroTimer) {
-    window.clearTimeout(activeStep1DetailsIntroTimer);
-    activeStep1DetailsIntroTimer = null;
-  }
-  if (activeStep3WrapUpRevealTimer) {
-    window.clearTimeout(activeStep3WrapUpRevealTimer);
-    activeStep3WrapUpRevealTimer = null;
-  }
+  clearAllFlowTimers();
 });
 </script>
 
@@ -520,15 +508,14 @@ onBeforeUnmount(() => {
   <section class="onboarding-page">
     <div class="chat-content">
       <IvyTypewriterMessage
-        v-if="hasStartedIntro"
-        class="ivy-chat-width mb-5"
+        class="ivy-chat-width mb-4"
         :markup="INTRO_MARKUP"
         :timing="ONBOARDING_IVY_TYPING_TIMING"
         @done="handleIntroTypingDone"
       />
 
       <div
-        v-if="hasStartedIntro && shouldShowStep1Wrapper"
+        v-if="shouldShowStep1Wrapper"
         class="onboarding-step-wrapper"
         :class="{
           'onboarding-sources': isSourceStepActive,
@@ -539,7 +526,7 @@ onBeforeUnmount(() => {
       >
         <div
           ref="step1CardShell"
-          class="border rounded onboarding-step-card-shell onboarding-interactive-box"
+          class="border rounded onboarding-step-card-shell"
           :class="step1CardTone === 'complete' ? 'bg-white p-3' : 'bg-light py-4 onboarding-inline-interaction'"
         >
           <Transition
@@ -556,7 +543,7 @@ onBeforeUnmount(() => {
               <label class="mb-2 text-secondary">Choose an initial source to sync:</label>
               <div class="onboarding-source-grid text-center">
                 <div
-                  v-for="source in onboardingSources"
+                  v-for="source in visibleOnboardingSources"
                   :key="source"
                   class="onboarding-source-button rounded p-2"
                   :class="{ 'onboarding-source-button--active': selectedSource === source }"
@@ -566,16 +553,27 @@ onBeforeUnmount(() => {
                     v-if="resolveSourceIcon(source)"
                     :src="resolveSourceIcon(source)"
                     :alt="source"
-                    width="64"
-                    height="64"
+                    width="56"
+                    height="56"
                   >
                   <div class="smallest text-dark mt-1">{{ source }}</div>
                 </div>
 
-                <div
-                  class="onboarding-source-button rounded p-2"
-                  :class="{ 'onboarding-source-button--active': uploadedFileName }"
-                  @click="openFilePicker"
+                <button
+                  v-if="!showAllOnboardingSources && hasAdditionalOnboardingSources"
+                  type="button"
+                  class="btn btn-link mb-4 h5 text-muted true-small text-decoration-none p-0 d-flex align-items-center justify-content-start onboarding-source-view-all"
+                  @click="showAllSourceOptions"
+                >
+                  View all sources
+                </button>
+
+                <!--
+                <button
+                  v-if="showAllOnboardingSources"
+                  type="button"
+                  class="onboarding-source-button onboarding-source-button--disabled rounded p-2 border-0"
+                  disabled
                 >
                   <img
                     v-if="uploadSourceIcon"
@@ -585,7 +583,8 @@ onBeforeUnmount(() => {
                     height="64"
                   >
                   <div class="smallest text-dark mt-1">Upload</div>
-                </div>
+                </button>
+                -->
               </div>
               <div class="d-flex justify-content-end flex-wrap align-items-center gap-4 mt-4 pt-2.5">
                 <button
@@ -639,7 +638,7 @@ onBeforeUnmount(() => {
         </div>
       </div>
 
-      <div v-if="hasStartedIntro && shouldShowStep2Wrapper" class="onboarding-details-step">
+      <div v-if="isDetailsStepActive" class="onboarding-details-step">
         <IvyTypewriterMessage
           v-if="showStep1DetailsIntro"
           class="ivy-chat-width mt-5 mb-4"
@@ -654,7 +653,7 @@ onBeforeUnmount(() => {
             <div
               v-if="shouldShowStep2CardShell"
               ref="step2CardShell"
-              class="border rounded onboarding-step-card-shell onboarding-interactive-box"
+              class="border rounded onboarding-step-card-shell"
               :class="step2CardTone === 'complete' ? 'bg-white p-3' : 'bg-light py-4 onboarding-inline-interaction'"
             >
               <Transition
@@ -794,7 +793,7 @@ onBeforeUnmount(() => {
             <div v-if="showStep3WrapUpOptions" class="mb-4">
               <button
                 type="button"
-                class="border p-4 rounded w-100 text-start mb-3 onboarding-completion-option onboarding-next-path-primary"
+                class="border p-4 rounded w-100 text-start mb-3 onboarding-completion-option"
                 :class="nextPathPrimaryOption.bgClass"
                 @click="handlePostStep3ActionSelect(nextPathPrimaryOption.key)"
               >
@@ -857,7 +856,7 @@ onBeforeUnmount(() => {
 
       <div class="mt-auto onboarding-details-chat onboarding-details-chat--container-anchored">
         <ChatBox
-          class="w-100 onboarding-interactive-box"
+          class="w-100"
           show-quick-actions
           :chat-placeholder="sourceDetailsSubmitted ? 'Ask Ivy anything...' : 'Need a hand? Ask Ivy or just enter your source details here...'"
           :input-source-icon="chatInputSourceIcon"
@@ -890,10 +889,6 @@ onBeforeUnmount(() => {
 .onboarding-inline-interaction {
   padding-left: 2.25rem;
   padding-right: 2.25rem;
-}
-
-.onboarding-interactive-box {
-  animation: none;
 }
 
 .onboarding-step-wrapper {
@@ -939,10 +934,6 @@ onBeforeUnmount(() => {
   }
 }
 
-.onboarding-next-path-primary {
-  display: block;
-}
-
 .onboarding-sources {
   opacity: 0;
   pointer-events: none;
@@ -971,6 +962,16 @@ onBeforeUnmount(() => {
   background-color: var(--bs-primary-bg-subtle);
   border-color: var(--bs-primary);
   box-shadow: inset 0 0 0 1px var(--bs-primary);
+}
+
+.onboarding-source-button--disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+
+  &:hover {
+    background-color: transparent;
+    border-color: transparent;
+  }
 }
 
 .onboarding-source-grid {

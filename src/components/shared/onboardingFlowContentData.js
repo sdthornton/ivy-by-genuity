@@ -7,6 +7,7 @@ export const INTRO_MARKUP = `
   </h2>
   <p>Think of me as the middleman between your IT system and you - I work hard to transform fragmented data into operational intelligence (freeing you up for higher value work).</p>
   <p>I work best when I have access to your IT info (don't worry, all your data is kept completely safe and never sold). <strong>Let's get started by adding your first data source</strong>.</p>
+  <p><strong>We suggest starting with an identity app - after all, IT revolves around people.</strong> But you're welcome to choose whatever source you like, and you can always add more later.</p>
 `;
 
 const DEFAULT_SUGGESTED_PROMPTS = [
