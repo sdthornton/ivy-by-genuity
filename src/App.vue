@@ -15,6 +15,7 @@ const isChatRoute = computed(() => (
 const isSplitContent = computed(() => Boolean(route.meta?.splitContent));
 const isHomePage = computed(() => Boolean(route.meta?.homeLayout));
 const isOnboardingChatRoute = computed(() => route.path === "/chats/ivy-onboarding");
+const isStandaloneRoute = computed(() => Boolean(route.meta?.standalone));
 const syncToastSourceIcon = computed(() => (
   resolveSourceIcon(onboardingSyncToastState.sourceLabel)
 ));
@@ -22,15 +23,24 @@ const syncToastSourceIcon = computed(() => (
 watch(() => route.path, () => {
   syncRouteVisibility(isOnboardingChatRoute.value);
 }, { immediate: true });
+
+watch(isStandaloneRoute, (isStandalone) => {
+  if (!isStandalone) {
+    return;
+  }
+
+  document.body.classList.remove("left-nav-open", "split-content-page");
+}, { immediate: true });
 </script>
 
 <template>
-  <LeftNav />
+  <LeftNav v-if="!isStandaloneRoute" />
   <div 
     class="content-container d-flex justify-content-center"
     :class="[
-      isChatRoute ? 'bg-white' : 'bg-titan-white',
+      isStandaloneRoute ? 'bg-white' : (isChatRoute ? 'bg-white' : 'bg-titan-white'),
       { 'px-0': isSplitContent },
+      { 'content-container--standalone': isStandaloneRoute },
     ]"
   >
     <main 
@@ -43,7 +53,7 @@ watch(() => route.path, () => {
 
   <Transition name="sync-toast-fade">
     <aside
-      v-if="onboardingSyncToastState.showToast"
+      v-if="!isStandaloneRoute && onboardingSyncToastState.showToast"
       class="onboarding-sync-toast bg-white rounded p-3"
       role="status"
       aria-live="polite"
@@ -352,6 +362,17 @@ body {
   .left-nav-open & {
     left: $left-nav-open-width;
   }
+}
+
+.content-container--standalone {
+  border-radius: 0;
+  box-shadow: none;
+  height: 100vh;
+  inset: 0;
+  left: 0;
+  padding-left: 0;
+  padding-right: 0;
+  width: 100vw;
 }
 
 .text-content-wrap {

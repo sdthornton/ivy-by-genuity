@@ -14,6 +14,7 @@ import Collections from "./components/Collections.vue";
 import Sources from "./components/Sources.vue";
 import OnboardingChat from "./components/OnboardingChat.vue";
 import WhatCanIvyDo from "./components/WhatCanIvyDo.vue";
+import EnvironmentalGraphVisualizer from "./components/EnvironmentalGraphVisualizer.vue";
 import { ivyInActionScenarioList } from "./components/ivy-in-action/scenarios";
 
 const routes = [
@@ -35,6 +36,12 @@ const routes = [
   { path: "/what-can-ivy-do", redirect: "/ivy-in-action" },
   { path: "/chats/ivy-in-action", redirect: "/ivy-in-action" },
   { path: "/chats/see-what-ivy-can-do", redirect: "/ivy-in-action" },
+  {
+    path: "/environmental-graph-visualizer",
+    component: EnvironmentalGraphVisualizer,
+    name: "Environmental Graph Visualizer",
+    meta: { standalone: true },
+  },
   ...ivyInActionScenarioList.map((scenario) => ({
     path: scenario.path,
     component: WhatCanIvyDo,
