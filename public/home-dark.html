@@ -15,7 +15,7 @@
                 stroke:var(--duo-secondary, currentColor)
             }
         </style>
-    <script src="chrome-extension://liecbddmkiiihnedobmlmillhodjkdmb/js/recordConsoleEvents.js"></script></head>
+    <script src="chrome-extension://liecbddmkiiihnedobmlmillhodjkdmb/js/recordConsoleEvents.js"></script><script src="chrome-extension://liecbddmkiiihnedobmlmillhodjkdmb/js/recordConsoleEvents.js"></script></head>
     <body class="min-h-screen bg-background text-foreground" style="overflow: hidden;">
         <div class="min-h-screen w-full font-outfit" style="--font-active: var(--font-outfit);">
             <div class="flex min-h-screen w-full flex-col">
@@ -76,7 +76,7 @@
 "><div class="flex min-w-0 shrink-0 flex-col gap-0.5 pt-2"><a class="flex w-full min-w-0 flex-row items-center rounded-lg text-left font-body font-medium text-white-90 transition-[background-color,padding] duration-300 ease-in-out px-2 py-2 text-sm leading-text-sm gap-2" aria-label="New chat" aria-current="page" aria-disabled="false" href="/chat?new" style="
     border-color: rgba(255,255,255,0.15);
     border: 0;
-    background: rgb(52,64,84);
+    background: #1D2939;
 "><span class="inline-block h-5 w-5 shrink-0 text-white-100" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" version="1.1" xmlns:xlink="http://www.w3.org/1999/xlink" width="100%" height="100%" x="0" y="0" viewBox="0 0 443.771 443.772" style="enable-background:new 0 0 512 512;filter: invert(1);opacity: 0.5;mix-blend-mode: plus-lighter;" xml:space="preserve" class=""><g><path d="M163.073 3.459C140.557 125.764 122.304 144.016 0 166.532c122.305 22.516 140.557 40.768 163.073 163.073 22.516-122.305 40.768-140.557 163.073-163.073-122.305-22.516-140.558-40.768-163.073-163.073zM340.064 232.896c-14.318 77.781-25.928 89.39-103.708 103.708 77.78 14.319 89.39 25.928 103.708 103.708 14.318-77.78 25.928-89.39 103.707-103.708-77.781-14.318-89.388-25.927-103.707-103.708z" fill="#000000" opacity="1" data-original="#000000" class=""></path></g></svg>
 </span><span class="flex min-w-0 flex-1 items-center gap-2 overflow-hidden transition-[max-width,opacity] duration-300 ease-in-out max-w-[12rem] opacity-100"><span class="truncate" style="
 ">Home</span></span></a><a class="flex w-full min-w-0 flex-row items-center rounded-lg text-left font-body font-medium text-white-90 transition-[background-color,padding] duration-300 ease-in-out px-2 py-2 text-sm leading-text-sm gap-2" href="/chat"><span class="inline-block h-5 w-5 shrink-0" aria-hidden="true" style=""><span><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" style="display:block;vertical-align:middle;opacity: 0.65;">
@@ -408,6 +408,7 @@
     background-image: url(&quot;https://ivy-staging-general-storage.s3.us-west-2.amazonaws.com/pallet0.svg&quot;);
     opacity: 0.35;
     mix-blend-mode: hue;
+    display: none;
 "></div>
 
 <div class="flex min-h-0 min-w-0 flex-1 justify-center [align-items:safe_center] py-6 transition-all duration-300 ease-out opacity-100 translate-y-0" style=""><div class="w-full min-w-0 transition-opacity duration-300 ease-out opacity-100" style="animation: 0.3s ease-out 0s 1 normal none running fadeIn;"><div class="flex w-full min-w-0 justify-center overflow-x-hidden px-3 py-3 sm:px-4 sm:py-6" style="
@@ -741,9 +742,9 @@
     border-bottom: 1px solid rgba(0,0,0,0.1);
     mask-image: radial-gradient(at center, black 30%, transparent 60%);
 "></div>
-<button type="button" class="inline-flex items-center gap-1.5 font-body text-xs font-normal leading-4 text-brand-500 hover:text-brand-600 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 rounded lg:text-xs lg:leading-5 px-2" style="
+<button type="button" class="inline-flex items-center gap-1.5 font-body text-xs font-normal leading-4 text-white-50 hover:text-brand-600 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 rounded lg:text-xs lg:leading-5 px-2" style="
     margin-top: 0.5rem;
-">Explore Prompt Library<span class="inline-block h-4 w-4 shrink-0 text-brand-500" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" style="display:block;vertical-align:middle">
+">Explore Prompt Library<span class="inline-block h-4 w-4 shrink-0 " aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" style="display:block;vertical-align:middle">
 <path fill-rule="evenodd" clip-rule="evenodd" d="M20.751 11.9983C20.7514 12.1906 20.6782 12.3831 20.5315 12.5299L14.5355 18.5301C14.2427 18.8231 13.7678 18.8233 13.4748 18.5305C13.1818 18.2377 13.1817 17.7629 13.4745 17.4699L18.1944 12.7466L3.99962 12.7466C3.58541 12.7466 3.24962 12.4108 3.24962 11.9966C3.24962 11.5824 3.58541 11.2466 3.99962 11.2466L18.1879 11.2466L13.4745 6.53016C13.1817 6.23717 13.1818 5.7623 13.4748 5.4695C13.7678 5.1767 14.2427 5.17685 14.5355 5.46984L20.4884 11.4266C20.6491 11.5641 20.751 11.7685 20.751 11.9966C20.751 11.9971 20.751 11.9977 20.751 11.9983Z" fill="currentColor"></path>
 </svg>
 </span></button></div></div></div></div></div></div></div></div></div></div></div></section></div></main></div></div><div class="fixed z-[60] flex max-h-[85vh] w-[26rem] flex-col rounded-2xl border border-alias-border-border-tertiary bg-white-100 p-3 shadow-shadowMd will-change-transform will-change-opacity transition-[opacity,transform,visibility] duration-300 ease-in-out pointer-events-none invisible opacity-0 -translate-x-1"><span class="absolute -left-[0.7rem] top-[1rem] flex items-center justify-center text-alias-border-border-tertiary" aria-hidden="true"><span class="inline-block shrink-0 h-5 w-5 rotate-180" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" style="display:block;vertical-align:middle">
@@ -772,6 +773,7 @@
 </svg>
 </span></button></div><div class="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden"><div class="flex flex-1 flex-col gap-2 overflow-y-auto pt-2 min-h-[8rem]"><div class="flex flex-1 flex-col items-center justify-center py-8"><p class="text-center font-body text-sm font-normal leading-text-sm text-alias-text-text-color">No notifications yet</p></div></div><button type="button" data-ds-button="true" class="inline-flex items-center gap-2 rounded-lg shadow-shadowXs text-sm font-medium outline-none transition-colors focus-visible:outline-none disabled:pointer-events-none min-h-[2.75rem] border px-4 bg-alias-button-stroke-background border-alias-button-stroke-stroke text-alias-text-text-color hover:bg-alias-button-stroke-hover-background hover:border-alias-button-stroke-stroke hover:text-alias-button-stroke-hover-text focus-visible:bg-alias-button-stroke-background focus-visible:border-alias-button-stroke-stroke focus-visible:shadow-focusBrand focus-visible:text-alias-text-text-color disabled:bg-alias-button-stroke-background disabled:border-alias-border-border-tertiary disabled:text-alias-border-border-tertiary w-full justify-center" style="--interface-text-font-scale: 1;">View all notifications</button></div></div>
 <div id="1p-menu-live-region" role="status" aria-live="polite" aria-atomic="true" aria-relevant="all" style="clip: rect(0px, 0px, 0px, 0px); clip-path: inset(50%); height: 1px; overflow: hidden; position: fixed; top: 0px; left: 0px; white-space: nowrap; width: 1px; overflow-wrap: normal;">1Password menu is available. Press down arrow to select.</div>
+
 
 
 </body></html>
