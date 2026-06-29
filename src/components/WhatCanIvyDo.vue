@@ -197,12 +197,20 @@ function setRealCursorHidden(hidden) {
   document.body.classList.toggle(HIDE_REAL_CURSOR_CLASS, hidden);
 }
 
+function resolveExposedElement(exposedValue) {
+  if (exposedValue?.getBoundingClientRect) {
+    return exposedValue;
+  }
+
+  return exposedValue?.value || null;
+}
+
 function getTopPromptInputElement() {
-  return topPromptChatBox.value?.chatInput?.value || null;
+  return resolveExposedElement(topPromptChatBox.value?.chatInput);
 }
 
 function getTopPromptSubmitButtonElement() {
-  return topPromptChatBox.value?.submitButton?.value || null;
+  return resolveExposedElement(topPromptChatBox.value?.submitButton);
 }
 
 async function fillTopPromptInput(prompt) {
@@ -345,13 +353,12 @@ async function chooseQuery(queryOption, event) {
   }
 
   try {
-    if (route.path !== queryOption.path) {
-      await router.push(queryOption.path);
-    }
-
     setRealCursorHidden(true);
     await fillTopPromptInput(queryOption.query);
     await playDemoCursorAnimation();
+    if (route.path !== queryOption.path) {
+      await router.push(queryOption.path);
+    }
     startDemo(queryOption.query);
   } finally {
     setRealCursorHidden(false);
