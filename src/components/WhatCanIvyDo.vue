@@ -103,6 +103,20 @@ let activeDemoCursorAnimationId = 0;
 const executionTimers = [];
 const IVY_IN_ACTION_ENTRY_BG_CLASS = "ivy-in-action-entry";
 const queryOptions = ivyInActionScenarioList;
+const promptStackPlaceholders = [
+  [
+    "Which signal should I investigate first?",
+    "What changed since the last scan?",
+  ],
+  [
+    "Summarize unusual activity across sources.",
+    "Show me what needs review today.",
+  ],
+  [
+    "Which users need access cleanup?",
+    "Find stale or risky admin access.",
+  ],
+];
 const scenario = computed(() => (
   ivyInActionScenarioByKey[props.scenarioKey] || ivyInActionDefaultScenario
 ));
@@ -132,6 +146,19 @@ const demoCursorStyle = computed(() => ({
   "--demo-cursor-start-x": `${demoCursorStartX.value}px`,
   "--demo-cursor-start-y": `${demoCursorStartY.value}px`,
 }));
+const queryOptionStacks = computed(() => (
+  queryOptions.map((queryOption, optionIndex) => ({
+    key: queryOption.key,
+    cards: [
+      queryOption,
+      ...promptStackPlaceholders[optionIndex].map((placeholderQuery, placeholderIndex) => ({
+        ...queryOption,
+        key: `${queryOption.key}-placeholder-${placeholderIndex + 1}`,
+        query: placeholderQuery,
+      })),
+    ],
+  }))
+));
 
 const adminRiskRowsDisplay = computed(() => (
   buildExpandableRows(
@@ -1240,18 +1267,25 @@ onBeforeUnmount(() => {
                 <div class="mt-4 mb-5">
                   <div class="row g-3 mb-3">
                     <div 
-                      v-for="queryOption in queryOptions"
-                      :key="queryOption.key"
+                      v-for="queryStack in queryOptionStacks"
+                      :key="queryStack.key"
                       class="col-4"
                     >
-                      <div 
-                        class="rounded border cursor-pointer p-4 bg-chat-highlight h-100 d-flex justify-content-start align-items-center"
-                        :class="{ 'what-ivy-query-option--active': activeScenarioKey === queryOption.key }"
-                        @click="chooseQuery(queryOption, $event)"
-                      >
-                        <h6 class="fw-medium mb-0 text-start">
-                          {{ queryOption.query }}
-                        </h6>
+                      <div class="what-ivy-query-stack">
+                        <button
+                          v-for="(queryOption, cardIndex) in queryStack.cards"
+                          :key="queryOption.key"
+                          type="button"
+                          class="what-ivy-query-card rounded border cursor-pointer p-4 bg-chat-highlight d-flex justify-content-start align-items-center text-start"
+                          :class="{
+                            'what-ivy-query-option--active': activeScenarioKey === queryStack.key && cardIndex === 0,
+                          }"
+                          @click="chooseQuery(queryOption, $event)"
+                        >
+                          <h6 class="fw-medium mb-0 text-start">
+                            {{ queryOption.query }}
+                          </h6>
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -1361,6 +1395,52 @@ onBeforeUnmount(() => {
 
   &:hover {
     color: var(--bs-secondary-color) !important;
+  }
+}
+
+.what-ivy-query-stack {
+  min-height: 20rem;
+  position: relative;
+
+  &:hover,
+  &:focus-within {
+    .what-ivy-query-card:nth-child(2) {
+      transform: translateY(6.75rem) scale(0.985);
+    }
+
+    .what-ivy-query-card:nth-child(3) {
+      transform: translateY(13.5rem) scale(0.97);
+    }
+  }
+}
+
+.what-ivy-query-card {
+  appearance: none;
+  background-color: white;
+  border-color: var(--bs-border-color);
+  color: inherit;
+  left: 0;
+  min-height: 6rem;
+  position: absolute;
+  top: 0;
+  transition: border-color 0.2s ease-in-out, box-shadow 0.2s ease-in-out, transform 0.2s ease-in-out;
+  width: 100%;
+  z-index: 3;
+
+  &:nth-child(2) {
+    transform: translateY(0.5rem) scale(0.965);
+    z-index: 2;
+  }
+
+  &:nth-child(3) {
+    transform: translateY(1rem) scale(0.93);
+    z-index: 1;
+  }
+
+  &:hover,
+  &:focus-visible {
+    border-color: #465FFF;
+    box-shadow: inset 0 0 0 1px #465FFF;
   }
 }
 
