@@ -1,0 +1,428 @@
+/* Ivy color palette — generated from colors.json.
+ * Source: IVY Design (Copy).pdf, page 1.
+ * Regenerate: python3 design-tokens/generate_css.py
+ * Do not edit this generated file directly. */
+:root {
+  /* Gray — core */
+  --ivy-color-gray-25: #FCFCFD;
+  --ivy-color-gray-50: #F9FAFB;
+  --ivy-color-gray-100: #F2F4F7;
+  --ivy-color-gray-200: #E4E7EC;
+  --ivy-color-gray-300: #D0D5DD;
+  --ivy-color-gray-400: #98A2B3;
+  --ivy-color-gray-500: #667085;
+  --ivy-color-gray-600: #475467;
+  --ivy-color-gray-700: #344054;
+  --ivy-color-gray-800: #1D2939;
+  --ivy-color-gray-900: #101828;
+  --ivy-color-gray-950: #0C111D;
+
+  /* Error — core */
+  --ivy-color-error-25: #FFFBFA;
+  --ivy-color-error-50: #FEF3F2;
+  --ivy-color-error-100: #FEE4E2;
+  --ivy-color-error-200: #FECDCA;
+  --ivy-color-error-300: #FDA29B;
+  --ivy-color-error-400: #F97066;
+  --ivy-color-error-500: #F04438;
+  --ivy-color-error-600: #D92D20;
+  --ivy-color-error-700: #B42318;
+  --ivy-color-error-800: #912018;
+  --ivy-color-error-900: #7A271A;
+  --ivy-color-error-950: #55160C;
+
+  /* Indigo — core */
+  --ivy-color-indigo-25: #F5F8FF;
+  --ivy-color-indigo-50: #EEF4FF;
+  --ivy-color-indigo-100: #E0EAFF;
+  --ivy-color-indigo-200: #C7D7FE;
+  --ivy-color-indigo-300: #A4BCFD;
+  --ivy-color-indigo-400: #8098F9;
+  --ivy-color-indigo-500: #6172F3;
+  --ivy-color-indigo-600: #444CE7;
+  --ivy-color-indigo-700: #3538CD;
+  --ivy-color-indigo-800: #2D31A6;
+  --ivy-color-indigo-900: #2D3282;
+  --ivy-color-indigo-950: #1F235B;
+
+  /* Purple — core */
+  --ivy-color-purple-25: #FAFAFF;
+  --ivy-color-purple-50: #F4F3FF;
+  --ivy-color-purple-100: #EBE9FE;
+  --ivy-color-purple-200: #D9D6FE;
+  --ivy-color-purple-300: #BDB4FE;
+  --ivy-color-purple-400: #9B8AFB;
+  --ivy-color-purple-500: #7A5AF8;
+  --ivy-color-purple-600: #6938EF;
+  --ivy-color-purple-700: #5925DC;
+  --ivy-color-purple-800: #4A1FB8;
+  --ivy-color-purple-900: #3E1C96;
+  --ivy-color-purple-950: #27115F;
+
+  /* Pink — core */
+  --ivy-color-pink-25: #FEF6FB;
+  --ivy-color-pink-50: #FDF2FA;
+  --ivy-color-pink-100: #FCE7F6;
+  --ivy-color-pink-200: #FCCEEE;
+  --ivy-color-pink-300: #FAA7E0;
+  --ivy-color-pink-400: #F670C7;
+  --ivy-color-pink-500: #EE46BC;
+  --ivy-color-pink-600: #DD2590;
+  --ivy-color-pink-700: #C11574;
+  --ivy-color-pink-800: #9E165F;
+  --ivy-color-pink-900: #851651;
+  --ivy-color-pink-950: #4E0D30;
+
+  /* Rose — core */
+  --ivy-color-rose-25: #FFF5F6;
+  --ivy-color-rose-50: #FFF1F3;
+  --ivy-color-rose-100: #FFE4E8;
+  --ivy-color-rose-200: #FECDD6;
+  --ivy-color-rose-300: #FEA3B4;
+  --ivy-color-rose-400: #FD6F8E;
+  --ivy-color-rose-500: #F63D68;
+  --ivy-color-rose-600: #E31B54;
+  --ivy-color-rose-700: #C01048;
+  --ivy-color-rose-800: #A11043;
+  --ivy-color-rose-900: #89123E;
+  --ivy-color-rose-950: #510B24;
+
+  /* Orange — core */
+  --ivy-color-orange-25: #FFFAF5;
+  --ivy-color-orange-50: #FFF6ED;
+  --ivy-color-orange-100: #FFEAD5;
+  --ivy-color-orange-200: #FDDCAB;
+  --ivy-color-orange-300: #FEB273;
+  --ivy-color-orange-400: #FD853A;
+  --ivy-color-orange-500: #FB6514;
+  --ivy-color-orange-600: #EC4A0A;
+  --ivy-color-orange-700: #C4320A;
+  --ivy-color-orange-800: #9C2A10;
+  --ivy-color-orange-900: #7E2410;
+  --ivy-color-orange-950: #511C10;
+
+  /* Warning — core */
+  --ivy-color-warning-25: #FFFCF5;
+  --ivy-color-warning-50: #FFFAEB;
+  --ivy-color-warning-100: #FEF0C7;
+  --ivy-color-warning-200: #FEDF89;
+  --ivy-color-warning-300: #FEC84B;
+  --ivy-color-warning-400: #FDB022;
+  --ivy-color-warning-500: #F79009;
+  --ivy-color-warning-600: #DC6803;
+  --ivy-color-warning-700: #B54708;
+  --ivy-color-warning-800: #93370D;
+  --ivy-color-warning-900: #7A2E0E;
+  --ivy-color-warning-950: #4E1D09;
+
+  /* Success — core */
+  --ivy-color-success-25: #F6FEF9;
+  --ivy-color-success-50: #ECFDF3;
+  --ivy-color-success-100: #D1FADF;
+  --ivy-color-success-200: #A6F4C5;
+  --ivy-color-success-300: #6CE9A6;
+  --ivy-color-success-400: #32D583;
+  --ivy-color-success-500: #12B76A;
+  --ivy-color-success-600: #039855;
+  --ivy-color-success-700: #027A48;
+  --ivy-color-success-800: #05603A;
+  --ivy-color-success-900: #054F31;
+  --ivy-color-success-950: #053321;
+
+  /* Bluegray — core */
+  --ivy-color-bluegray-25: #FCFCFD;
+  --ivy-color-bluegray-50: #F8F9FC;
+  --ivy-color-bluegray-100: #EAECF5;
+  --ivy-color-bluegray-200: #C8CCE5;
+  --ivy-color-bluegray-300: #9EA5D1;
+  --ivy-color-bluegray-400: #717BBC;
+  --ivy-color-bluegray-500: #4E5BA6;
+  --ivy-color-bluegray-600: #3E4784;
+  --ivy-color-bluegray-700: #363F72;
+  --ivy-color-bluegray-800: #293056;
+  --ivy-color-bluegray-900: #101323;
+  --ivy-color-bluegray-950: #0D0F1C;
+
+  /* Bluelight — core */
+  --ivy-color-bluelight-25: #F5FBFF;
+  --ivy-color-bluelight-50: #F0F9FF;
+  --ivy-color-bluelight-100: #E0F2FE;
+  --ivy-color-bluelight-200: #B9E6FE;
+  --ivy-color-bluelight-300: #7CD4FD;
+  --ivy-color-bluelight-400: #36BFFA;
+  --ivy-color-bluelight-500: #0BA5EC;
+  --ivy-color-bluelight-600: #0086C9;
+  --ivy-color-bluelight-700: #026AA2;
+  --ivy-color-bluelight-800: #065986;
+  --ivy-color-bluelight-900: #0B4A6F;
+  --ivy-color-bluelight-950: #062C41;
+
+  /* Blue — core */
+  --ivy-color-blue-25: #F5FAFF;
+  --ivy-color-blue-50: #EFF8FF;
+  --ivy-color-blue-100: #D1E9FF;
+  --ivy-color-blue-200: #B2DDFF;
+  --ivy-color-blue-300: #84CAFF;
+  --ivy-color-blue-400: #53B1FD;
+  --ivy-color-blue-500: #2E90FA;
+  --ivy-color-blue-600: #1570EF;
+  --ivy-color-blue-700: #175CD3;
+  --ivy-color-blue-800: #1849A9;
+  --ivy-color-blue-900: #194185;
+  --ivy-color-blue-950: #102A56;
+
+  /* Brown — extended */
+  --ivy-color-brown-25: #FAF8F7;
+  --ivy-color-brown-50: #F6F3F1;
+  --ivy-color-brown-100: #EEE7E2;
+  --ivy-color-brown-200: #E0D2C7;
+  --ivy-color-brown-300: #CDB19D;
+  --ivy-color-brown-400: #BB8D6D;
+  --ivy-color-brown-500: #A5704A;
+  --ivy-color-brown-600: #8C6040;
+  --ivy-color-brown-700: #6E4D36;
+  --ivy-color-brown-800: #503A2A;
+  --ivy-color-brown-900: #37291F;
+  --ivy-color-brown-950: #211A15;
+
+  /* Stone — extended */
+  --ivy-color-stone-25: #F9F9F8;
+  --ivy-color-stone-50: #F5F4F3;
+  --ivy-color-stone-100: #EAE8E6;
+  --ivy-color-stone-200: #D8D4CF;
+  --ivy-color-stone-300: #BEB5AC;
+  --ivy-color-stone-400: #A29486;
+  --ivy-color-stone-500: #897867;
+  --ivy-color-stone-600: #746658;
+  --ivy-color-stone-700: #5C5247;
+  --ivy-color-stone-800: #443D36;
+  --ivy-color-stone-900: #302B27;
+  --ivy-color-stone-950: #1D1B19;
+
+  /* Olive — extended */
+  --ivy-color-olive-25: #FAFAF7;
+  --ivy-color-olive-50: #F6F7F1;
+  --ivy-color-olive-100: #EEEFE1;
+  --ivy-color-olive-200: #DFE2C5;
+  --ivy-color-olive-300: #CBD09A;
+  --ivy-color-olive-400: #B8BF69;
+  --ivy-color-olive-500: #A2AA46;
+  --ivy-color-olive-600: #89903C;
+  --ivy-color-olive-700: #6B7033;
+  --ivy-color-olive-800: #4F5228;
+  --ivy-color-olive-900: #36381E;
+  --ivy-color-olive-950: #202214;
+
+  /* Slate — extended */
+  --ivy-color-slate-25: #F8F8FA;
+  --ivy-color-slate-50: #F1F3F6;
+  --ivy-color-slate-100: #E3E6ED;
+  --ivy-color-slate-200: #CAD0DE;
+  --ivy-color-slate-300: #A2ADC8;
+  --ivy-color-slate-400: #7588B2;
+  --ivy-color-slate-500: #54699C;
+  --ivy-color-slate-600: #485A84;
+  --ivy-color-slate-700: #3C4968;
+  --ivy-color-slate-800: #2E374C;
+  --ivy-color-slate-900: #222835;
+  --ivy-color-slate-950: #161920;
+
+  /* Zinc — extended */
+  --ivy-color-zinc-25: #F8F8F9;
+  --ivy-color-zinc-50: #F3F3F4;
+  --ivy-color-zinc-100: #E6E6EA;
+  --ivy-color-zinc-200: #D0D0D8;
+  --ivy-color-zinc-300: #ADADBD;
+  --ivy-color-zinc-400: #8888A0;
+  --ivy-color-zinc-500: #696986;
+  --ivy-color-zinc-600: #5A5A72;
+  --ivy-color-zinc-700: #49495A;
+  --ivy-color-zinc-800: #373743;
+  --ivy-color-zinc-900: #28282F;
+  --ivy-color-zinc-950: #19191D;
+
+  /* Steel — extended */
+  --ivy-color-steel-25: #F7F9FA;
+  --ivy-color-steel-50: #F1F4F6;
+  --ivy-color-steel-100: #E2E9EE;
+  --ivy-color-steel-200: #C6D6E1;
+  --ivy-color-steel-300: #9CB9CE;
+  --ivy-color-steel-400: #6B9BBD;
+  --ivy-color-steel-500: #4880A8;
+  --ivy-color-steel-600: #3E6D8E;
+  --ivy-color-steel-700: #34566F;
+  --ivy-color-steel-800: #294151;
+  --ivy-color-steel-900: #1F2D38;
+  --ivy-color-steel-950: #141C21;
+
+  /* Midnight — extended */
+  --ivy-color-midnight-25: #F7F8FA;
+  --ivy-color-midnight-50: #F0F2F7;
+  --ivy-color-midnight-100: #E1E5EF;
+  --ivy-color-midnight-200: #C4CEE3;
+  --ivy-color-midnight-300: #98AAD2;
+  --ivy-color-midnight-400: #6682C2;
+  --ivy-color-midnight-500: #4262AE;
+  --ivy-color-midnight-600: #395493;
+  --ivy-color-midnight-700: #314473;
+  --ivy-color-midnight-800: #273454;
+  --ivy-color-midnight-900: #1D2639;
+  --ivy-color-midnight-950: #141822;
+
+  /* Cyan — extended */
+  --ivy-color-cyan-25: #F6FAFB;
+  --ivy-color-cyan-50: #EEF7F9;
+  --ivy-color-cyan-100: #DCF0F4;
+  --ivy-color-cyan-200: #B9E5EE;
+  --ivy-color-cyan-300: #83D6E7;
+  --ivy-color-cyan-400: #45C9E3;
+  --ivy-color-cyan-500: #1AB6D5;
+  --ivy-color-cyan-600: #1999B3;
+  --ivy-color-cyan-700: #18788B;
+  --ivy-color-cyan-800: #165764;
+  --ivy-color-cyan-900: #133C44;
+  --ivy-color-cyan-950: #0E2327;
+
+  /* Teal — extended */
+  --ivy-color-teal-25: #F6FBFA;
+  --ivy-color-teal-50: #EFF8F7;
+  --ivy-color-teal-100: #DEF2F0;
+  --ivy-color-teal-200: #BFE9E5;
+  --ivy-color-teal-300: #8EDCD6;
+  --ivy-color-teal-400: #55D3C8;
+  --ivy-color-teal-500: #2EC2B6;
+  --ivy-color-teal-600: #29A399;
+  --ivy-color-teal-700: #247F78;
+  --ivy-color-teal-800: #1E5C57;
+  --ivy-color-teal-900: #183F3B;
+  --ivy-color-teal-950: #112523;
+
+  /* Green — extended */
+  --ivy-color-green-25: #F6FBF8;
+  --ivy-color-green-50: #EFF8F3;
+  --ivy-color-green-100: #DEF2E6;
+  --ivy-color-green-200: #BFE9D0;
+  --ivy-color-green-300: #8EDCAE;
+  --ivy-color-green-400: #55D389;
+  --ivy-color-green-500: #2EC26B;
+  --ivy-color-green-600: #29A35C;
+  --ivy-color-green-700: #247F4A;
+  --ivy-color-green-800: #1E5C38;
+  --ivy-color-green-900: #183F28;
+  --ivy-color-green-950: #112519;
+
+  /* Emerald — extended */
+  --ivy-color-emerald-25: #F6FBF9;
+  --ivy-color-emerald-50: #EFF8F5;
+  --ivy-color-emerald-100: #DDF3EC;
+  --ivy-color-emerald-200: #BDEBDB;
+  --ivy-color-emerald-300: #8AE0C3;
+  --ivy-color-emerald-400: #4FD9AB;
+  --ivy-color-emerald-500: #26C993;
+  --ivy-color-emerald-600: #23A97C;
+  --ivy-color-emerald-700: #208462;
+  --ivy-color-emerald-800: #1B5F49;
+  --ivy-color-emerald-900: #164132;
+  --ivy-color-emerald-950: #10261E;
+
+  /* Lime — extended */
+  --ivy-color-lime-25: #F9FBF6;
+  --ivy-color-lime-50: #F5F8EF;
+  --ivy-color-lime-100: #EBF3DD;
+  --ivy-color-lime-200: #DAEBBD;
+  --ivy-color-lime-300: #C1E08A;
+  --ivy-color-lime-400: #A6D94F;
+  --ivy-color-lime-500: #8EC926;
+  --ivy-color-lime-600: #78A923;
+  --ivy-color-lime-700: #5F8420;
+  --ivy-color-lime-800: #465F1B;
+  --ivy-color-lime-900: #314116;
+  --ivy-color-lime-950: #1E2610;
+
+  /* Yellow — extended */
+  --ivy-color-yellow-25: #FCFAF5;
+  --ivy-color-yellow-50: #FAF7ED;
+  --ivy-color-yellow-100: #F6EFDA;
+  --ivy-color-yellow-200: #F3E3B5;
+  --ivy-color-yellow-300: #F0D27B;
+  --ivy-color-yellow-400: #F2C336;
+  --ivy-color-yellow-500: #E6AF0A;
+  --ivy-color-yellow-600: #C1940B;
+  --ivy-color-yellow-700: #95730E;
+  --ivy-color-yellow-800: #6B540F;
+  --ivy-color-yellow-900: #483A0F;
+  --ivy-color-yellow-950: #2A220C;
+
+  /* Coral — extended */
+  --ivy-color-coral-25: #FCF7F6;
+  --ivy-color-coral-50: #F9F0EE;
+  --ivy-color-coral-100: #F5E0DB;
+  --ivy-color-coral-200: #EFC1B8;
+  --ivy-color-coral-300: #E99281;
+  --ivy-color-coral-400: #E75C40;
+  --ivy-color-coral-500: #DA3616;
+  --ivy-color-coral-600: #B73015;
+  --ivy-color-coral-700: #8E2915;
+  --ivy-color-coral-800: #662214;
+  --ivy-color-coral-900: #451A12;
+  --ivy-color-coral-950: #28120E;
+
+  /* Maroon — extended */
+  --ivy-color-maroon-25: #FBF6F7;
+  --ivy-color-maroon-50: #F8EFEF;
+  --ivy-color-maroon-100: #F3DDDF;
+  --ivy-color-maroon-200: #EBBDC0;
+  --ivy-color-maroon-300: #E08A91;
+  --ivy-color-maroon-400: #D94F5A;
+  --ivy-color-maroon-500: #C92634;
+  --ivy-color-maroon-600: #A9232E;
+  --ivy-color-maroon-700: #842028;
+  --ivy-color-maroon-800: #5F1B21;
+  --ivy-color-maroon-900: #41161A;
+  --ivy-color-maroon-950: #261012;
+
+  /* Violet — extended */
+  --ivy-color-violet-25: #F8F6FB;
+  --ivy-color-violet-50: #F3EEF9;
+  --ivy-color-violet-100: #E6DCF4;
+  --ivy-color-violet-200: #CFBAED;
+  --ivy-color-violet-300: #AD85E5;
+  --ivy-color-violet-400: #8748E0;
+  --ivy-color-violet-500: #691ED2;
+  --ivy-color-violet-600: #5A1CB0;
+  --ivy-color-violet-700: #481B89;
+  --ivy-color-violet-800: #371863;
+  --ivy-color-violet-900: #271443;
+  --ivy-color-violet-950: #190F27;
+
+  /* Fuchsia — extended */
+  --ivy-color-fuchsia-25: #FBF6FB;
+  --ivy-color-fuchsia-50: #F8EEF9;
+  --ivy-color-fuchsia-100: #F2DCF4;
+  --ivy-color-fuchsia-200: #EAB9EE;
+  --ivy-color-fuchsia-300: #DE83E7;
+  --ivy-color-fuchsia-400: #D645E3;
+  --ivy-color-fuchsia-500: #C61AD5;
+  --ivy-color-fuchsia-600: #A619B3;
+  --ivy-color-fuchsia-700: #81188B;
+  --ivy-color-fuchsia-800: #5E1664;
+  --ivy-color-fuchsia-900: #401344;
+  --ivy-color-fuchsia-950: #250E27;
+
+  /* Magenta — extended */
+  --ivy-color-magenta-25: #FBF6FA;
+  --ivy-color-magenta-50: #F9EEF6;
+  --ivy-color-magenta-100: #F3DDEE;
+  --ivy-color-magenta-200: #ECBBE0;
+  --ivy-color-magenta-300: #E387CC;
+  --ivy-color-magenta-400: #DD4BB9;
+  --ivy-color-magenta-500: #CE22A3;
+  --ivy-color-magenta-600: #AD1F8A;
+  --ivy-color-magenta-700: #861D6C;
+  --ivy-color-magenta-800: #61194F;
+  --ivy-color-magenta-900: #421537;
+  --ivy-color-magenta-950: #260F21;
+
+  /* User-approved override: primary */
+  --ivy-color-primary: #465FFF;
+}

@@ -1,0 +1,593 @@
+{
+  "name": "Ivy project color palette",
+  "source": {
+    "file": "IVY Design (Copy).pdf",
+    "path": "/Users/samuelthornton/Downloads/IVY Design (Copy).pdf",
+    "page": 1,
+    "sha256": "bd9577000c29962e6fd65ba650cc2593490dc4581b30db78bef2334dafd203cd"
+  },
+  "notes": [
+    "Exact labeled hex values from the PDF; extraction whitespace was removed.",
+    "Core corresponds to Colors; extended corresponds to Colors - Extended Palette.",
+    "The Primary marker is on shade 500 in each family.",
+    "No additional colors or semantic brand mappings are inferred."
+  ],
+  "families": {
+    "gray": {
+      "label": "Gray",
+      "section": "core",
+      "primaryShade": "500",
+      "shades": {
+        "25": "#FCFCFD",
+        "50": "#F9FAFB",
+        "100": "#F2F4F7",
+        "200": "#E4E7EC",
+        "300": "#D0D5DD",
+        "400": "#98A2B3",
+        "500": "#667085",
+        "600": "#475467",
+        "700": "#344054",
+        "800": "#1D2939",
+        "900": "#101828",
+        "950": "#0C111D"
+      }
+    },
+    "error": {
+      "label": "Error",
+      "section": "core",
+      "primaryShade": "500",
+      "shades": {
+        "25": "#FFFBFA",
+        "50": "#FEF3F2",
+        "100": "#FEE4E2",
+        "200": "#FECDCA",
+        "300": "#FDA29B",
+        "400": "#F97066",
+        "500": "#F04438",
+        "600": "#D92D20",
+        "700": "#B42318",
+        "800": "#912018",
+        "900": "#7A271A",
+        "950": "#55160C"
+      }
+    },
+    "indigo": {
+      "label": "Indigo",
+      "section": "core",
+      "primaryShade": "500",
+      "shades": {
+        "25": "#F5F8FF",
+        "50": "#EEF4FF",
+        "100": "#E0EAFF",
+        "200": "#C7D7FE",
+        "300": "#A4BCFD",
+        "400": "#8098F9",
+        "500": "#6172F3",
+        "600": "#444CE7",
+        "700": "#3538CD",
+        "800": "#2D31A6",
+        "900": "#2D3282",
+        "950": "#1F235B"
+      }
+    },
+    "purple": {
+      "label": "Purple",
+      "section": "core",
+      "primaryShade": "500",
+      "shades": {
+        "25": "#FAFAFF",
+        "50": "#F4F3FF",
+        "100": "#EBE9FE",
+        "200": "#D9D6FE",
+        "300": "#BDB4FE",
+        "400": "#9B8AFB",
+        "500": "#7A5AF8",
+        "600": "#6938EF",
+        "700": "#5925DC",
+        "800": "#4A1FB8",
+        "900": "#3E1C96",
+        "950": "#27115F"
+      }
+    },
+    "pink": {
+      "label": "Pink",
+      "section": "core",
+      "primaryShade": "500",
+      "shades": {
+        "25": "#FEF6FB",
+        "50": "#FDF2FA",
+        "100": "#FCE7F6",
+        "200": "#FCCEEE",
+        "300": "#FAA7E0",
+        "400": "#F670C7",
+        "500": "#EE46BC",
+        "600": "#DD2590",
+        "700": "#C11574",
+        "800": "#9E165F",
+        "900": "#851651",
+        "950": "#4E0D30"
+      }
+    },
+    "rose": {
+      "label": "Rose",
+      "section": "core",
+      "primaryShade": "500",
+      "shades": {
+        "25": "#FFF5F6",
+        "50": "#FFF1F3",
+        "100": "#FFE4E8",
+        "200": "#FECDD6",
+        "300": "#FEA3B4",
+        "400": "#FD6F8E",
+        "500": "#F63D68",
+        "600": "#E31B54",
+        "700": "#C01048",
+        "800": "#A11043",
+        "900": "#89123E",
+        "950": "#510B24"
+      }
+    },
+    "orange": {
+      "label": "Orange",
+      "section": "core",
+      "primaryShade": "500",
+      "shades": {
+        "25": "#FFFAF5",
+        "50": "#FFF6ED",
+        "100": "#FFEAD5",
+        "200": "#FDDCAB",
+        "300": "#FEB273",
+        "400": "#FD853A",
+        "500": "#FB6514",
+        "600": "#EC4A0A",
+        "700": "#C4320A",
+        "800": "#9C2A10",
+        "900": "#7E2410",
+        "950": "#511C10"
+      }
+    },
+    "warning": {
+      "label": "Warning",
+      "section": "core",
+      "primaryShade": "500",
+      "shades": {
+        "25": "#FFFCF5",
+        "50": "#FFFAEB",
+        "100": "#FEF0C7",
+        "200": "#FEDF89",
+        "300": "#FEC84B",
+        "400": "#FDB022",
+        "500": "#F79009",
+        "600": "#DC6803",
+        "700": "#B54708",
+        "800": "#93370D",
+        "900": "#7A2E0E",
+        "950": "#4E1D09"
+      }
+    },
+    "success": {
+      "label": "Success",
+      "section": "core",
+      "primaryShade": "500",
+      "shades": {
+        "25": "#F6FEF9",
+        "50": "#ECFDF3",
+        "100": "#D1FADF",
+        "200": "#A6F4C5",
+        "300": "#6CE9A6",
+        "400": "#32D583",
+        "500": "#12B76A",
+        "600": "#039855",
+        "700": "#027A48",
+        "800": "#05603A",
+        "900": "#054F31",
+        "950": "#053321"
+      }
+    },
+    "bluegray": {
+      "label": "Bluegray",
+      "section": "core",
+      "primaryShade": "500",
+      "shades": {
+        "25": "#FCFCFD",
+        "50": "#F8F9FC",
+        "100": "#EAECF5",
+        "200": "#C8CCE5",
+        "300": "#9EA5D1",
+        "400": "#717BBC",
+        "500": "#4E5BA6",
+        "600": "#3E4784",
+        "700": "#363F72",
+        "800": "#293056",
+        "900": "#101323",
+        "950": "#0D0F1C"
+      }
+    },
+    "bluelight": {
+      "label": "Bluelight",
+      "section": "core",
+      "primaryShade": "500",
+      "shades": {
+        "25": "#F5FBFF",
+        "50": "#F0F9FF",
+        "100": "#E0F2FE",
+        "200": "#B9E6FE",
+        "300": "#7CD4FD",
+        "400": "#36BFFA",
+        "500": "#0BA5EC",
+        "600": "#0086C9",
+        "700": "#026AA2",
+        "800": "#065986",
+        "900": "#0B4A6F",
+        "950": "#062C41"
+      }
+    },
+    "blue": {
+      "label": "Blue",
+      "section": "core",
+      "primaryShade": "500",
+      "shades": {
+        "25": "#F5FAFF",
+        "50": "#EFF8FF",
+        "100": "#D1E9FF",
+        "200": "#B2DDFF",
+        "300": "#84CAFF",
+        "400": "#53B1FD",
+        "500": "#2E90FA",
+        "600": "#1570EF",
+        "700": "#175CD3",
+        "800": "#1849A9",
+        "900": "#194185",
+        "950": "#102A56"
+      }
+    },
+    "brown": {
+      "label": "Brown",
+      "section": "extended",
+      "primaryShade": "500",
+      "shades": {
+        "25": "#FAF8F7",
+        "50": "#F6F3F1",
+        "100": "#EEE7E2",
+        "200": "#E0D2C7",
+        "300": "#CDB19D",
+        "400": "#BB8D6D",
+        "500": "#A5704A",
+        "600": "#8C6040",
+        "700": "#6E4D36",
+        "800": "#503A2A",
+        "900": "#37291F",
+        "950": "#211A15"
+      }
+    },
+    "stone": {
+      "label": "Stone",
+      "section": "extended",
+      "primaryShade": "500",
+      "shades": {
+        "25": "#F9F9F8",
+        "50": "#F5F4F3",
+        "100": "#EAE8E6",
+        "200": "#D8D4CF",
+        "300": "#BEB5AC",
+        "400": "#A29486",
+        "500": "#897867",
+        "600": "#746658",
+        "700": "#5C5247",
+        "800": "#443D36",
+        "900": "#302B27",
+        "950": "#1D1B19"
+      }
+    },
+    "olive": {
+      "label": "Olive",
+      "section": "extended",
+      "primaryShade": "500",
+      "shades": {
+        "25": "#FAFAF7",
+        "50": "#F6F7F1",
+        "100": "#EEEFE1",
+        "200": "#DFE2C5",
+        "300": "#CBD09A",
+        "400": "#B8BF69",
+        "500": "#A2AA46",
+        "600": "#89903C",
+        "700": "#6B7033",
+        "800": "#4F5228",
+        "900": "#36381E",
+        "950": "#202214"
+      }
+    },
+    "slate": {
+      "label": "Slate",
+      "section": "extended",
+      "primaryShade": "500",
+      "shades": {
+        "25": "#F8F8FA",
+        "50": "#F1F3F6",
+        "100": "#E3E6ED",
+        "200": "#CAD0DE",
+        "300": "#A2ADC8",
+        "400": "#7588B2",
+        "500": "#54699C",
+        "600": "#485A84",
+        "700": "#3C4968",
+        "800": "#2E374C",
+        "900": "#222835",
+        "950": "#161920"
+      }
+    },
+    "zinc": {
+      "label": "Zinc",
+      "section": "extended",
+      "primaryShade": "500",
+      "shades": {
+        "25": "#F8F8F9",
+        "50": "#F3F3F4",
+        "100": "#E6E6EA",
+        "200": "#D0D0D8",
+        "300": "#ADADBD",
+        "400": "#8888A0",
+        "500": "#696986",
+        "600": "#5A5A72",
+        "700": "#49495A",
+        "800": "#373743",
+        "900": "#28282F",
+        "950": "#19191D"
+      }
+    },
+    "steel": {
+      "label": "Steel",
+      "section": "extended",
+      "primaryShade": "500",
+      "shades": {
+        "25": "#F7F9FA",
+        "50": "#F1F4F6",
+        "100": "#E2E9EE",
+        "200": "#C6D6E1",
+        "300": "#9CB9CE",
+        "400": "#6B9BBD",
+        "500": "#4880A8",
+        "600": "#3E6D8E",
+        "700": "#34566F",
+        "800": "#294151",
+        "900": "#1F2D38",
+        "950": "#141C21"
+      }
+    },
+    "midnight": {
+      "label": "Midnight",
+      "section": "extended",
+      "primaryShade": "500",
+      "shades": {
+        "25": "#F7F8FA",
+        "50": "#F0F2F7",
+        "100": "#E1E5EF",
+        "200": "#C4CEE3",
+        "300": "#98AAD2",
+        "400": "#6682C2",
+        "500": "#4262AE",
+        "600": "#395493",
+        "700": "#314473",
+        "800": "#273454",
+        "900": "#1D2639",
+        "950": "#141822"
+      }
+    },
+    "cyan": {
+      "label": "Cyan",
+      "section": "extended",
+      "primaryShade": "500",
+      "shades": {
+        "25": "#F6FAFB",
+        "50": "#EEF7F9",
+        "100": "#DCF0F4",
+        "200": "#B9E5EE",
+        "300": "#83D6E7",
+        "400": "#45C9E3",
+        "500": "#1AB6D5",
+        "600": "#1999B3",
+        "700": "#18788B",
+        "800": "#165764",
+        "900": "#133C44",
+        "950": "#0E2327"
+      }
+    },
+    "teal": {
+      "label": "Teal",
+      "section": "extended",
+      "primaryShade": "500",
+      "shades": {
+        "25": "#F6FBFA",
+        "50": "#EFF8F7",
+        "100": "#DEF2F0",
+        "200": "#BFE9E5",
+        "300": "#8EDCD6",
+        "400": "#55D3C8",
+        "500": "#2EC2B6",
+        "600": "#29A399",
+        "700": "#247F78",
+        "800": "#1E5C57",
+        "900": "#183F3B",
+        "950": "#112523"
+      }
+    },
+    "green": {
+      "label": "Green",
+      "section": "extended",
+      "primaryShade": "500",
+      "shades": {
+        "25": "#F6FBF8",
+        "50": "#EFF8F3",
+        "100": "#DEF2E6",
+        "200": "#BFE9D0",
+        "300": "#8EDCAE",
+        "400": "#55D389",
+        "500": "#2EC26B",
+        "600": "#29A35C",
+        "700": "#247F4A",
+        "800": "#1E5C38",
+        "900": "#183F28",
+        "950": "#112519"
+      }
+    },
+    "emerald": {
+      "label": "Emerald",
+      "section": "extended",
+      "primaryShade": "500",
+      "shades": {
+        "25": "#F6FBF9",
+        "50": "#EFF8F5",
+        "100": "#DDF3EC",
+        "200": "#BDEBDB",
+        "300": "#8AE0C3",
+        "400": "#4FD9AB",
+        "500": "#26C993",
+        "600": "#23A97C",
+        "700": "#208462",
+        "800": "#1B5F49",
+        "900": "#164132",
+        "950": "#10261E"
+      }
+    },
+    "lime": {
+      "label": "Lime",
+      "section": "extended",
+      "primaryShade": "500",
+      "shades": {
+        "25": "#F9FBF6",
+        "50": "#F5F8EF",
+        "100": "#EBF3DD",
+        "200": "#DAEBBD",
+        "300": "#C1E08A",
+        "400": "#A6D94F",
+        "500": "#8EC926",
+        "600": "#78A923",
+        "700": "#5F8420",
+        "800": "#465F1B",
+        "900": "#314116",
+        "950": "#1E2610"
+      }
+    },
+    "yellow": {
+      "label": "Yellow",
+      "section": "extended",
+      "primaryShade": "500",
+      "shades": {
+        "25": "#FCFAF5",
+        "50": "#FAF7ED",
+        "100": "#F6EFDA",
+        "200": "#F3E3B5",
+        "300": "#F0D27B",
+        "400": "#F2C336",
+        "500": "#E6AF0A",
+        "600": "#C1940B",
+        "700": "#95730E",
+        "800": "#6B540F",
+        "900": "#483A0F",
+        "950": "#2A220C"
+      }
+    },
+    "coral": {
+      "label": "Coral",
+      "section": "extended",
+      "primaryShade": "500",
+      "shades": {
+        "25": "#FCF7F6",
+        "50": "#F9F0EE",
+        "100": "#F5E0DB",
+        "200": "#EFC1B8",
+        "300": "#E99281",
+        "400": "#E75C40",
+        "500": "#DA3616",
+        "600": "#B73015",
+        "700": "#8E2915",
+        "800": "#662214",
+        "900": "#451A12",
+        "950": "#28120E"
+      }
+    },
+    "maroon": {
+      "label": "Maroon",
+      "section": "extended",
+      "primaryShade": "500",
+      "shades": {
+        "25": "#FBF6F7",
+        "50": "#F8EFEF",
+        "100": "#F3DDDF",
+        "200": "#EBBDC0",
+        "300": "#E08A91",
+        "400": "#D94F5A",
+        "500": "#C92634",
+        "600": "#A9232E",
+        "700": "#842028",
+        "800": "#5F1B21",
+        "900": "#41161A",
+        "950": "#261012"
+      }
+    },
+    "violet": {
+      "label": "Violet",
+      "section": "extended",
+      "primaryShade": "500",
+      "shades": {
+        "25": "#F8F6FB",
+        "50": "#F3EEF9",
+        "100": "#E6DCF4",
+        "200": "#CFBAED",
+        "300": "#AD85E5",
+        "400": "#8748E0",
+        "500": "#691ED2",
+        "600": "#5A1CB0",
+        "700": "#481B89",
+        "800": "#371863",
+        "900": "#271443",
+        "950": "#190F27"
+      }
+    },
+    "fuchsia": {
+      "label": "Fuchsia",
+      "section": "extended",
+      "primaryShade": "500",
+      "shades": {
+        "25": "#FBF6FB",
+        "50": "#F8EEF9",
+        "100": "#F2DCF4",
+        "200": "#EAB9EE",
+        "300": "#DE83E7",
+        "400": "#D645E3",
+        "500": "#C61AD5",
+        "600": "#A619B3",
+        "700": "#81188B",
+        "800": "#5E1664",
+        "900": "#401344",
+        "950": "#250E27"
+      }
+    },
+    "magenta": {
+      "label": "Magenta",
+      "section": "extended",
+      "primaryShade": "500",
+      "shades": {
+        "25": "#FBF6FA",
+        "50": "#F9EEF6",
+        "100": "#F3DDEE",
+        "200": "#ECBBE0",
+        "300": "#E387CC",
+        "400": "#DD4BB9",
+        "500": "#CE22A3",
+        "600": "#AD1F8A",
+        "700": "#861D6C",
+        "800": "#61194F",
+        "900": "#421537",
+        "950": "#260F21"
+      }
+    }
+  },
+  "approvedOverrides": {
+    "primary": {
+      "hex": "#465FFF",
+      "source": "Explicit user instruction, 2026-09-18: primary color rgb(70, 95, 255)."
+    }
+  }
+}
