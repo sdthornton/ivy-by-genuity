@@ -425,4 +425,8 @@
 
   /* User-approved override: primary */
   --ivy-color-primary: #465FFF;
+  /* User-approved override: brand-100 */
+  --ivy-color-brand-100: #DDE9FF;
+  /* User-approved override: brand-25 */
+  --ivy-color-brand-25: #F2F7FF;
 }

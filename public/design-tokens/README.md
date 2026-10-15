@@ -79,3 +79,16 @@ On September 18, 2026, the primary color was explicitly set to `#465FFF`
 (`rgb(70, 95, 255)`). It is recorded separately from the PDF swatches in
 `colors.json` under `approvedOverrides` and generated as `--ivy-color-primary`.
 Use this token for primary button backgrounds and primary brand accents.
+
+## Category names and pills
+
+`categories.json` is the canonical list of 13 categories from **Ivy Category Colors.pdf** (page 1). It records exact text/icon, border, and background hex values and palette tokens, plus source provenance. Use these names for category labels; tags remain free-form.
+
+Load `colors.css`, `categories.css`, and `categories.js`. Use `IvyCategories.createPill('Identity')` to create matching pill markup. This works with local file previews, without fetching JSON. Regenerate or check the derived files with:
+
+```sh
+python3 design-tokens/generate_categories.py
+python3 design-tokens/generate_categories.py --check
+```
+
+The Backup & Recovery row has incorrect Zinc border/background labels; its preview and hex values match Orange 100/25, which this dataset follows. Governance & Policy uses the PDF's exact Brand 25/100 swatches, added as approved overrides in colors.json, and the existing primary color for Brand 500. Folder styling and item-type colors are separate from category pills.

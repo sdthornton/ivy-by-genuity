@@ -1,0 +1,8 @@
+{
+  "fractional_rem_occurrences_corrected": 202,
+  "custom_css_before_bytes": 83362,
+  "custom_css_after_bytes": 54412,
+  "custom_css_reduction_percent": 34.7,
+  "declarations_moved_to_existing_utilities": 900,
+  "unused_rules_removed": 32
+}

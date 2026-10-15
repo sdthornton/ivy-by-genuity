@@ -1,0 +1,15 @@
+/* Generated from categories.json by generate_categories.py. */
+.ivy-category-pill { color: var(--category-text); border-color: var(--category-border); background-color: var(--category-background); white-space: nowrap; max-width: 100%; overflow: hidden; text-overflow: ellipsis; }
+[data-ivy-category="application-management"] { --category-text: var(--ivy-color-zinc-500); --category-border: var(--ivy-color-zinc-100); --category-background: var(--ivy-color-zinc-25); }
+[data-ivy-category="backup-recovery"] { --category-text: var(--ivy-color-orange-500); --category-border: var(--ivy-color-orange-100); --category-background: var(--ivy-color-orange-25); }
+[data-ivy-category="collaboration"] { --category-text: var(--ivy-color-bluegray-500); --category-border: var(--ivy-color-bluegray-100); --category-background: var(--ivy-color-bluegray-25); }
+[data-ivy-category="dns-web-security"] { --category-text: var(--ivy-color-coral-500); --category-border: var(--ivy-color-coral-100); --category-background: var(--ivy-color-coral-25); }
+[data-ivy-category="email-security"] { --category-text: var(--ivy-color-success-500); --category-border: var(--ivy-color-success-100); --category-background: var(--ivy-color-success-25); }
+[data-ivy-category="endpoint-management"] { --category-text: var(--ivy-color-midnight-500); --category-border: var(--ivy-color-midnight-100); --category-background: var(--ivy-color-midnight-25); }
+[data-ivy-category="endpoint-security"] { --category-text: var(--ivy-color-error-500); --category-border: var(--ivy-color-error-100); --category-background: var(--ivy-color-error-25); }
+[data-ivy-category="governance-policy"] { --category-text: var(--ivy-color-primary); --category-border: var(--ivy-color-brand-100); --category-background: var(--ivy-color-brand-25); }
+[data-ivy-category="human-risk"] { --category-text: var(--ivy-color-pink-500); --category-border: var(--ivy-color-pink-100); --category-background: var(--ivy-color-pink-25); }
+[data-ivy-category="identity"] { --category-text: var(--ivy-color-purple-500); --category-border: var(--ivy-color-purple-100); --category-background: var(--ivy-color-purple-25); }
+[data-ivy-category="network"] { --category-text: var(--ivy-color-warning-500); --category-border: var(--ivy-color-warning-100); --category-background: var(--ivy-color-warning-25); }
+[data-ivy-category="operations"] { --category-text: var(--ivy-color-stone-500); --category-border: var(--ivy-color-stone-100); --category-background: var(--ivy-color-stone-25); }
+[data-ivy-category="ticketing-itsm"] { --category-text: var(--ivy-color-brown-500); --category-border: var(--ivy-color-brown-100); --category-background: var(--ivy-color-brown-25); }

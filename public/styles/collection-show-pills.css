@@ -1,0 +1,10 @@
+/* Match index tags without recoloring unrelated legacy UI. */
+.ivy-tag-pill { background-color: transparent; border-color: var(--ivy-color-gray-200); color: var(--ivy-color-gray-600); }
+
+.collection-about-stats { color: var(--ivy-color-gray-700); }
+.collection-about-stats .text-xs, .collection-about-details dt { color: var(--ivy-color-gray-400); }
+.collection-about-details dd { color: var(--ivy-color-gray-500); }
+.collection-about-avatar { background: var(--ivy-color-success-100); color: var(--ivy-color-success-700); }
+
+.collection-about-details > div { grid-column: span 2; }
+.collection-about-details > div:nth-child(n + 4) { grid-column: span 3; }

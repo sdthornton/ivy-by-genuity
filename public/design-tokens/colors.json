@@ -588,6 +588,14 @@
     "primary": {
       "hex": "#465FFF",
       "source": "Explicit user instruction, 2026-09-18: primary color rgb(70, 95, 255)."
+    },
+    "brand-100": {
+      "hex": "#DDE9FF",
+      "source": "Ivy Category Colors.pdf, page 1, Governance & Policy. User-approved 2026-10-08."
+    },
+    "brand-25": {
+      "hex": "#F2F7FF",
+      "source": "Ivy Category Colors.pdf, page 1, Governance & Policy. User-approved 2026-10-08."
     }
   }
 }

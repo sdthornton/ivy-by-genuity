@@ -167,3 +167,10 @@ input::placeholder,textarea::placeholder { color: var(--ivy-color-gray-400); }
 
 /* Native/inherited defaults also use the approved palette. */
 html { color: var(--ivy-color-gray-700); }
+
+.hover\:shadow-shadowXs:hover { --tw-shadow: 0 1px 2px var(--ivy-color-gray-200); box-shadow: 0 1px 2px var(--ivy-color-gray-200); }
+
+/* Inner folder surface: adjust the alpha here for all collection cards. */
+.collection-folder-content { background-color: rgba(255, 255, 255, 0.9); border: 0.375rem solid var(--collection-folder-color); border-radius: 1rem; }
+
+[data-folder-card] { border-radius: 1rem; }

@@ -1,0 +1,1032 @@
+<!doctype html>
+<html
+  lang="en"
+  class="outfit_3b81b6a6-module__WT7LRq__variable inter_e40edbda-module__9N4WIG__variable roboto_5ce95e8b-module__rMrsJW__variable azeret_mono_595a6ab-module__kSHsiW__variable geist_c775ce36-module___0cubG__variable geist_mono_87d0796b-module__vH4PbW__variable light"
+  style="
+    --interface-text-user-scale: 1;
+    --font-active: var(--font-outfit);
+    color-scheme: light;
+    --dashboard-sidebar-width: 4rem;
+  "
+>
+  <head>
+    <meta charset="utf-8" />
+    <title>Collections Blank State | Ivy</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="3f_5_e8nhzyiv.css" data-precedence="next" />
+    <link rel="stylesheet" href="1m_mig6az7pkz.css" data-precedence="next" />
+    <link rel="stylesheet" href="design-tokens/colors.css" />
+    <link rel="stylesheet" href="styles/collections-index-colors.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      * { font-family: "Outfit", sans-serif; }
+    
+      .collection-intro-actions { display: flex; justify-content: start; align-items: center; flex-wrap: wrap; gap: 12px; margin-top: 1.5rem; }
+      .collection-intro-button { display: inline-flex; align-items: center; justify-content: center; min-height: 40px; padding: 8px 16px; line-height: 20px; font-weight: 500; text-decoration: none; cursor: pointer; }
+      .collection-intro-button:hover { background: var(--ivy-color-gray-100); }
+      .collection-intro-button--primary { background: var(--ivy-color-primary); border-color: var(--ivy-color-primary); color: var(--ivy-color-gray-25); border-radius: 0.5rem; }
+      .collection-intro-button--primary:hover { background: var(--ivy-color-indigo-600); border-color: var(--ivy-color-indigo-600); }
+      .collection-intro-button:focus-visible { outline: 2px solid var(--ivy-color-primary); outline-offset: 3px; }
+      .collection-benefits { display: grid; grid-template-columns: 1.2fr 1fr; width: 100%; max-width: 54rem; margin: 1.5rem auto 0; background: var(--ivy-color-gray-25); border: 1px solid var(--ivy-color-gray-200); border-radius: 24px; overflow: hidden; }
+      .collection-benefits-copy { position: relative; padding: 1.5rem; align-self: center; }
+      .collection-benefits-arrow { display: block; width: 160px; height: 72px; margin: -1.5rem 0 0 auto; color: var(--ivy-color-indigo-500); fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+      .collection-benefits-eyebrow { margin: 0 0 18px; color: var(--ivy-color-indigo-600); font-size: 11px; line-height: 1.6; font-weight: 600; letter-spacing: .16em; text-transform: uppercase; }
+      .collection-benefits h2 { margin: 0; color: var(--ivy-color-gray-900); font-size: 1.5rem; font-weight: 600; line-height: 1.2; letter-spacing: -.025em; }
+      .collection-benefits-features { position: relative; min-width: 0; border-left: 1px solid var(--ivy-color-gray-200); padding: 1.5rem; display: flex; flex-direction: column; justify-content: center; }
+      .collection-feature-stage { display: grid; overflow: hidden; }
+      .collection-feature { grid-area: 1 / 1; margin: 0; padding: 8px 4px; opacity: 0; visibility: hidden; transform: translateX(-20px); }
+      .collection-feature.is-active { opacity: 1; visibility: visible; transform: translateX(0); }
+      .collection-feature.is-entering { visibility: visible; animation: feature-enter 600ms cubic-bezier(.22,1,.36,1) both; }
+      .collection-feature.is-leaving { visibility: visible; animation: feature-leave 400ms cubic-bezier(.4,0,.6,1) both; }
+      .collection-feature-icon { display: grid; place-items: center; width: 40px; height: 40px; margin-bottom: 0.5rem; border-radius: 0.75rem; background: var(--feature-icon-background, var(--ivy-color-green-200)); color: var(--feature-icon-color, var(--ivy-color-green-600)); }
+      .collection-feature-icon svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+      .collection-feature figcaption { color: var(--ivy-color-gray-700); font-size: 1rem; font-weight: 500; }
+      .collection-feature-controls { display: flex; align-items: center; gap: 4px; margin-top: 24px; }
+      .collection-feature-dot { display: grid; place-items: center; width: 24px; height: 28px; padding: 0; border: 0; background: transparent; cursor: pointer; }
+      .collection-feature-dot::before { content: ''; width: 6px; height: 6px; border-radius: 999px; background: var(--ivy-color-gray-300); }
+      .collection-feature-dot[aria-pressed="true"]::before { width: 6px; background: var(--feature-dot-color); }
+      .collection-feature-learn-more { display: inline-flex; align-items: center; gap: 6px; margin-left: auto; padding: 4px 0 4px 8px; min-height: 28px; font-size: 12px; font-weight: 500; white-space: nowrap; border: 0; border-radius: 6px; background: transparent; color: var(--ivy-color-gray-500); cursor: pointer; }
+      .collection-feature-learn-more svg { width: 14px; height: 14px; fill: currentColor; }
+      .collection-feature-controls button:focus-visible { outline: 2px solid var(--ivy-color-indigo-500); outline-offset: 2px; }
+      @keyframes feature-enter { from { opacity: 0; transform: translateX(-20px); } to { opacity: 1; transform: translateX(0); } }
+      @keyframes feature-leave { from { opacity: 1; transform: translateX(0); } to { opacity: 0; transform: translateX(20px); } }
+      @media (max-width: 700px) { .collection-benefits { grid-template-columns: 1fr; margin-top: 0; } .collection-benefits-copy { position: relative; padding: 28px; } .collection-benefits-features { border-left: 0; border-top: 1px solid var(--ivy-color-gray-200); padding: 24px 28px 18px; } }
+      @media (prefers-reduced-motion: reduce) { .collection-feature.is-entering, .collection-feature.is-leaving { animation: none; } }
+
+      .collection-tour { width: min(600px, calc(100vw - 32px)); max-height: calc(100dvh - 32px); margin: auto; padding: 0; overflow: auto; border: 1px solid var(--ivy-color-gray-200); border-radius: 20px; background: var(--ivy-color-gray-25); color: var(--ivy-color-gray-700); box-shadow: 0 32px 64px -12px rgba(0,0,0,0.14); }
+      /* The class-based overlay supplies the backdrop color. */
+      .collection-tour::backdrop { background: transparent; }
+      .collection-tour-top { display: flex; align-items: center; justify-content: space-between; padding: 20px 24px 0; }
+      .collection-tour-close { display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 8px; background: transparent; color: var(--ivy-color-gray-500); cursor: pointer; }
+      .collection-tour-close:hover { background: var(--ivy-color-gray-100); }
+      .collection-tour-close svg { width: 20px; height: 20px; }
+      .collection-tour-body { padding: 16px 40px 32px; }
+      .collection-tour-art { display: grid; place-items: center; height: 188px; margin-bottom: 28px; border: 1px solid var(--ivy-color-indigo-100); border-radius: 14px; background: var(--ivy-color-indigo-25); }
+      .collection-tour-art svg { width: 100%; max-width: 320px; height: 160px; color: var(--ivy-color-primary); fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+      .collection-tour-art .tour-surface { fill: var(--ivy-color-gray-25); stroke: var(--ivy-color-indigo-200); }
+      .collection-tour-art .tour-line { stroke: var(--ivy-color-gray-300); }
+      .collection-tour-art .tour-highlight { fill: var(--ivy-color-indigo-100); stroke: var(--ivy-color-indigo-200); }
+      .collection-tour-step { margin: 0 0 10px; color: var(--ivy-color-primary); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .12em; }
+      .collection-tour h2 { margin: 0 0 12px; color: var(--ivy-color-gray-900); font-size: 26px; line-height: 1.25; font-weight: 600; letter-spacing: -.02em; }
+      .collection-tour-description { margin: 0; min-height: 84px; font-size: 15px; line-height: 1.6; color: var(--ivy-color-gray-600); }
+      .collection-tour-footer { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 16px; padding: 20px 24px; border-top: 1px solid var(--ivy-color-gray-200); }
+      .collection-tour-dots { display: flex; align-items: center; gap: 2px; }
+      .collection-tour-dots button { display: grid; place-items: center; width: 24px; height: 32px; padding: 0; border: 0; background: transparent; cursor: pointer; }
+      .collection-tour-dots button::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--ivy-color-gray-300); }
+      .collection-tour-dots button[aria-current="step"]::before { background: var(--ivy-color-primary); }
+      .collection-tour-actions { display: flex; gap: 8px; margin-left: auto; }
+      .collection-tour [hidden] { display: none !important; }
+      .collection-tour button:focus-visible, .collection-tour h2:focus-visible { outline: 2px solid var(--ivy-color-primary); outline-offset: 3px; }
+      @media (max-width: 480px) { .collection-tour-body { padding: 16px 24px 24px; } .collection-tour h2 { font-size: 23px; } .collection-tour-art { height: 150px; } .collection-tour-art svg { height: 136px; } .collection-tour-footer { padding: 16px; gap: 8px; } .collection-tour-actions .collection-intro-button { padding: 10px 12px; } }
+
+      .tour-drop-item { animation: tour-item-drop 850ms cubic-bezier(.22,.65,.3,1) both; }
+      .tour-drop-item--2 { animation-delay: 220ms; }
+      .tour-drop-item--3 { animation-delay: 440ms; }
+      .tour-draw { stroke-dasharray: 1; animation: tour-draw 850ms ease-out both; }
+      .tour-connection { animation-duration: 350ms; }
+      .tour-draw--later { animation-delay: 650ms; }
+      .tour-save-arrow { animation: tour-save-arrow 750ms ease-out both; animation-delay: 150ms; }
+      .tour-star { transform-box: fill-box; transform-origin: center; animation: tour-star 1400ms ease-in-out both; animation-delay: 400ms; }
+      .tour-result { animation: tour-result 700ms cubic-bezier(.22,1,.36,1) both; animation-delay: 350ms; }
+      @keyframes tour-item-drop { 0% { opacity: 0; transform: translateY(-74px); } 18% { opacity: 1; } 100% { opacity: 1; transform: translateY(0); } }
+      @keyframes tour-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+      @keyframes tour-save-arrow { from { opacity: 0; transform: translateX(-14px); } to { opacity: 1; transform: translateX(0); } }
+      @keyframes tour-star { 0%, 45%, 100% { transform: scale(1); } 20%, 70% { transform: scale(1.14); } }
+      @keyframes tour-result { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+      @media (prefers-reduced-motion: reduce) { .collection-tour-art svg * { animation: none !important; } }
+    </style>
+  </head>
+
+  <body>
+    <div class="min-h-screen w-full font-outfit" style="--font-active: var(--font-outfit)">
+      <div class="flex min-h-screen w-full flex-col">
+        <main class="flex-1"
+          ><div
+            class="relative flex max-h-screen min-h-screen w-full justify-between bg-gray-950"
+            style="--dashboard-sidebar-width: 16.75rem"
+            ><div class="pointer-events-none absolute inset-0 z-0" aria-hidden="true"
+              ><img
+                alt=""
+                role="presentation"
+                loading="lazy"
+                width="450"
+                height="253"
+                decoding="async"
+                data-nimg="1"
+                class="absolute left-0 top-0 object-contain object-left-top"
+                srcset="
+                  /_next/image?url=%2Fimages%2Fdashboard%2Fdashboard%20box.png&amp;w=640&amp;q=75  1x,
+                  /_next/image?url=%2Fimages%2Fdashboard%2Fdashboard%20box.png&amp;w=1080&amp;q=75 2x
+                "
+                src="/_next/image?url=%2Fimages%2Fdashboard%2Fdashboard%20box.png&amp;w=1080&amp;q=75"
+                style="color: transparent; width: 28.125rem; height: auto" /></div
+            ><aside
+              class="sticky top-0 z-20 hidden h-screen shrink-0 flex-col self-start overflow-visible lg:flex transition-[width] duration-300 ease-in-out bg-gray-950"
+              style="width: 16.75rem"
+              ><nav
+                class="relative flex min-w-0 flex-col overflow-x-visible overflow-y-visible py-0 tracking-[0.015em] bg-gray-950 pl-5 h-full min-h-0 flex-1"
+                ><header
+                  class="flex w-full min-w-0 shrink-0 overflow-visible pb-3 pt-6 items-center pr-6"
+                  ><div class="flex w-full min-w-0 items-center justify-between rounded-md"
+                    ><div
+                      class="flex shrink-0 items-center justify-start overflow-hidden h-8 w-[6.35rem] gap-2"
+                      style="--interface-text-font-scale: 1"
+                      ><span
+                        class="inline-block shrink-0 object-contain object-left h-[1.375rem] w-[1.35rem]"
+                        aria-hidden="true"
+                        role="presentation"
+                        ><svg
+                          viewBox="0 0 22 23"
+                          fill="none"
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="100%"
+                          height="100%"
+                          style="display: block; vertical-align: middle"
+                        >
+                          <g clip-path="url(#clip0_19579_3482)">
+                            <path
+                              d="M11.856 18.0381C11.7488 17.8391 11.53 17.6623 11.3063 17.5944C10.6117 17.3834 10.2803 17.2003 9.88388 16.8088C9.52186 16.4515 9.18307 15.908 9.03536 15.4483C8.96496 15.2291 8.79378 14.8752 8.71624 14.7888C8.60137 14.6606 8.45858 14.6092 8.21655 14.6094C8.05476 14.6094 7.9504 14.6306 7.8733 14.6787C7.6934 14.7911 7.64558 14.868 7.46613 15.3372C7.15595 16.1475 6.87795 16.5731 6.40419 16.9616C6.19279 17.1349 5.64684 17.4017 5.0495 17.6233C4.85798 17.6944 4.53261 18.0004 4.53261 18.1097C4.53261 18.1505 4.51607 18.1941 4.49574 18.2067C4.43853 18.2426 4.4535 18.415 4.52859 18.5818C4.6296 18.8064 4.83787 18.9497 5.30359 19.1154C6.02675 19.3727 6.52889 19.7243 6.87348 20.2147C7.08243 20.512 7.39864 21.1525 7.46658 21.4159C7.56893 21.8124 7.8704 22.1031 8.17879 22.1024C8.52025 22.1018 8.75781 21.9047 8.90641 21.4989C9.15715 20.8139 9.44074 20.324 9.80254 19.95C10.1404 19.6008 10.3425 19.4704 10.8535 19.2706C11.7416 18.9238 11.833 18.8633 11.9139 18.569C11.9734 18.3525 11.9602 18.2311 11.856 18.0379V18.0381ZM9.09033 18.4067C9.07111 18.4769 9.04921 18.4913 8.83714 18.5741C8.71512 18.6218 8.66685 18.6529 8.58618 18.7364C8.49969 18.8258 8.43198 18.9427 8.37231 19.1061C8.33678 19.2029 8.28024 19.2501 8.19868 19.2501C8.12515 19.2501 8.05297 19.1808 8.02861 19.0863C8.0123 19.0233 7.93699 18.8705 7.88693 18.7994C7.80469 18.6823 7.68469 18.5983 7.51217 18.5369C7.4011 18.4974 7.35127 18.4631 7.32713 18.4096C7.30926 18.3699 7.30568 18.3286 7.31931 18.32C7.32423 18.3171 7.32803 18.3065 7.32803 18.2968C7.32803 18.2708 7.4058 18.1977 7.45138 18.1808C7.59396 18.128 7.72447 18.0641 7.77475 18.0228C7.88783 17.93 7.9542 17.8285 8.02839 17.635C8.0713 17.5231 8.08269 17.5046 8.1256 17.4777C8.14393 17.4662 8.16895 17.4613 8.20762 17.4613C8.26527 17.4613 8.29946 17.4734 8.32695 17.5041C8.3455 17.5247 8.38639 17.6093 8.40315 17.6617C8.43846 17.7716 8.51936 17.9011 8.60584 17.9864C8.7006 18.0799 8.77971 18.1237 8.94552 18.174C8.99893 18.1902 9.05122 18.2324 9.0767 18.2798C9.10151 18.3259 9.10463 18.355 9.09056 18.4067H9.09033Z"
+                              fill="url(#paint0_linear_19579_3482)"
+                            ></path>
+                            <path
+                              d="M13.0139 6.28968C12.9485 6.1317 12.7773 6.01479 12.5294 5.95881C12.1873 5.8814 11.5305 5.65006 11.1068 5.45777C9.15501 4.57215 7.84055 2.90517 7.25996 0.579611C7.21996 0.419368 7.04476 0.201347 6.89235 0.121677C6.75246 0.0487779 6.38485 0.0546459 6.27534 0.131833C6.09746 0.257094 5.96494 0.523639 5.7513 1.18718C5.63331 1.55393 5.44537 2.04347 5.33385 2.27503C4.74433 3.49829 3.82921 4.48074 2.6276 5.18039C2.25775 5.39571 1.8964 5.54263 1.17436 5.77171C0.449859 6.00147 0.275774 6.10281 0.137221 6.37567C0.0523012 6.54314 0.0487256 6.67878 0.123589 6.89319C0.229962 7.19765 0.330301 7.2552 1.31604 7.57591C2.8399 8.07199 4.05626 9.00975 4.92266 10.3567C5.24335 10.8553 5.32715 11.034 5.58705 11.7734C5.67867 12.0345 5.77074 12.2954 5.86326 12.5563C5.89075 12.6328 5.91801 12.7096 5.94483 12.7865C6.04159 13.0644 6.42485 13.2625 6.76587 13.2108C7.05772 13.1666 7.18309 13.0066 7.33662 12.4818C7.48277 11.9828 7.53148 11.8341 7.6421 11.5497C8.03944 10.528 8.6922 9.59723 9.4757 8.93459C10.2018 8.32048 10.8574 7.94492 11.7129 7.65265C12.7509 7.29808 12.8883 7.22812 13.0113 6.99024C13.0886 6.8406 13.0899 6.47317 13.0137 6.28946L13.0139 6.28968ZM8.3418 6.73972C8.30805 6.80517 8.27028 6.82435 7.98469 6.92185C7.74937 7.0022 7.56903 7.10557 7.36924 7.27439C7.15382 7.45652 6.97414 7.71268 6.86486 7.99367C6.83447 8.07176 6.82106 8.11284 6.78084 8.25006C6.7386 8.39451 6.70419 8.43852 6.62374 8.45048C6.52988 8.4647 6.42462 8.41008 6.39781 8.3338C6.39043 8.31258 6.38283 8.29159 6.37546 8.2706C6.34998 8.19883 6.32473 8.12706 6.29948 8.05529C6.22797 7.85194 6.20495 7.80274 6.11668 7.66574C5.87846 7.29538 5.54392 7.03741 5.12468 6.90086C4.85361 6.81261 4.8259 6.79682 4.79663 6.71308C4.77607 6.65418 4.77696 6.61671 4.80042 6.57067C4.83864 6.49551 4.88646 6.46775 5.0858 6.40456C5.28447 6.34159 5.38369 6.30119 5.48537 6.24183C5.81588 6.04932 6.06751 5.77916 6.22976 5.44265C6.26037 5.379 6.31222 5.24426 6.34462 5.14338C6.40339 4.96079 6.43982 4.88744 6.48876 4.85314C6.51893 4.83192 6.61994 4.83034 6.6586 4.85043C6.70061 4.87232 6.74866 4.93235 6.75961 4.97636C6.91917 5.61598 7.28075 6.07437 7.81775 6.31812C7.93441 6.37093 8.11497 6.43458 8.20905 6.45602C8.27721 6.47136 8.32414 6.50364 8.34224 6.54697C8.36325 6.59753 8.3628 6.69864 8.34157 6.73972H8.3418Z"
+                              fill="url(#paint1_linear_19579_3482)"
+                            ></path>
+                            <path
+                              d="M21.2401 11.3534C21.1143 11.1869 20.9628 11.1085 20.5199 10.9817C19.729 10.7549 19.2552 10.475 18.6869 9.89883C18.0988 9.30254 17.711 8.64509 17.5054 7.89579C17.3743 7.41732 17.3144 7.32546 17.0596 7.21171C16.8053 7.09818 16.7389 7.09706 16.534 7.20291C16.2544 7.34735 16.1492 7.50421 15.9778 8.03211C15.7192 8.82791 15.3956 9.38357 14.8946 9.89251C14.4021 10.3926 13.8865 10.6982 13.0903 10.9616C12.4038 11.1887 12.2435 11.3033 12.1696 11.6195C12.1454 11.7231 12.1533 11.8177 12.1997 11.9777C12.2744 12.2352 12.4264 12.3903 12.6617 12.4485C13.7839 12.7261 14.6984 13.3271 15.3572 14.2195C15.7027 14.6876 15.8258 14.9702 16.0698 15.8542C16.1621 16.1892 16.4178 16.4388 16.6681 16.4388C16.8529 16.4388 17.1488 16.3289 17.256 16.2208C17.3291 16.1467 17.4064 15.9732 17.5195 15.6292C17.89 14.501 18.4036 13.788 19.3062 13.1479C19.7706 12.8186 20.1645 12.6439 20.8763 12.4517C21.0761 12.3977 21.2739 12.2235 21.3297 12.0524C21.4006 11.8355 21.359 11.5103 21.2406 11.3532L21.2401 11.3534ZM18.0909 11.8608C18.0746 11.9107 18.017 11.9614 17.9589 11.977C17.7515 12.033 17.6368 12.084 17.5016 12.1797C17.2388 12.3661 17.0893 12.5738 16.9814 12.9024C16.9485 13.0026 16.926 13.0531 16.9047 13.0746C16.8735 13.1062 16.7874 13.138 16.7336 13.138C16.6607 13.138 16.5863 13.0653 16.5593 12.9678C16.4882 12.7103 16.4524 12.6282 16.3516 12.4916C16.1599 12.2316 15.8935 12.0567 15.5666 11.9759C15.498 11.959 15.4537 11.9138 15.4321 11.8389C15.4186 11.7922 15.4162 11.7646 15.4233 11.7346C15.4448 11.6425 15.4915 11.6091 15.6915 11.543C15.9235 11.4663 16.0736 11.3774 16.2171 11.2316C16.363 11.0833 16.4573 10.9214 16.5327 10.6897C16.5827 10.536 16.6133 10.4901 16.6947 10.4482C16.7543 10.4172 16.7736 10.4177 16.8478 10.4506C16.9219 10.4838 16.9394 10.5105 16.9776 10.6499C17.0375 10.8682 17.1503 11.0596 17.3217 11.2334C17.4873 11.4013 17.6252 11.4828 17.8556 11.5487C17.9846 11.5857 18.0288 11.6085 18.0655 11.657C18.1001 11.7028 18.1122 11.7974 18.0914 11.8606L18.0909 11.8608Z"
+                              fill="url(#paint2_linear_19579_3482)"
+                            ></path>
+                          </g>
+                          <defs>
+                            <linearGradient
+                              id="paint0_linear_19579_3482"
+                              x1="4.46087"
+                              y1="18.3559"
+                              x2="11.949"
+                              y2="18.3559"
+                              gradientUnits="userSpaceOnUse"
+                            >
+                              <stop stop-color="#E6EEF5"></stop>
+                              <stop offset="1" stop-color="#B0BEC9"></stop>
+                            </linearGradient>
+                            <linearGradient
+                              id="paint1_linear_19579_3482"
+                              x1="0.070179"
+                              y1="6.6447"
+                              x2="13.0703"
+                              y2="6.6447"
+                              gradientUnits="userSpaceOnUse"
+                            >
+                              <stop stop-color="#26A8FF"></stop>
+                              <stop offset="1" stop-color="#0D6EFD"></stop>
+                            </linearGradient>
+                            <linearGradient
+                              id="paint2_linear_19579_3482"
+                              x1="12.1562"
+                              y1="11.782"
+                              x2="21.3641"
+                              y2="11.782"
+                              gradientUnits="userSpaceOnUse"
+                            >
+                              <stop stop-color="#FFC107"></stop>
+                              <stop offset="1" stop-color="#FD7E14"></stop>
+                            </linearGradient>
+                            <clipPath id="clip0_19579_3482">
+                              <rect width="21.5111" height="22.2222" fill="white"></rect>
+                            </clipPath>
+                          </defs>
+                        </svg> </span
+                      ><span
+                        class="translate-y-px font-body font-bold lowercase tracking-[-0.05em] antialiased text-white-100 text-[1.75rem]"
+                        >ivy</span
+                      ></div
+                    ><div
+                      class="relative z-[25] ml-auto inline-flex shrink-0 items-center justify-end gap-2.5"
+                      ><button
+                        type="button"
+                        class="grid h-7 w-7 shrink-0 grid-cols-1 grid-rows-1 place-items-center overflow-visible rounded transition-opacity hover:opacity-80 relative"
+                        aria-label="Notifications"
+                        aria-expanded="false"
+                        ><span
+                          class="inline-block shrink-0 h-5 w-5 text-white-100 opacity-75"
+                          aria-hidden="true"
+                          ><svg
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="100%"
+                            height="100%"
+                            style="display: block; vertical-align: middle"
+                          >
+                            <path
+                              fill-rule="evenodd"
+                              clip-rule="evenodd"
+                              d="M12.75 2.75073C12.75 2.33652 12.4142 2.00073 12 2.00073C11.5858 2.00073 11.25 2.33652 11.25 2.75073V3.53776C7.46001 3.91406 4.5 7.11172 4.5 11.0007V17.5007H4C3.58579 17.5007 3.25 17.8365 3.25 18.2507C3.25 18.6649 3.58579 19.0007 4 19.0007H5.25H18.75H20C20.4142 19.0007 20.75 18.6649 20.75 18.2507C20.75 17.8365 20.4142 17.5007 20 17.5007H19.5V11.0007C19.5 7.11172 16.54 3.91406 12.75 3.53776V2.75073ZM18 17.5007V11.0007C18 7.68702 15.3137 5.00073 12 5.00073C8.68629 5.00073 6 7.68702 6 11.0007V17.5007H18ZM9.75 21.25C9.75 21.6642 10.0858 22 10.5 22H13.5C13.9142 22 14.25 21.6642 14.25 21.25C14.25 20.8358 13.9142 20.5 13.5 20.5H10.5C10.0858 20.5 9.75 20.8358 9.75 21.25Z"
+                              fill="currentColor"
+                            ></path>
+                          </svg> </span></button
+                      ><button
+                        type="button"
+                        class="grid h-7 w-7 shrink-0 grid-cols-1 grid-rows-1 place-items-center overflow-visible rounded transition-opacity hover:opacity-80"
+                        aria-label="Close sidebar"
+                        ><span
+                          class="inline-block shrink-0 h-5 w-5 text-white-100 opacity-[0.85]"
+                          aria-hidden="true"
+                          ><svg
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="100%"
+                            height="100%"
+                            style="display: block; vertical-align: middle"
+                          >
+                            <path
+                              d="M19 3H5C3.89543 3 3 3.89543 3 5V19C3 20.1046 3.89543 21 5 21H19C20.1046 21 21 20.1046 21 19V5C21 3.89543 20.1046 3 19 3Z"
+                              stroke="currentColor"
+                              stroke-width="1.6"
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                            ></path>
+                            <path
+                              d="M9 3V21M16 15L13 12L16 9"
+                              stroke="currentColor"
+                              stroke-width="1.6"
+                              stroke-linecap="round"
+                              stroke-linejoin="round"
+                            ></path>
+                          </svg> </span></button></div></div></header
+                ><div
+                  class="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto overflow-x-visible"
+                  style="--duo-primary: var(--ivy-color-zinc-100); --duo-secondary: var(--ivy-color-gray-400)"
+                  ><div class="flex min-h-full min-w-0 flex-col gap-6 pr-6"
+                    ><div class="flex w-full min-w-0 shrink-0 flex-col gap-2 pt-2"
+                      ><span class="group relative inline-flex w-full"
+                        ><a
+                          class="flex w-full min-w-0 flex-row items-center gap-2 rounded-lg text-left font-body font-normal px-2 py-1.5 text-sm leading-text-sm hover:bg-white-10 text-white-90"
+                          aria-label="Home"
+                          aria-disabled="false"
+                          href="/chat?new"
+                          ><span
+                            class="inline-block h-5 w-5 shrink-0 opacity-[0.65]"
+                            aria-hidden="true"
+                            style="color: var(--ivy-color-zinc-100)"
+                            ><svg
+                              viewBox="0 0 443.771 443.772"
+                              fill="none"
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="100%"
+                              height="100%"
+                              style="display: block; vertical-align: middle"
+                            >
+                              <path
+                                d="M163.073 3.459C140.557 125.764 122.304 144.016 0 166.532c122.305 22.516 140.557 40.768 163.073 163.073 22.516-122.305 40.768-140.557 163.073-163.073-122.305-22.516-140.558-40.768-163.073-163.073zM340.064 232.896c-14.318 77.781-25.928 89.39-103.708 103.708 77.78 14.319 89.39 25.928 103.708 103.708 14.318-77.78 25.928-89.39 103.707-103.708-77.781-14.318-89.388-25.927-103.707-103.708z"
+                                fill="currentColor"
+                              ></path>
+                            </svg> </span
+                          ><span class="truncate">Home</span></a
+                        ></span
+                      ><a
+                        class="flex w-full min-w-0 flex-row items-center gap-2 rounded-lg text-left font-body font-normal px-2 py-1.5 text-sm leading-text-sm hover:bg-white-10 text-white-90"
+                        href="/chat?compose"
+                        ><span
+                          class="inline-block h-5 w-5 shrink-0 opacity-[0.65]"
+                          aria-hidden="true"
+                          style="--duo-primary: var(--ivy-color-zinc-100); --duo-secondary: var(--ivy-color-gray-400)"
+                          ><span
+                            ><svg
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="100%"
+                              height="100%"
+                              style="display: block; vertical-align: middle"
+                            >
+                              <path
+                                d="M2.50002 12.0957C2.50002 6.849 6.75332 2.5957 12 2.5957C17.2467 2.5957 21.5 6.849 21.5 12.0957C21.5 17.3424 17.2467 21.5957 12 21.5957H3.25002C2.94668 21.5957 2.6732 21.413 2.55711 21.1327C2.44103 20.8525 2.50519 20.5299 2.71969 20.3154L4.77303 18.262C3.35633 16.603 2.50002 14.4488 2.50002 12.0957ZM12 4.0957C7.58174 4.0957 4.00002 7.67742 4.00002 12.0957C4.00002 14.305 4.89463 16.304 6.34317 17.7526C6.48382 17.8932 6.56284 18.084 6.56284 18.2829C6.56284 18.4818 6.48382 18.6726 6.34317 18.8132L5.06068 20.0957H12C16.4183 20.0957 20 16.514 20 12.0957C20 7.67742 16.4183 4.0957 12 4.0957Z"
+                                fill="var(--duo-primary, currentColor)"
+                              ></path>
+                              <path
+                                opacity="1"
+                                d="M7 10.5967C7 10.1825 7.33579 9.84668 7.75 9.84668H16.25C16.6642 9.84668 17 10.1825 17 10.5967C17 11.0109 16.6642 11.3467 16.25 11.3467H7.75C7.33579 11.3467 7 11.0109 7 10.5967Z"
+                                fill="var(--duo-secondary, currentColor)"
+                              ></path>
+                              <path
+                                opacity="1"
+                                d="M7.75 12.8467C7.33579 12.8467 7 13.1825 7 13.5967C7 14.0109 7.33579 14.3467 7.75 14.3467H12.75C13.1642 14.3467 13.5 14.0109 13.5 13.5967C13.5 13.1825 13.1642 12.8467 12.75 12.8467H7.75Z"
+                                fill="var(--duo-secondary, currentColor)"
+                              ></path>
+                            </svg> </span></span
+                        ><span
+                          class="flex min-w-0 flex-1 items-center gap-2 overflow-hidden max-w-[10rem]"
+                          ><span class="truncate">Chat</span></span
+                        ></a
+                      ><a
+                        class="flex w-full min-w-0 flex-row items-center gap-2 rounded-lg text-left font-body font-normal px-2 py-1.5 text-sm leading-text-sm hover:bg-white-10 bg-white-10 text-white-100"
+                        aria-current="page"
+                        href="/prompt"
+                        ><span
+                          class="inline-block h-5 w-5 shrink-0 opacity-[0.65]"
+                          aria-hidden="true"
+                          style="--duo-primary: var(--ivy-color-zinc-100); --duo-secondary: var(--ivy-color-gray-400)"
+                          ><span
+                            ><svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              viewBox="0 0 512 512"
+                              fill="none"
+                              width="100%"
+                              height="100%"
+                              style="display: block; vertical-align: middle"
+                            >
+                              <!-- Monitor Frame -->
+                              <rect
+                                x="48"
+                                y="96"
+                                width="416"
+                                height="320"
+                                rx="32"
+                                ry="32"
+                                stroke="var(--duo-primary, currentColor)"
+                                stroke-width="32"
+                                fill="none"
+                              ></rect>
+
+                              <!-- Greater Than Symbol -->
+                              <path
+                                d="M128 160 L224 256 L128 352"
+                                stroke="var(--duo-primary, currentColor)"
+                                stroke-width="32"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                fill="none"
+                              ></path>
+
+                              <!-- Underscore -->
+                              <line
+                                x1="272"
+                                y1="336"
+                                x2="384"
+                                y2="336"
+                                stroke="var(--duo-primary, currentColor)"
+                                stroke-width="32"
+                                stroke-linecap="round"
+                              ></line>
+                            </svg> </span></span
+                        ><span
+                          class="flex min-w-0 flex-1 items-center gap-2 overflow-hidden max-w-[10rem]"
+                          ><span class="truncate">Prompt Library</span></span
+                        ></a
+                      ><a
+                        class="flex w-full min-w-0 flex-row items-center gap-2 rounded-lg text-left font-body font-normal px-2 py-1.5 text-sm leading-text-sm hover:bg-white-10 text-white-90"
+                        href="/assistants"
+                        ><span
+                          class="inline-block h-5 w-5 shrink-0 opacity-[0.65]"
+                          aria-hidden="true"
+                          style="--duo-primary: var(--ivy-color-zinc-100); --duo-secondary: var(--ivy-color-gray-400)"
+                          ><span
+                            ><svg
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="100%"
+                              height="100%"
+                              style="display: block; vertical-align: middle"
+                            >
+                              <path
+                                d="M5.5 3.25C4.25736 3.25 3.25 4.25736 3.25 5.5V8.99998C3.25 10.2426 4.25736 11.25 5.5 11.25H9C10.2426 11.25 11.25 10.2426 11.25 8.99998V5.5C11.25 4.25736 10.2426 3.25 9 3.25H5.5ZM4.75 5.5C4.75 5.08579 5.08579 4.75 5.5 4.75H9C9.41421 4.75 9.75 5.08579 9.75 5.5V8.99998C9.75 9.41419 9.41421 9.74998 9 9.74998H5.5C5.08579 9.74998 4.75 9.41419 4.75 8.99998V5.5Z"
+                                fill="var(--duo-primary, currentColor)"
+                              ></path>
+                              <path
+                                d="M15 12.75C13.7574 12.75 12.75 13.7574 12.75 15V18.5C12.75 19.7426 13.7574 20.75 15 20.75H18.5C19.7426 20.75 20.75 19.7426 20.75 18.5V15C20.75 13.7574 19.7426 12.75 18.5 12.75H15ZM14.25 15C14.25 14.5858 14.5858 14.25 15 14.25H18.5C18.9142 14.25 19.25 14.5858 19.25 15V18.5C19.25 18.9142 18.9142 19.25 18.5 19.25H15C14.5858 19.25 14.25 18.9142 14.25 18.5V15Z"
+                                fill="var(--duo-primary, currentColor)"
+                              ></path>
+                              <g class="duo-secondary">
+                                <path
+                                  d="M5.5 12.75C4.25736 12.75 3.25 13.7574 3.25 15V18.5C3.25 19.7426 4.25736 20.75 5.5 20.75H9C10.2426 20.75 11.25 19.7426 11.25 18.5V15C11.25 13.7574 10.2426 12.75 9 12.75H5.5ZM4.75 15C4.75 14.5858 5.08579 14.25 5.5 14.25H9C9.41421 14.25 9.75 14.5858 9.75 15V18.5C9.75 18.9142 9.41421 19.25 9 19.25H5.5C5.08579 19.25 4.75 18.9142 4.75 18.5V15Z"
+                                  fill="var(--duo-primary, currentColor)"
+                                ></path>
+                                <path
+                                  d="M12.75 5.5C12.75 4.25736 13.7574 3.25 15 3.25H18.5C19.7426 3.25 20.75 4.25736 20.75 5.5V8.99998C20.75 10.2426 19.7426 11.25 18.5 11.25H15C13.7574 11.25 12.75 10.2426 12.75 8.99998V5.5ZM15 4.75C14.5858 4.75 14.25 5.08579 14.25 5.5V8.99998C14.25 9.41419 14.5858 9.74998 15 9.74998H18.5C18.9142 9.74998 19.25 9.41419 19.25 8.99998V5.5C19.25 5.08579 18.9142 4.75 18.5 4.75H15Z"
+                                  fill="var(--duo-primary, currentColor)"
+                                ></path>
+                              </g>
+                            </svg> </span></span
+                        ><span
+                          class="flex min-w-0 flex-1 items-center gap-2 overflow-hidden max-w-[10rem]"
+                          ><span class="truncate">Assistants</span></span
+                        ></a
+                      ><a
+                        class="flex w-full min-w-0 flex-row items-center gap-2 rounded-lg text-left font-body font-normal px-2 py-1.5 text-sm leading-text-sm hover:bg-white-10 text-white-90"
+                        href="/collections"
+                        ><span
+                          class="inline-block h-5 w-5 shrink-0 opacity-[0.65] text-white-100"
+                          aria-hidden="true"
+                          ><svg
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            xmlns="http://www.w3.org/2000/svg"
+                            width="100%"
+                            height="100%"
+                            style="display: block; vertical-align: middle"
+                          >
+                            <path
+                              d="M11.05 6.9L10.45 7.35L11.05 6.9ZM4.25 5.25H8.5V3.75H4.25V5.25ZM3.5 18V6H2V18H3.5ZM19.75 18.75H4.25V20.25H19.75V18.75ZM20.5 9V18H22V9H20.5ZM19.75 6.75H12.25V8.25H19.75V6.75ZM11.65 6.45L10.3 4.65L9.1 5.55L10.45 7.35L11.65 6.45ZM12.25 6.75C12.0139 6.75 11.7916 6.63885 11.65 6.45L10.45 7.35C10.8749 7.91656 11.5418 8.25 12.25 8.25V6.75ZM22 9C22 7.75736 20.9926 6.75 19.75 6.75V8.25C20.1642 8.25 20.5 8.58579 20.5 9H22ZM19.75 20.25C20.9926 20.25 22 19.2426 22 18H20.5C20.5 18.4142 20.1642 18.75 19.75 18.75V20.25ZM2 18C2 19.2426 3.00736 20.25 4.25 20.25V18.75C3.83579 18.75 3.5 18.4142 3.5 18H2ZM8.5 5.25C8.73607 5.25 8.95836 5.36115 9.1 5.55L10.3 4.65C9.87508 4.08344 9.2082 3.75 8.5 3.75V5.25ZM4.25 3.75C3.00736 3.75 2 4.75736 2 6H3.5C3.5 5.58579 3.83579 5.25 4.25 5.25V3.75Z"
+                              fill="currentColor"
+                            ></path>
+                          </svg> </span
+                        ><span
+                          class="flex min-w-0 flex-1 items-center gap-2 overflow-hidden max-w-[10rem]"
+                          ><span class="truncate">Collections</span></span
+                        ></a
+                      ><a
+                        class="flex w-full min-w-0 flex-row items-center gap-2 rounded-lg text-left font-body font-normal px-2 py-1.5 text-sm leading-text-sm hover:bg-white-10 text-white-90"
+                        href="/sources"
+                        ><span
+                          class="inline-block h-5 w-5 shrink-0 opacity-[0.65]"
+                          aria-hidden="true"
+                          style="--duo-primary: var(--ivy-color-zinc-100); --duo-secondary: var(--ivy-color-gray-400)"
+                          ><span
+                            ><svg
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="100%"
+                              height="100%"
+                              style="display: block; vertical-align: middle"
+                            >
+                              <path
+                                opacity="1"
+                                d="M15.1672 7.06079L9.03461 10.6383M15.1672 16.9392L9.03461 13.3617"
+                                stroke="var(--duo-secondary, currentColor)"
+                                stroke-width="1.5"
+                                stroke-linecap="square"
+                                stroke-linejoin="round"
+                              ></path>
+                              <path
+                                d="M17.5 8.4C18.9912 8.4 20.2 7.19117 20.2 5.7C20.2 4.20883 18.9912 3 17.5 3C16.0088 3 14.8 4.20883 14.8 5.7C14.8 7.19117 16.0088 8.4 17.5 8.4Z"
+                                stroke="var(--duo-primary, currentColor)"
+                                stroke-width="1.5"
+                              ></path>
+                              <path
+                                d="M17.5 21C18.9912 21 20.2 19.7911 20.2 18.3C20.2 16.8088 18.9912 15.6 17.5 15.6C16.0088 15.6 14.8 16.8088 14.8 18.3C14.8 19.7911 16.0088 21 17.5 21Z"
+                                stroke="var(--duo-primary, currentColor)"
+                                stroke-width="1.5"
+                              ></path>
+                              <path
+                                d="M6.7 14.7C8.19117 14.7 9.4 13.4912 9.4 12C9.4 10.5088 8.19117 9.29999 6.7 9.29999C5.20883 9.29999 4 10.5088 4 12C4 13.4912 5.20883 14.7 6.7 14.7Z"
+                                stroke="var(--duo-primary, currentColor)"
+                                stroke-width="1.5"
+                              ></path>
+                            </svg> </span></span
+                        ><span
+                          class="flex min-w-0 flex-1 items-center gap-2 overflow-hidden max-w-[10rem]"
+                          ><span class="truncate">Sources</span></span
+                        ></a
+                      ></div
+                    ><div class="flex w-full min-w-0 shrink-0 flex-col gap-1 overflow-x-hidden"
+                      ><span
+                        class="mb-1 truncate px-2 font-body text-xs font-normal uppercase leading-text-xs tracking-wide text-white-50"
+                        >Chat History</span
+                      ><div class="flex min-w-0 flex-col overflow-x-hidden shrink-0 gap-1"
+                        ><div class="flex flex-col overflow-x-hidden shrink-0 gap-1"
+                          ><div class="flex flex-col gap-1"
+                            ><div
+                              class="group flex w-full min-w-0 flex-row items-center gap-0.5 rounded-lg text-left font-body font-normal px-2 py-1.5 text-sm leading-text-sm hover:bg-white-10 text-white-90"
+                              ><button
+                                type="button"
+                                class="font-inherit flex min-w-0 flex-1 items-center overflow-hidden text-left text-sm leading-text-sm"
+                                ><span class="relative block w-full min-w-0 max-w-full"
+                                  ><span class="block truncate">Get started with Ivy</span></span
+                                ></button
+                              ><div class="flex shrink-0 flex-row items-center gap-1.5"
+                                ><span
+                                  class="flex h-3 w-3 shrink-0 items-center justify-center"
+                                  aria-hidden="true"
+                                  ><span
+                                    class="inline-block shrink-0 h-4 w-4 rotate-45 text-white-80"
+                                    aria-hidden="true"
+                                    ><svg
+                                      viewBox="0 0 24 24"
+                                      fill="none"
+                                      xmlns="http://www.w3.org/2000/svg"
+                                      width="100%"
+                                      height="100%"
+                                      style="display: block; vertical-align: middle"
+                                    >
+                                      <path
+                                        d="M7.5 2.75H16.5M12 14V21.25M8.91211 2.75H15.0877V8.75C15.0877 8.75 18.7966 9.73716 18.8377 14H5.16211C5.20322 9.73716 8.91211 8.75 8.91211 8.75V2.75Z"
+                                        stroke="currentColor"
+                                        stroke-width="1.5"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                      ></path>
+                                    </svg> </span></span></div></div
+                            ><div
+                              class="group flex w-full min-w-0 flex-row items-center gap-0.5 rounded-lg text-left font-body font-normal px-2 py-1.5 text-sm leading-text-sm hover:bg-white-10 text-white-90"
+                              ><button
+                                type="button"
+                                class="font-inherit flex min-w-0 flex-1 items-center overflow-hidden text-left text-sm leading-text-sm"
+                                ><span class="relative block w-full min-w-0 max-w-full"
+                                  ><span class="block truncate">Ivy in Action</span></span
+                                ></button
+                              ><div class="flex shrink-0 flex-row items-center gap-1.5"
+                                ><span
+                                  class="flex h-3 w-3 shrink-0 items-center justify-center"
+                                  aria-hidden="true"
+                                  ><span
+                                    class="inline-block shrink-0 h-4 w-4 rotate-45 text-white-80"
+                                    aria-hidden="true"
+                                    ><svg
+                                      viewBox="0 0 24 24"
+                                      fill="none"
+                                      xmlns="http://www.w3.org/2000/svg"
+                                      width="100%"
+                                      height="100%"
+                                      style="display: block; vertical-align: middle"
+                                    >
+                                      <path
+                                        d="M7.5 2.75H16.5M12 14V21.25M8.91211 2.75H15.0877V8.75C15.0877 8.75 18.7966 9.73716 18.8377 14H5.16211C5.20322 9.73716 8.91211 8.75 8.91211 8.75V2.75Z"
+                                        stroke="currentColor"
+                                        stroke-width="1.5"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                      ></path>
+                                    </svg> </span></span></div></div></div></div></div></div
+                    ><div
+                      class="mt-auto flex w-full min-w-0 shrink-0 flex-col gap-2 border-b border-transparent pb-2"
+                      ><span
+                        class="mb-1 truncate px-2 font-body text-xs font-normal uppercase leading-text-xs tracking-wide text-white-50"
+                        >Organization</span
+                      ><a
+                        class="flex w-full min-w-0 flex-row items-center gap-2 rounded-lg text-left font-body font-normal px-2 py-1.5 text-sm leading-text-sm hover:bg-white-10 text-white-90"
+                        href="/settings/people/members"
+                        ><span
+                          class="inline-block h-5 w-5 shrink-0 opacity-[0.65]"
+                          aria-hidden="true"
+                          style="--duo-primary: var(--ivy-color-zinc-100); --duo-secondary: var(--ivy-color-gray-400)"
+                          ><span
+                            ><svg
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="100%"
+                              height="100%"
+                              style="display: block; vertical-align: middle"
+                            >
+                              <g class="duo-secondary">
+                                <path
+                                  d="M16 3.12799C16.8578 3.35036 17.6174 3.85125 18.1597 4.55205C18.702 5.25285 18.9962 6.11388 18.9962 6.99999C18.9962 7.8861 18.702 8.74713 18.1597 9.44793C17.6174 10.1487 16.8578 10.6496 16 10.872M22 21V19C21.9993 18.1137 21.7044 17.2528 21.1614 16.5523C20.6184 15.8518 19.8581 15.3516 19 15.13"
+                                  stroke="var(--duo-primary, currentColor)"
+                                  stroke-width="1.6"
+                                  stroke-linecap="round"
+                                  stroke-linejoin="round"
+                                ></path>
+                              </g>
+                              <path
+                                d="M16 21V19C16 17.9391 15.5786 16.9217 14.8284 16.1716C14.0783 15.4214 13.0609 15 12 15H6C4.93913 15 3.92172 15.4214 3.17157 16.1716C2.42143 16.9217 2 17.9391 2 19V21"
+                                stroke="var(--duo-primary, currentColor)"
+                                stroke-width="1.6"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                              ></path>
+                              <path
+                                d="M9 11C11.2091 11 13 9.20914 13 7C13 4.79086 11.2091 3 9 3C6.79086 3 5 4.79086 5 7C5 9.20914 6.79086 11 9 11Z"
+                                stroke="var(--duo-primary, currentColor)"
+                                stroke-width="1.6"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                              ></path>
+                            </svg> </span></span
+                        ><span class="min-w-0 overflow-hidden truncate max-w-[8rem]"
+                          >People</span
+                        ></a
+                      ><a
+                        class="flex w-full min-w-0 flex-row items-center gap-2 rounded-lg text-left font-body font-normal px-2 py-1.5 text-sm leading-text-sm hover:bg-white-10 text-white-90"
+                        href="/intelligence"
+                        ><span
+                          class="inline-block h-5 w-5 shrink-0 opacity-[0.65]"
+                          aria-hidden="true"
+                          style="--duo-primary: var(--ivy-color-zinc-100); --duo-secondary: var(--ivy-color-gray-400)"
+                          ><span
+                            ><svg
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="100%"
+                              height="100%"
+                              style="display: block; vertical-align: middle"
+                            >
+                              <path
+                                d="M3.5 5.25C3.5 4.83579 3.16421 4.5 2.75 4.5C2.33579 4.5 2 4.83579 2 5.25V17.25C2 18.4926 3.00736 19.5 4.25 19.5H21.25C21.6642 19.5 22 19.1642 22 18.75C22 18.3358 21.6642 18 21.25 18H4.25C3.83579 18 3.5 17.6642 3.5 17.25V5.25Z"
+                                fill="var(--duo-primary, currentColor)"
+                              ></path>
+                              <path
+                                opacity="1"
+                                d="M7 10.2773C5.89543 10.2773 5 11.1728 5 12.2773V15.7501C5 16.1643 5.33579 16.5001 5.75 16.5001H8.25C8.66421 16.5001 9 16.1643 9 15.7501V12.2773C9 11.1728 8.10457 10.2773 7 10.2773ZM6.5 12.2773C6.5 12.0012 6.72386 11.7773 7 11.7773C7.27614 11.7773 7.5 12.0012 7.5 12.2773V15.0001H6.5V12.2773Z"
+                                fill="var(--duo-secondary, currentColor)"
+                              ></path>
+                              <path
+                                opacity="1"
+                                d="M10.5 6.5C10.5 5.39543 11.3954 4.5 12.5 4.5C13.6046 4.5 14.5 5.39543 14.5 6.5V15.7501C14.5 16.1643 14.1642 16.5001 13.75 16.5001H11.25C10.8358 16.5001 10.5 16.1643 10.5 15.7501V6.5ZM12.5 6C12.2239 6 12 6.22386 12 6.5V15.0001H13V6.5C13 6.22386 12.7761 6 12.5 6Z"
+                                fill="var(--duo-secondary, currentColor)"
+                              ></path>
+                              <path
+                                opacity="1"
+                                d="M18 8.05859C16.8954 8.05859 16 8.95402 16 10.0586V15.7501C16 16.1643 16.3358 16.5001 16.75 16.5001H19.25C19.6642 16.5001 20 16.1643 20 15.7501V10.0586C20 8.95402 19.1046 8.05859 18 8.05859ZM17.5 10.0586C17.5 9.78245 17.7239 9.55859 18 9.55859C18.2761 9.55859 18.5 9.78245 18.5 10.0586V15.0001H17.5V10.0586Z"
+                                fill="var(--duo-secondary, currentColor)"
+                              ></path>
+                            </svg> </span></span
+                        ><span class="min-w-0 overflow-hidden truncate max-w-[8rem]"
+                          >Intelligence</span
+                        ></a
+                      ><a
+                        class="flex w-full min-w-0 flex-row items-center gap-2 rounded-lg text-left font-body font-normal px-2 py-1.5 text-sm leading-text-sm hover:bg-white-10 text-white-90"
+                        href="/reports"
+                        ><span
+                          class="inline-block h-5 w-5 shrink-0 opacity-[0.65]"
+                          aria-hidden="true"
+                          style="--duo-primary: var(--ivy-color-zinc-100); --duo-secondary: var(--ivy-color-gray-400)"
+                          ><span
+                            ><svg
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="100%"
+                              height="100%"
+                              style="display: block; vertical-align: middle"
+                            >
+                              <path
+                                d="M16.681 4.40773C17.8066 4.22563 18.9098 4.92225 19.2113 6.04738L21.9291 16.19L21.9769 16.4146C22.1473 17.4653 21.5521 18.4965 20.557 18.8745L20.3373 18.9458L18.0844 19.5493C16.959 19.8509 15.8037 19.2435 15.3988 18.1773L15.3285 17.9585L12.6107 7.81593C12.2892 6.61566 13.0013 5.38169 14.2015 5.06007L16.4555 4.45656L16.681 4.40773ZM16.9183 5.88918L16.8441 5.90578L14.5902 6.50929C14.1901 6.6165 13.9527 7.02814 14.0599 7.42824L16.7767 17.5698L16.8012 17.6431C16.9362 17.9984 17.3206 18.2006 17.6957 18.1001L19.9496 17.4966L20.0228 17.4732C20.3545 17.3471 20.5523 17.0031 20.4955 16.6528L20.4799 16.5777L17.7621 6.43605C17.6616 6.06084 17.2937 5.82818 16.9183 5.88918Z"
+                                fill="var(--duo-primary, currentColor)"
+                              ></path>
+                              <path
+                                opacity="1"
+                                d="M11.166 3.25C12.3917 3.25 13.3861 4.23005 13.4131 5.44922C12.7139 5.98697 12.3679 6.91129 12.6104 7.81641L13.416 10.8223V17.25C13.416 18.4926 12.4087 19.5 11.166 19.5H9.58301C9.00586 19.5 8.48117 19.281 8.08301 18.9238C7.68477 19.2809 7.15997 19.5 6.58301 19.5H4.25C3.00736 19.5 2 18.4926 2 17.25V7.75C2 6.50736 3.00736 5.5 4.25 5.5H6.58301C6.84621 5.5 7.09825 5.54781 7.33301 5.63086V5.5C7.33301 4.25736 8.34037 3.25 9.58301 3.25H11.166ZM4.25 7C3.83579 7 3.5 7.33579 3.5 7.75V17.25C3.5 17.6642 3.83579 18 4.25 18H6.58301C6.97116 18 7.29047 17.7051 7.3291 17.3271L7.33301 17.25V7.75L7.3291 7.67285C7.29046 7.2949 6.97116 7 6.58301 7H4.25ZM9.58301 4.75C9.16879 4.75 8.83301 5.08579 8.83301 5.5V17.25L8.83691 17.3271C8.87549 17.7053 9.19502 18 9.58301 18H11.166C11.5802 18 11.916 17.6642 11.916 17.25V5.5C11.916 5.08579 11.5802 4.75 11.166 4.75H9.58301Z"
+                                fill="var(--duo-secondary, currentColor)"
+                              ></path>
+                            </svg> </span></span
+                        ><span class="min-w-0 overflow-hidden truncate max-w-[8rem]"
+                          >Reports</span
+                        ></a
+                      ><a
+                        class="flex w-full min-w-0 flex-row items-center gap-2 rounded-lg text-left font-body font-normal px-2 py-1.5 text-sm leading-text-sm hover:bg-white-10 text-white-90"
+                        href="/settings"
+                        ><span
+                          class="inline-block h-5 w-5 shrink-0 opacity-[0.65]"
+                          aria-hidden="true"
+                          style="--duo-primary: var(--ivy-color-zinc-100); --duo-secondary: var(--ivy-color-gray-400)"
+                          ><span
+                            ><svg
+                              viewBox="0 0 24 25"
+                              fill="none"
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="100%"
+                              height="100%"
+                              style="display: block; vertical-align: middle"
+                            >
+                              <path
+                                d="M2.5809 8.9224C1.96404 9.99083 2.33012 11.357 3.39854 11.9739C3.88777 12.2563 3.88776 12.9625 3.39856 13.2449C2.33013 13.8618 1.96407 15.2279 2.58092 16.2964L4.09692 18.9222C4.71391 19.9908 6.08044 20.3568 7.14896 19.7399C7.63844 19.4573 8.25011 19.8106 8.25011 20.3754C8.25011 21.6092 9.2503 22.6094 10.4841 22.6094H13.5165C14.7502 22.6094 15.7501 21.6091 15.7501 20.3756C15.7501 19.8108 16.3615 19.458 16.8503 19.7402C17.9185 20.357 19.2845 19.991 19.9012 18.9227L21.4176 16.2963C22.0344 15.2279 21.6684 13.8617 20.6 13.2449C20.1108 12.9624 20.1108 12.2563 20.6 11.9739C21.6684 11.3571 22.0345 9.99089 21.4176 8.92247L19.9012 6.29604C19.2845 5.2278 17.9185 4.86178 16.8503 5.47853C16.3615 5.76076 15.7501 5.40794 15.7501 4.84314C15.7501 3.60961 14.7502 2.60938 13.5165 2.60938H10.4841C9.2503 2.60938 8.25011 3.60956 8.25011 4.84336C8.25011 5.40822 7.63842 5.76151 7.14894 5.47891C6.08042 4.862 4.71388 5.22796 4.09689 6.29662L2.5809 8.9224ZM4.14854 10.6748C3.79755 10.4722 3.6773 10.0234 3.87994 9.6724L5.39593 7.04663C5.59863 6.69554 6.04772 6.57518 6.39894 6.77796C7.88811 7.63772 9.75011 6.56326 9.75011 4.84336C9.75011 4.43798 10.0787 4.10937 10.4841 4.10937H13.5165C13.9216 4.10937 14.2501 4.43788 14.2501 4.84314C14.2501 6.56227 16.1112 7.63732 17.6003 6.77757C17.9511 6.57503 18.3997 6.69523 18.6022 7.04603L20.1186 9.67247C20.3212 10.0234 20.201 10.4722 19.85 10.6749C18.3608 11.5346 18.3608 13.6841 19.85 14.5439C20.2009 14.7465 20.3212 15.1953 20.1186 15.5463L18.6022 18.1727C18.3996 18.5235 17.9511 18.6437 17.6003 18.4412C16.1112 17.5815 14.2501 18.6565 14.2501 20.3756C14.2501 20.7809 13.9216 21.1094 13.5165 21.1094H10.4841C10.0787 21.1094 9.75011 20.7808 9.75011 20.3754C9.75011 18.6555 7.88812 17.5811 6.39896 18.4408C6.04774 18.6436 5.59866 18.5232 5.39596 18.1722L3.87996 15.5464C3.67732 15.1954 3.79757 14.7466 4.14856 14.5439C5.63778 13.6841 5.63775 11.5346 4.14854 10.6748Z"
+                                fill="var(--duo-primary, currentColor)"
+                              ></path>
+                              <path
+                                opacity="1"
+                                d="M11.9993 8.77344C9.8813 8.77344 8.16431 10.4904 8.16431 12.6084C8.16431 14.7264 9.8813 16.4434 11.9993 16.4434C14.1173 16.4434 15.8343 14.7264 15.8343 12.6084C15.8343 10.4904 14.1173 8.77344 11.9993 8.77344ZM9.66431 12.6084C9.66431 11.3189 10.7097 10.2734 11.9993 10.2734C13.2889 10.2734 14.3343 11.3189 14.3343 12.6084C14.3343 13.898 13.2889 14.9434 11.9993 14.9434C10.7097 14.9434 9.66431 13.898 9.66431 12.6084Z"
+                                fill="var(--duo-secondary, currentColor)"
+                              ></path>
+                            </svg> </span></span
+                        ><span class="min-w-0 overflow-hidden truncate max-w-[8rem]"
+                          >Settings</span
+                        ></a
+                      ></div
+                    ></div
+                  ></div
+                ><footer
+                  class="flex w-full min-w-0 shrink-0 flex-col overflow-visible pb-6 pt-2 items-start gap-2 pr-6"
+                  ><div
+                    class="relative flex min-w-0 flex-col overflow-visible w-full -mx-1 rounded-lg border border-white-5 bg-white-10 p-2 gap-2"
+                    ><div class="w-full"
+                      ><button
+                        type="button"
+                        aria-label="Switch organization (current: Blackwater Systems)"
+                        class="w-full min-w-0 cursor-pointer rounded-[0.5625rem] border border-white-10 bg-transparent px-2.5 py-2 text-left outline-none transition-colors hover:bg-white-10 focus-visible:ring-2 focus-visible:ring-white-30"
+                        ><div class="flex w-full min-w-0 items-center gap-2"
+                          ><div class="flex min-w-0 flex-1 flex-col items-start"
+                            ><span
+                              class="font-body font-semibold tracking-[0.02em] text-white-60 text-xs"
+                              >Organization</span
+                            ><span
+                              class="w-full truncate font-body text-sm font-semibold leading-text-sm text-white-100"
+                              >Blackwater Systems</span
+                            ></div
+                          ><span
+                            class="inline-block h-4 w-4 shrink-0 text-white-60"
+                            aria-hidden="true"
+                            ><svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              viewBox="0 0 32 32"
+                              fill="none"
+                              width="100%"
+                              height="100%"
+                              style="display: block; vertical-align: middle"
+                            >
+                              <path
+                                d="M7 13h18a1 1 0 0 0 .707-1.707l-9-9a1 1 0 0 0-1.414 0l-9 9A1 1 0 0 0 7 13zm18 6H7a1 1 0 0 0-.707 1.707l9 9a1 1 0 0 0 1.414 0l9-9A1 1 0 0 0 25 19z"
+                                fill="currentColor"
+                              ></path>
+                            </svg> </span></div></button
+                      ><div
+                        data-dropdown-trigger="true"
+                        role="button"
+                        tabindex="0"
+                        aria-haspopup="menu"
+                        aria-expanded="false"
+                        class="cursor-pointer block w-full rounded-md outline-none focus-visible:ring-2 focus-visible:ring-white-30"
+                        ><div
+                          class="flex w-full min-w-0 cursor-pointer items-center gap-1.5 rounded-[0.5625rem] px-2.5 py-2 text-left"
+                          title="sthornton+2@gogenuity.com"
+                          ><span class="shrink-0"
+                            ><span
+                              class="inline-flex items-center justify-center shrink-0 leading-text-xs bg-success-100 text-alias-text-text-color h-8 w-8 text-xs leading-text-xs font-semibold rounded-full"
+                              aria-label="Samuel Thornton"
+                              >ST</span
+                            ></span
+                          ><span
+                            class="min-w-0 flex-1 truncate font-body text-[0.84375rem] font-semibold leading-[1.125rem] text-white-100"
+                            >Samuel Thornton</span
+                          ><span
+                            class="inline-block h-4 w-4 shrink-0 text-white-60"
+                            aria-hidden="true"
+                            ><svg
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="100%"
+                              height="100%"
+                              style="display: block; vertical-align: middle"
+                            >
+                              <path
+                                d="M5.75 8.875L12 15.125L18.25 8.875"
+                                stroke="currentColor"
+                                stroke-width="1.5"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                              ></path>
+                            </svg> </span></div></div></div></div></footer></nav></aside
+            ><section
+              class="relative z-10 flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden overflow-y-hidden p-3 lg:ps-0"
+              ><div
+                class="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl bg-gray-50"
+                data-interface-text-scale="true"
+                ><div class="flex min-h-0 flex-1 flex-col overflow-hidden"
+                  ><div
+                    class="relative flex h-full min-h-0 flex-1 flex-col overflow-hidden lg:min-h-full lg:flex-row"
+                    style="width: 100%"
+                    ><section
+                      class="relative flex min-h-0 flex-1 flex-col overflow-hidden min-w-0"
+                      aria-label="Main content"
+                      style="flex: 1 1 0%; min-width: 0px"
+                      ><div class="flex min-h-[3.75rem] shrink-0 items-center overflow-hidden"
+                        ><header
+                          class="flex w-full shrink-0 flex-row items-center justify-between self-stretch border-b border-alias-border-border px-6 py-4 shadow-shadowXs bg-gray-100"
+                          aria-label="Page header"
+                          ><div class="flex min-w-0 flex-col justify-center"
+                            ><nav
+                              aria-label="Breadcrumb"
+                              class="flex min-w-0 flex-row items-center gap-15 overflow-hidden"
+                              ><span class="flex items-center gap-15 shrink-0"
+                                ><a
+                                  class="shrink-0 rounded hover:text-alias-text-title-color focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-offset-2 font-body text-sm font-normal text-alias-text-secondary-text-color"
+                                  href="/"
+                                  >Ivy</a
+                                ></span
+                              ><span class="flex items-center gap-15 min-w-0 flex-1 overflow-hidden"
+                                ><span
+                                  class="flex shrink-0 text-alias-text-secondary-text-color"
+                                  aria-hidden="true"
+                                  ><svg
+                                    class="h-4 w-4"
+                                    width="16"
+                                    height="16"
+                                    viewBox="0 0 16 16"
+                                    fill="none"
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    aria-hidden="true"
+                                  >
+                                    <path
+                                      d="M5.83333 12.6641L10 8.4974L5.83333 4.33073"
+                                      stroke="currentColor"
+                                      stroke-width="1.2"
+                                      stroke-linecap="round"
+                                      stroke-linejoin="round"
+                                    ></path></svg></span
+                                ><span
+                                  class="font-body text-sm font-normal text-alias-text-title-color min-w-0 overflow-hidden"
+                                  aria-current="page"
+                                  >Collections</span
+                                ></span
+                              ></nav
+                            ></div
+                          ></header
+                        ></div
+                      >
+                      <div class="min-h-0 min-w-0 flex-1 overflow-y-auto overflow-x-hidden p-6 [scrollbar-gutter:stable] py-6 pl-6 pr-0">
+                        <div class="h-full w-full mx-auto max-w-[84rem]">
+                          <div class="flex min-h-full w-full flex-col gap-6 px-6 pb-12 pt-4 justify-center">
+                            <header class="flex min-w-0 gap-8" style="max-width: 54rem; width: 100%; margin-left: auto;margin-right: auto;text-align: center;">
+                              <div>
+                                <div class="flex h-[5.625rem] w-[6.25rem] shrink-0 items-center justify-center rounded-xl border border-dashed border-brand-200 bg-brand-25" aria-hidden="true" style="margin: 0 auto;">
+                                  <span class="inline-block shrink-0 h-8 w-8 !size-12 text-brand-500" aria-hidden="true">
+                                    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" style="display:block;vertical-align:middle">
+                                      <path d="M11.05 6.9L10.45 7.35L11.05 6.9ZM4.25 5.25H8.5V3.75H4.25V5.25ZM3.5 18V6H2V18H3.5ZM19.75 18.75H4.25V20.25H19.75V18.75ZM20.5 9V18H22V9H20.5ZM19.75 6.75H12.25V8.25H19.75V6.75ZM11.65 6.45L10.3 4.65L9.1 5.55L10.45 7.35L11.65 6.45ZM12.25 6.75C12.0139 6.75 11.7916 6.63885 11.65 6.45L10.45 7.35C10.8749 7.91656 11.5418 8.25 12.25 8.25V6.75ZM22 9C22 7.75736 20.9926 6.75 19.75 6.75V8.25C20.1642 8.25 20.5 8.58579 20.5 9H22ZM19.75 20.25C20.9926 20.25 22 19.2426 22 18H20.5C20.5 18.4142 20.1642 18.75 19.75 18.75V20.25ZM2 18C2 19.2426 3.00736 20.25 4.25 20.25V18.75C3.83579 18.75 3.5 18.4142 3.5 18H2ZM8.5 5.25C8.73607 5.25 8.95836 5.36115 9.1 5.55L10.3 4.65C9.87508 4.08344 9.2082 3.75 8.5 3.75V5.25ZM4.25 3.75C3.00736 3.75 2 4.75736 2 6H3.5C3.5 5.58579 3.83579 5.25 4.25 5.25V3.75Z" fill="currentColor"></path>
+                                    </svg>
+                                  </span>
+                                </div>
+                                <p class="font-body text-xs font-medium uppercase leading-text-xs text-alias-text-tertiary-text-color mt-2" style="font-size: 9px">No collections, yet.</p>
+                              </div>
+                              <div class="text-left">
+                                <h1 class="m-0 font-body text-display-md font-bold leading-display-md text-alias-text-title-color">Today's work is tomorrow's head start.</h1>
+                                <p class="m-0 font-body text-sm font-normal leading-text-sm text-alias-text-secondary-text-color" style="max-width: 42rem; margin: 0.5rem 0 0;">As you solve problems in Ivy, bring valuable work together in Collections. Over time, Ivy connects that work into your organization’s operational memory—so the next person can build on what’s already been done.</p>
+                                <div class="collection-intro-actions" aria-label="Collection actions">
+                                  <button type="button" data-open-collection-tour class="collection-intro-button bg-gray-900 text-white-100 rounded-lg" style="gap: 8px;"><svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="m5 2 9 6-9 6z"/></svg><span>See collections in action</span></button>
+                                  <button type="button" class="collection-intro-button rounded-lg border border-gray-300 gap-2" id="collection-create-action">
+                                    <span>Create a Collection</span>
+                                  </button>
+                                </div>
+                              </div>
+                            </header>
+                            <section class="collection-benefits" aria-labelledby="collection-benefits-title">
+  <div class="collection-benefits-copy">
+    <p class="collection-benefits-eyebrow">Be the hero on your team&hellip;</p>
+    <h2 id="collection-benefits-title">Every collection you create makes the next teammate faster.</h2>
+    <svg class="collection-benefits-arrow" viewBox="0 0 160 72" aria-hidden="true"><path d="M8 18c28 36 72 32 132 16m-18-14 20 14-14 20"/></svg>
+  </div>
+  <div class="collection-benefits-features" aria-label="Collection features" aria-roledescription="carousel">
+    <div class="collection-feature-stage" aria-live="off"><figure class="collection-feature is-active" aria-hidden="false"><span class="collection-feature-icon" style="--feature-icon-background: var(--ivy-color-green-200); --feature-icon-color: var(--ivy-color-green-600);"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4v5h5M3.6 9a9 9 0 1 1-.6 5M12 7v5l4 2"/></svg></span><figcaption>Builds operational history</figcaption></figure>
+<figure class="collection-feature" aria-hidden="true"><span class="collection-feature-icon" style="--feature-icon-background: var(--ivy-color-teal-200); --feature-icon-color: var(--ivy-color-teal-600);"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 7H7a5 5 0 0 0 0 10h2m6-10h2a5 5 0 0 1 0 10h-2M8 12h8"/></svg></span><figcaption>Connects related investigations</figcaption></figure>
+<figure class="collection-feature" aria-hidden="true"><span class="collection-feature-icon" style="--feature-icon-background: var(--ivy-color-purple-200); --feature-icon-color: var(--ivy-color-purple-600);"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="7" width="16" height="13" rx="3"/><path d="M12 7V3H8M1 13h3m16 0h3M9 12v3m6-3v3"/></svg></span><figcaption>Links prompts & assistants</figcaption></figure>
+<figure class="collection-feature" aria-hidden="true"><span class="collection-feature-icon" style="--feature-icon-background: var(--ivy-color-orange-200); --feature-icon-color: var(--ivy-color-orange-600);"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="2" width="6" height="6" rx="1"/><rect x="2" y="16" width="6" height="6" rx="1"/><rect x="16" y="16" width="6" height="6" rx="1"/><path d="M12 8v4M5 16v-4h14v4"/></svg></span><figcaption>Understands connected systems</figcaption></figure>
+<figure class="collection-feature" aria-hidden="true"><span class="collection-feature-icon" style="--feature-icon-background: var(--ivy-color-rose-200); --feature-icon-color: var(--ivy-color-rose-600);"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="7.5"/><path d="m16 16 5 5"/></svg></span><figcaption>Makes knowledge searchable</figcaption></figure></div>
+    <div class="collection-feature-controls" aria-label="Feature controls"><button class="collection-feature-dot" type="button" aria-label="Show: Builds operational history" aria-pressed="true"></button>
+<button class="collection-feature-dot" type="button" aria-label="Show: Connects related investigations" aria-pressed="false"></button>
+<button class="collection-feature-dot" type="button" aria-label="Show: Links prompts & assistants" aria-pressed="false"></button>
+<button class="collection-feature-dot" type="button" aria-label="Show: Understands connected systems" aria-pressed="false"></button>
+<button class="collection-feature-dot" type="button" aria-label="Show: Makes knowledge searchable" aria-pressed="false"></button>
+      <button class="collection-feature-learn-more" type="button" data-open-collection-tour><svg viewBox="0 0 16 16" aria-hidden="true"><path d="m5 2 9 6-9 6z"/></svg><span>Learn more</span></button>
+    </div>
+  </div>
+</section>
+                          </div
+                          ></div
+                        ></div
+                      ></section
+                    ></div
+                  ></div
+                ></div
+              ></section
+            ></div
+          ></main
+        >
+      </div>
+    </div>
+
+
+    <div class="relative z-50" aria-hidden="true" id="collection-tour-overlay" hidden><div class="inset-0 ease-out fixed bg-gray-900/50"></div></div>
+    <dialog class="collection-tour" id="collection-tour" aria-labelledby="collection-tour-title" aria-describedby="collection-tour-description">
+      <div class="collection-tour-top"><span class="text-lg font-medium text-gray-700" style="display: inline-flex; align-items: center; gap: 8px;"><img src="assets/ivy-stars-light.svg" width="22" height="23" alt="" aria-hidden="true" style="flex-shrink: 0;"><span>Collections in action</span></span><button type="button" class="collection-tour-close" aria-label="Close collection tour"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="m6 6 12 12M6 18 18 6"/></svg></button></div>
+      <div class="collection-tour-body">
+        <div class="collection-tour-art" aria-hidden="true"></div>
+        <p class="collection-tour-step"></p>
+        <h2 id="collection-tour-title" tabindex="-1"></h2>
+        <p class="collection-tour-description" id="collection-tour-description"></p>
+      </div>
+      <div class="collection-tour-footer">
+        <nav class="collection-tour-dots" aria-label="Tour steps">
+          <button type="button" data-tour-step="0" aria-label="Step 1: Give related work a home"></button>
+          <button type="button" data-tour-step="1" aria-label="Step 2: Save useful work as you go"></button>
+          <button type="button" data-tour-step="2" aria-label="Step 3: Let Ivy connect the dots"></button>
+          <button type="button" data-tour-step="3" aria-label="Step 4: Start the next problem a step ahead"></button>
+        </nav>
+        <div class="collection-tour-actions"><button type="button" class="collection-intro-button" data-tour-back>Back</button><button type="button" class="collection-intro-button collection-intro-button--primary" data-tour-next>Next</button></div>
+      </div>
+    </dialog>
+
+    <script>
+      (() => {
+        const features = [...document.querySelectorAll('.collection-feature')];
+        const dots = [...document.querySelectorAll('.collection-feature-dot')];
+        dots.forEach((dot, index) => {
+          dot.style.setProperty('--feature-dot-color', features[index].querySelector('.collection-feature-icon').style.getPropertyValue('--feature-icon-color'));
+        });
+        const tourTriggers = document.querySelectorAll('[data-open-collection-tour]');
+        const tour = document.getElementById('collection-tour');
+        const tourOverlay = document.getElementById('collection-tour-overlay');
+        const stage = document.querySelector('.collection-feature-stage');
+        const motion = matchMedia('(prefers-reduced-motion: reduce)');
+        let active = 0, timer, busy = false, queued = null, paused = motion.matches;
+        function animate(feature, className) {
+          if (motion.matches) return Promise.resolve();
+          return new Promise(resolve => {
+            let fallback;
+            const finish = () => {
+              clearTimeout(fallback);
+              feature.removeEventListener('animationend', finish);
+              feature.removeEventListener('animationcancel', finish);
+              feature.classList.remove(className);
+              resolve();
+            };
+            feature.addEventListener('animationend', finish, { once: true });
+            feature.addEventListener('animationcancel', finish, { once: true });
+            feature.classList.add(className);
+            fallback = setTimeout(finish, 750);
+          });
+        }
+        async function show(next) {
+          if (busy) { queued = next; return; }
+          if (next === active) return;
+          busy = true;
+          const previous = features[active];
+          const current = features[next];
+          // Finish the exit before making the next feature visible.
+          await animate(previous, 'is-leaving');
+          previous.classList.remove('is-active');
+          previous.setAttribute('aria-hidden', 'true');
+          current.setAttribute('aria-hidden', 'false');
+          active = next;
+          dots.forEach((dot, index) => dot.setAttribute('aria-pressed', String(index === active)));
+          await animate(current, 'is-entering');
+          current.classList.add('is-active');
+          busy = false;
+          if (queued !== null) {
+            const requested = queued;
+            queued = null;
+            show(requested);
+          }
+        }
+        function schedule() {
+          clearInterval(timer);
+          if (!paused && !document.hidden && !tour.open) timer = setInterval(() => show((active + 1) % features.length), 4000);
+          stage.setAttribute('aria-live', paused ? 'polite' : 'off');
+        }
+        dots.forEach((dot, index) => dot.addEventListener('click', () => { paused = true; show(index); schedule(); }));
+        const tourSteps = [
+          { title: 'Give related work a home.', description: 'A collection brings investigations, reports, prompts, assistants, and files together around a system, process, or recurring problem.', art: '<g class="tour-drop-item tour-drop-item--1"><g transform="translate(30 0)"><rect class="tour-surface" x="48" y="20" width="60" height="72" rx="7"/><path class="tour-line" d="M62 38h32M62 49h23"/></g></g><g class="tour-drop-item tour-drop-item--2"><g transform="translate(4 0)"><rect class="tour-surface" x="124" y="10" width="60" height="72" rx="7"/><path d="m140 34 8 8-8 8m17 0h12"/></g></g><g class="tour-drop-item tour-drop-item--3"><g transform="translate(-22 0)"><rect class="tour-surface" x="200" y="20" width="60" height="72" rx="7"/><path d="M217 38h26v23h-26zM224 46h1m10 0h1"/></g></g><path class="tour-highlight" d="M68 48h57l14 14h109v77a9 9 0 0 1-9 9H77a9 9 0 0 1-9-9Z"/><path d="M144 105h28M158 91v28"/>' },
+          { title: 'Save useful work as you go.', description: 'Add what you’ve learned while solving problems in Ivy, so the context and outcome stay together.', art: '<rect class="tour-surface" x="36" y="20" width="140" height="114" rx="10"/><path class="tour-line" d="M53 43h100M53 59h78M53 75h89M53 91h57"/><path class="tour-draw tour-draw--later" pathLength="1" d="m57 111 5 5 11-12"/><path class="tour-highlight" d="M204 68h31l9 10h42v52a8 8 0 0 1-8 8h-66a8 8 0 0 1-8-8Z"/><path class="tour-save-arrow" d="M164 94h52m-10-9 10 9-10 9"/><path class="tour-draw tour-draw--later" pathLength="1" d="M236 109l6 6 13-15"/>' },
+          { title: 'Let Ivy connect the dots.', description: 'Ivy connects related investigations, understands the systems involved, and makes the collected knowledge searchable.', art: '<path class="tour-line tour-draw tour-connection" pathLength="1" style="animation-delay: 0ms" d="M160 80L88 42"/><path class="tour-line tour-draw tour-connection" pathLength="1" style="animation-delay: 350ms" d="M160 80L236 42"/><path class="tour-line tour-draw tour-connection" pathLength="1" style="animation-delay: 700ms" d="M160 80L236 121"/><path class="tour-line tour-draw tour-connection" pathLength="1" style="animation-delay: 1050ms" d="M160 80L88 121"/><rect class="tour-surface" x="50" y="21" width="76" height="42" rx="8"/><rect class="tour-surface" x="198" y="21" width="76" height="42" rx="8"/><rect class="tour-surface" x="50" y="100" width="76" height="42" rx="8"/><rect class="tour-surface" x="198" y="100" width="76" height="42" rx="8"/><circle class="tour-highlight" cx="160" cy="80" r="28"/><path class="tour-star" d="m160 66.5 3.75 9.75 9.75 3.75-9.75 3.75-3.75 9.75-3.75-9.75-9.75-3.75 9.75-3.75Z"/><path d="M72 36h32m-32 11h20M221 34h30v16h-30zM76 120h24m-12-8v16"/><circle cx="232" cy="118" r="7"/><path d="m238 124 6 6"/>' },
+          { title: 'Start the next problem a step ahead.', description: 'Your team can find past answers, reuse proven prompts and assistants, and build on what’s already been solved.', art: '<rect class="tour-surface" x="49" y="21" width="222" height="36" rx="18"/><circle cx="72" cy="37" r="6"/><path d="m77 42 5 5"/><path class="tour-line tour-draw" pathLength="1" d="M98 39h144"/><g class="tour-result"><rect class="tour-surface" x="49" y="72" width="222" height="69" rx="10"/><circle class="tour-highlight" cx="80" cy="106" r="16"/><path class="tour-draw tour-draw--later" pathLength="1" d="m73 106 5 5 10-12"/><path class="tour-line" d="M110 97h133M110 111h97M110 125h72"/></g>' }
+        ];
+        let tourIndex = 0, tourOpener;
+        const tourTitle = document.getElementById('collection-tour-title');
+        const tourDescription = document.getElementById('collection-tour-description');
+        const tourBack = tour.querySelector('[data-tour-back]');
+        const tourNext = tour.querySelector('[data-tour-next]');
+        const tourDots = [...tour.querySelectorAll('[data-tour-step]')];
+        function renderTour(focusTitle = false) {
+          const step = tourSteps[tourIndex];
+          tourTitle.textContent = step.title;
+          tourDescription.textContent = step.description;
+          tour.querySelector('.collection-tour-step').textContent = `Step ${tourIndex + 1} of ${tourSteps.length}`;
+          tour.querySelector('.collection-tour-art').innerHTML = `<svg viewBox="0 0 320 160">${step.art}</svg>`;
+          tourBack.hidden = tourIndex === 0;
+          tourNext.textContent = tourIndex === tourSteps.length - 1 ? 'Create a Collection' : 'Next';
+          tourDots.forEach((dot, index) => {
+            if (index === tourIndex) dot.setAttribute('aria-current', 'step');
+            else dot.removeAttribute('aria-current');
+          });
+          if (focusTitle) tourTitle.focus({ preventScroll: true });
+        }
+        function openTour(event) {
+          tourOpener = event.currentTarget;
+          tourIndex = 0;
+          renderTour();
+          tourOverlay.hidden = false;
+          tour.showModal();
+          tourTitle.focus({ preventScroll: true });
+          schedule();
+        }
+        tourTriggers.forEach(button => button.addEventListener('click', openTour));
+        tourBack.addEventListener('click', () => { if (tourIndex > 0) { tourIndex--; renderTour(true); } });
+        tourNext.addEventListener('click', () => {
+          if (tourIndex < tourSteps.length - 1) { tourIndex++; renderTour(true); }
+          else {
+            tour.close();
+            document.getElementById('collection-create-action').click();
+          }
+        });
+        tourDots.forEach((dot, index) => dot.addEventListener('click', () => { tourIndex = index; renderTour(true); }));
+        tour.querySelector('.collection-tour-close').addEventListener('click', () => tour.close());
+        tour.addEventListener('click', event => {
+          const bounds = tour.getBoundingClientRect();
+          if (event.target === tour && (event.clientX < bounds.left || event.clientX > bounds.right || event.clientY < bounds.top || event.clientY > bounds.bottom)) tour.close();
+        });
+        tour.addEventListener('close', () => { tourOverlay.hidden = true; schedule(); tourOpener?.focus({ preventScroll: true }); });
+        document.addEventListener('visibilitychange', schedule);
+        motion.addEventListener('change', () => { paused = motion.matches; schedule(); });
+        schedule();
+      })();
+    </script>
+  </body>
+</html>
