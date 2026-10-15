@@ -16,7 +16,7 @@
     <link rel="stylesheet" href="3f_5_e8nhzyiv.css" data-precedence="next" />
     <link rel="stylesheet" href="1m_mig6az7pkz.css" data-precedence="next" />
     <link rel="stylesheet" href="design-tokens/colors.css" />
-    <link rel="stylesheet" href="styles/collections-index-colors.css" />
+    <link rel="stylesheet" href="styles/collections-index-colors.css?v=20261015-folder-surface" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -2510,7 +2510,7 @@
 
 </div>
 
-<div class="group relative h-full w-full overflow-visible transition-[border-color,box-shadow,opacity,transform] duration-150 flex flex-col items-start bg-white-100 cursor-pointer hover:border-brand-300 hover:ring-1 hover:ring-brand-300 hover:shadow-shadowCardHover" role="button" tabindex="0" aria-label="Employee Onboarding">
+<div class="group relative h-full w-full overflow-visible transition-[border-color,box-shadow,opacity,transform] duration-150 flex flex-col items-start collection-folder-content cursor-pointer hover:border-brand-300 hover:ring-1 hover:ring-brand-300 hover:shadow-shadowCardHover" role="button" tabindex="0" aria-label="Employee Onboarding">
                                     
 <div class="flex min-h-0 w-full flex-1 flex-col self-stretch overflow-hidden p-4 gap-4" style="
 ">
@@ -3685,7 +3685,8 @@
           title.title = names[index];
           tabContents.lastElementChild.replaceWith(title);
           const body = folder.querySelector('[role="button"]');
-          body.classList.replace('bg-white-100', 'collection-folder-content');
+          body.classList.remove('bg-white-100');
+          body.classList.add('collection-folder-content');
           body.classList.remove('hover:border-brand-300');
           body.setAttribute('aria-label', names[index]);
           const stats = body.querySelector('.flex.gap-8');
