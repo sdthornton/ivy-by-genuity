@@ -1,0 +1,35 @@
+/* Pre-enable variant: a single primary action and capabilities-only content. */
+.as-off-divider { border: 0; border-top: 1px solid var(--ivy-color-gray-200); margin: 24px 0; }
+.as-how-dialog { padding-top: 40px; }
+.as-how-dialog .as-investigation { margin-top: 20px; }
+
+/* Explain practical use before exposing the full capability reference. */
+body[data-assistant-variant="off"] .as-header-action { flex-direction: column; align-items: flex-end; gap: 8px; max-width: 180px; }
+.as-off-enable-help { margin: 0 0 -1rem; text-align: right; color: var(--ivy-color-gray-500); line-height: 1.5; }
+.as-off-situations { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); }
+.as-off-situation { display: flex; flex-direction: column; align-items: flex-start; gap: 12px; min-width: 0; border: 1px solid var(--as-art-border); background: var(--as-art-bg); overflow: hidden; }
+.as-off-situation h3 { margin: 0; color: var(--ivy-color-gray-800); }
+.as-off-situation p { margin: 0; line-height: 1.5; }
+.as-off-situation .as-off-result { margin-top: 10px; color: var(--ivy-color-gray-600); }
+.as-off-capability-details { margin-top: 36px; }
+.as-off-capability-details > summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; list-style: none; padding: 12px 0; cursor: pointer; color: var(--ivy-color-gray-600); }
+.as-off-capability-details > summary::-webkit-details-marker { display: none; }
+.as-off-capability-details[open] > summary .as-chevron { transform: rotate(90deg); }
+.as-off-capability-details-body { margin-top: 8px; }
+@container (max-width: 1000px) { body[data-assistant-variant="off"] .as-header-action { align-items: flex-start; max-width: none; } .as-off-enable-help { text-align: left; } }
+
+@container (max-width: 640px) { .as-off-situations { grid-template-columns: minmax(0,1fr); } }
+
+
+.as-off-situation > header { width: 100%; }
+.as-off-situation h3 { flex: 1; min-width: 0; }
+
+/* Illustrated, informational cards echo the Collections starting choices. */
+.as-off-situation:nth-child(1) { --as-art-bg: var(--ivy-color-blue-25); --as-art-border: var(--ivy-color-blue-200); --as-art-soft: var(--ivy-color-blue-100); --as-art-mid: var(--ivy-color-blue-300); --as-art-main: var(--ivy-color-blue-600); --as-art-ink: var(--ivy-color-blue-900); }
+.as-off-situation:nth-child(2) { --as-art-bg: var(--ivy-color-teal-25); --as-art-border: var(--ivy-color-teal-200); --as-art-soft: var(--ivy-color-teal-100); --as-art-mid: var(--ivy-color-teal-300); --as-art-main: var(--ivy-color-teal-600); --as-art-ink: var(--ivy-color-teal-900); }
+.as-off-situation:nth-child(3) { --as-art-bg: var(--ivy-color-violet-25); --as-art-border: var(--ivy-color-violet-200); --as-art-soft: var(--ivy-color-violet-100); --as-art-mid: var(--ivy-color-violet-300); --as-art-main: var(--ivy-color-violet-600); --as-art-ink: var(--ivy-color-violet-900); }
+.as-off-situation { gap: 8px; }
+.as-off-illustration { display: block; flex-shrink: 0; align-self: flex-start; width: calc(50% + 16px); margin: auto 0 -16px calc(10% - 16px); }
+.as-off-situation:nth-child(2) .as-off-illustration { align-self: flex-end; margin-left: 0; margin-right: calc(10% - 16px); }
+.as-off-illustration > .as-off-art { display: block; width: 100%; height: auto; stroke: none; }
+

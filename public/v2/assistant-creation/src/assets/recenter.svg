@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 682.667 682.667" style="enable-background:new 0 0 512 512" xml:space="preserve">
+  <defs>
+    <clipPath id="a" clipPathUnits="userSpaceOnUse">
+      <path d="M0 512h512V0H0Z" fill="#343a40" data-original="#000000"/>
+    </clipPath>
+    <clipPath id="b" clipPathUnits="userSpaceOnUse">
+      <path d="M0 512h512V0H0Z" fill="#343a40" data-original="#000000"/>
+    </clipPath>
+    <clipPath id="c" clipPathUnits="userSpaceOnUse">
+      <path d="M0 512h512V0H0Z" fill="#343a40" data-original="#000000"/>
+    </clipPath>
+    <clipPath id="d" clipPathUnits="userSpaceOnUse">
+      <path d="M0 512h512V0H0Z" fill="#343a40" data-original="#000000"/>
+    </clipPath>
+  </defs>
+  <path d="M316 196H196v120h120z" style="stroke-width:30;stroke-linecap:square;stroke-linejoin:miter;stroke-miterlimit:10;stroke-dasharray:none;stroke-opacity:1" transform="matrix(1.33333 0 0 -1.33333 0 682.667)" fill="none" stroke="#000" stroke-width="30" stroke-linecap="square" stroke-miterlimit="10" data-original="#000000"/>
+  <g clip-path="url(#a)" transform="matrix(1.33333 0 0 -1.33333 0 682.667)">
+    <path d="m0 0 99.8 99.8" style="stroke-width:30;stroke-linecap:square;stroke-linejoin:miter;stroke-miterlimit:10;stroke-dasharray:none;stroke-opacity:1" transform="translate(21.2 21.2)" fill="none" stroke="#000" stroke-width="30" stroke-linecap="square" stroke-miterlimit="10" data-original="#000000"/>
+  </g>
+  <path d="M0 0h60v-60" style="stroke-width:30;stroke-linecap:square;stroke-linejoin:miter;stroke-miterlimit:10;stroke-dasharray:none;stroke-opacity:1" transform="matrix(1.33333 0 0 -1.33333 101.333 501.333)" fill="none" stroke="#000" stroke-width="30" stroke-linecap="square" stroke-miterlimit="10" data-original="#000000"/>
+  <g clip-path="url(#b)" transform="matrix(1.33333 0 0 -1.33333 0 682.667)">
+    <path d="m0 0-99.8-99.8" style="stroke-width:30;stroke-linecap:square;stroke-linejoin:miter;stroke-miterlimit:10;stroke-dasharray:none;stroke-opacity:1" transform="translate(490.8 490.8)" fill="none" stroke="#000" stroke-width="30" stroke-linecap="square" stroke-miterlimit="10" data-original="#000000"/>
+  </g>
+  <path d="M0 0h-60v60" style="stroke-width:30;stroke-linecap:square;stroke-linejoin:miter;stroke-miterlimit:10;stroke-dasharray:none;stroke-opacity:1" transform="matrix(1.33333 0 0 -1.33333 581.333 181.333)" fill="none" stroke="#000" stroke-width="30" stroke-linecap="square" stroke-miterlimit="10" data-original="#000000"/>
+  <g clip-path="url(#c)" transform="matrix(1.33333 0 0 -1.33333 0 682.667)">
+    <path d="m0 0 99.8-99.8" style="stroke-width:30;stroke-linecap:square;stroke-linejoin:miter;stroke-miterlimit:10;stroke-dasharray:none;stroke-opacity:1" transform="translate(21.2 490.8)" fill="none" stroke="#000" stroke-width="30" stroke-linecap="square" stroke-miterlimit="10" data-original="#000000"/>
+  </g>
+  <path d="M0 0h60v60" style="stroke-width:30;stroke-linecap:square;stroke-linejoin:miter;stroke-miterlimit:10;stroke-dasharray:none;stroke-opacity:1" transform="matrix(1.33333 0 0 -1.33333 101.333 181.333)" fill="none" stroke="#000" stroke-width="30" stroke-linecap="square" stroke-miterlimit="10" data-original="#000000"/>
+  <g clip-path="url(#d)" transform="matrix(1.33333 0 0 -1.33333 0 682.667)">
+    <path d="m0 0-99.8 99.8" style="stroke-width:30;stroke-linecap:square;stroke-linejoin:miter;stroke-miterlimit:10;stroke-dasharray:none;stroke-opacity:1" transform="translate(490.8 21.2)" fill="none" stroke="#000" stroke-width="30" stroke-linecap="square" stroke-miterlimit="10" data-original="#000000"/>
+  </g>
+  <path d="M0 0h-60v-60" style="stroke-width:30;stroke-linecap:square;stroke-linejoin:miter;stroke-miterlimit:10;stroke-dasharray:none;stroke-opacity:1" transform="matrix(1.33333 0 0 -1.33333 581.333 501.333)" fill="none" stroke="#000" stroke-width="30" stroke-linecap="square" stroke-miterlimit="10" data-original="#000000"/>
+</svg>

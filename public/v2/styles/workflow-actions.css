@@ -1,0 +1,43 @@
+/* Only the Workflows card menu and results modal. Existing card styles stay intact. */
+.workflow-card-menu { position: fixed; z-index: 60; width: 224px; max-height: calc(100vh - 16px); overflow-y: auto; padding: 8px; border: 1px solid var(--ivy-color-gray-200); border-radius: 12px; background: var(--ivy-color-gray-25); color: var(--ivy-color-gray-700); box-shadow: 0 8px 16px var(--ivy-color-gray-200); font-family: 'Outfit', sans-serif; }
+.workflow-card-menu[hidden], .workflow-action-notice[hidden] { display: none; }
+.workflow-menu-item { display: flex; align-items: center; gap: 12px; width: 100%; padding: 8px 12px; border: 0; border-radius: 6px; background: transparent; color: inherit; text-align: left; cursor: pointer; }
+.workflow-menu-item svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
+.workflow-menu-item:hover, .workflow-menu-item:focus-visible { background: var(--ivy-color-gray-100); outline: none; }
+.workflow-menu-danger { color: var(--ivy-color-error-500); }
+.workflow-menu-danger:hover, .workflow-menu-danger:focus-visible { background: var(--ivy-color-error-50); }
+.workflow-menu-divider { margin: 6px 4px; border-top: 1px solid var(--ivy-color-gray-200); }
+.workflow-results-dialog { width: min(800px,calc(100vw - 32px)); }
+.workflow-run-picker { display: flex; align-items: center; gap: 12px; margin: 20px 0; }
+.assistant-dialog .workflow-run-picker label { display: block; flex-shrink: 0; margin: 0; font: inherit; }
+.workflow-run-picker select { min-width: 0; }
+.workflow-result-meta { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 16px; margin-bottom: 20px; color: var(--ivy-color-gray-500); }
+.workflow-result-status { padding: 2px 8px; border: 1px solid var(--ivy-color-success-100); border-radius: 999px; color: var(--ivy-color-success-700); background: var(--ivy-color-success-50); }
+.workflow-result-status[data-status=Failed] { color: var(--ivy-color-error-700); background: var(--ivy-color-error-50); border-color: var(--ivy-color-error-100); }
+.workflow-result-status[data-status=Incomplete] { color: var(--ivy-color-warning-700); background: var(--ivy-color-warning-50); border-color: var(--ivy-color-warning-100); }
+.workflow-results-dialog h3 { margin: 0 0 8px; font-weight: 600; color: var(--ivy-color-gray-800); }
+.workflow-result-report table { width: 100%; border-collapse: collapse; margin: 20px 0; color: var(--ivy-color-gray-600); }
+.workflow-result-report caption { padding-bottom: 8px; text-align: left; color: var(--ivy-color-gray-500); }
+.workflow-result-report :is(th,td) { padding: 10px 12px; border-bottom: 1px solid var(--ivy-color-gray-200); text-align: left; }
+.workflow-result-report th { background: var(--ivy-color-gray-50); font-weight: 500; }
+.workflow-result-report td:last-child { width: 25%; color: var(--ivy-color-gray-800); }
+.workflow-result-sources { margin: 24px 0; }
+.workflow-result-sources > div { display: flex; flex-wrap: wrap; gap: 8px; }
+.workflow-result-sources span { padding: 3px 8px; border: 1px solid var(--ivy-color-gray-200); border-radius: 6px; color: var(--ivy-color-gray-600); }
+.workflow-result-callout, .workflow-results-empty { margin: 16px 0; border: 1px solid var(--ivy-color-gray-200); border-radius: 8px; background: var(--ivy-color-gray-50); }
+.workflow-result-callout p:last-child, .workflow-results-empty p:last-child { margin-bottom: 0; }
+.workflow-results-hint { display: block; color: var(--ivy-color-gray-400); }
+.workflow-action-notice { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 16px; z-index: 70; padding: 12px 20px; border-radius: 10px; background: var(--ivy-color-gray-800); color: var(--ivy-color-gray-25); box-shadow: 0 4px 12px var(--ivy-color-gray-200); }
+.workflow-action-notice button { color: inherit; background: transparent; border: 0; text-decoration: underline; cursor: pointer; }
+.workflow-action-notice button:focus-visible { outline: 2px solid var(--ivy-color-gray-25); outline-offset: 3px; }
+@media (max-width: 500px) { .workflow-run-picker { align-items: stretch; flex-direction: column; gap: 6px; } .workflow-result-report :is(th,td) { padding: 8px; } }
+
+/* Last execution is separate from the schedule beneath the workflow title. */
+.workflow-execution { display: inline-flex; align-items: center; gap: 4px; padding: 0; border: 0; border-radius: 4px; background: transparent; color: var(--ivy-color-gray-500); cursor: pointer; white-space: nowrap; }
+.workflow-execution[data-execution-status=Completed] svg { color: var(--ivy-color-success-600); }
+.workflow-execution[data-execution-status=Failed] svg { color: var(--ivy-color-error-500); }
+.workflow-execution[data-execution-status=Incomplete] svg { color: var(--ivy-color-warning-600); }
+.workflow-execution[data-execution-status=Running] svg { color: var(--ivy-color-primary); }
+.workflow-execution:hover span { text-decoration: underline; }
+.workflow-execution:focus-visible { outline: 2px solid var(--ivy-color-primary); outline-offset: 3px; }
+.workflow-result-status[data-status=Running] { color: var(--ivy-color-primary); background: var(--ivy-color-indigo-50); border-color: var(--ivy-color-indigo-100); }

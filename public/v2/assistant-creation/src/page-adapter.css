@@ -1,0 +1,24 @@
+/* Geometry adapters for the imported page, contained by its document boundary. */
+html, body, #app, .page-content { width: 100%; height: 100%; margin: 0; overflow: hidden; }
+body { font-family: 'Outfit', sans-serif; color: var(--ivy-color-gray-700); background: var(--ivy-color-gray-50); }
+.page-content { display: flex; position: relative; isolation: isolate; }
+.page-content > .left-content { height: 100%; }
+.page-content > .main-content { height: 100%; position: relative; }
+.page-content .content-header-info, .page-content .content-header-info.is-split-content { position: relative; top: auto; left: auto; width: 100%; margin: 0; padding: 0 16px; flex-shrink: 0; border-radius: 0; }
+.page-content .content-header-spacer { display: none; }
+.page-content .small-chat-header { padding-left: 24px; }
+.page-content .conversation-outer-wrapper { min-height: 0; height: 100%; }
+.page-content .conversation-inner-wrapper { min-height: 0; }
+.page-content .main-content > .assistant-main-row { flex: 1; }
+.page-content .assistant-main-row { min-height: 0; }
+.page-content .assistant-sidebar-column--open { flex-basis: 20rem; width: 20rem; }
+.page-content .assistant-header-trigger { margin-left: 8px; }
+.page-content .header-trigger-pill { max-width: 220px; }
+.page-content .assistant-header-title { max-width: 240px; }
+.page-content .assistant-header-primary > div:first-child { min-width: 0; }
+.page-content .small-chat-header .lead { font-size: 16px; }
+.ivy-thinking-text { color: var(--ivy-color-gray-400); }
+.ivy-category-pill.assistant-category-pill { font-weight: 400 !important; text-transform: none !important; color: var(--category-text) !important; background: var(--category-background) !important; border: 1px solid var(--category-border); height: 22px; }
+.assistant-category-menu__swatch[data-ivy-category] { background: var(--category-background) !important; border: 1px solid var(--category-border); }
+@media (max-width: 980px) { .page-content > .left-content { width: 280px; min-width: 240px; } .page-content .assistant-sidebar-column--open { position: absolute; right: 0; top: 56px; bottom: 0; height: auto; width: min(320px, 90%); box-shadow: -4px 0 12px var(--ivy-color-gray-200); } }
+@media (max-width: 620px) { .page-content { overflow-x: auto; } .page-content > .left-content { width: 260px; min-width: 260px; } .page-content > .main-content { min-width: 420px; } }

@@ -1,0 +1,29 @@
+/* The onboarding index has one full-width catalog and no activity sections. */
+.specialist-onboarding .specialist-index-layout { grid-template-columns: minmax(0,1fr); }
+.specialist-onboarding .specialist-index-layout .assistants-grid { grid-template-columns: repeat(3,minmax(0,1fr)); }
+@container (max-width: 1000px) { .specialist-onboarding .specialist-index-layout .assistants-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+@container (max-width: 640px) { .specialist-onboarding .specialist-index-layout .assistants-grid { grid-template-columns: minmax(0,1fr); } }
+.specialist-onboarding .specialist-index-layout .assistants-grid[data-layout="list"] { grid-template-columns: minmax(0,1fr); }
+
+/* Match the 54rem introduction and content width from Collections onboarding. */
+.specialist-onboarding .assistants-container { min-height: 100%; display: flex; }
+.specialist-onboarding .assistants-content { display: flex; flex-direction: column; justify-content: center; gap: 24px; }
+.assistant-onboarding-intro, .specialist-onboarding #assistant-panel { width: 100%; max-width: 54rem; margin: 0 auto; }
+.assistant-onboarding-symbol { color: var(--ivy-color-primary); border-color: var(--ivy-color-indigo-200); background: var(--ivy-color-indigo-25); }
+.assistant-onboarding-intro h1 { color: var(--ivy-color-gray-900); }
+.assistant-onboarding-description { max-width: 42rem; margin: .5rem 0 0; color: var(--ivy-color-gray-600); }
+.assistant-onboarding-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; margin-top: 1.5rem; }
+.assistant-onboarding-tour { min-height: 40px; background: var(--ivy-color-gray-900); color: var(--ivy-color-gray-25); }
+.assistant-onboarding-tour:hover { background: var(--ivy-color-gray-800); }
+.assistant-onboarding-tour svg { fill: currentColor; stroke: none; }
+.assistant-onboarding-how { min-height: 40px; background: transparent; border-color: var(--ivy-color-gray-300); color: var(--ivy-color-gray-900); }
+.assistant-onboarding-how:hover { border-color: var(--ivy-color-gray-400); }
+.specialist-onboarding .specialist-intro-card { flex-direction: row; align-items: center; gap: 12px; }
+.specialist-onboarding .specialist-intro-card h2 { margin: 0; font-size: 14px; line-height: 20px; }
+@container (max-width: 600px) { .assistant-onboarding-intro { flex-direction: column; gap: 20px; } .assistant-onboarding-intro > div:first-child { align-self: flex-start; } }
+
+.specialist-intro-count { display: block; margin-top: 4px; color: var(--ivy-color-gray-500); }
+.specialist-intro-arrow { display: inline-flex; color: var(--ivy-color-gray-500); }
+
+.assistant-onboarding-benefits { background: var(--ivy-color-gray-25); border-color: var(--ivy-color-gray-200); overflow: hidden; }
+.assistant-onboarding-benefits .collection-benefits-eyebrow { margin: 0 0 18px; color: var(--ivy-color-indigo-600); line-height: 1.6; letter-spacing: .16em; text-transform: uppercase; }

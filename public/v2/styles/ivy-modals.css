@@ -1,0 +1,30 @@
+/* Scoped importance also overrides legacy Bootstrap spacing in the builder. */
+/* Shared modal spacing uses the site's supplied responsive utility classes. */
+.ivy-modal { box-sizing: border-box; }
+.ivy-modal.px-4 { padding-left: 1rem !important; padding-right: 1rem !important; }
+.ivy-modal.py-5 { padding-top: 1.25rem !important; padding-bottom: 1.25rem !important; }
+@media (min-width: 640px) {
+  .ivy-modal.sm\:px-6 { padding-left: 1.5rem !important; padding-right: 1.5rem !important; }
+  .ivy-modal.sm\:py-6 { padding-top: 1.5rem !important; padding-bottom: 1.5rem !important; }
+}
+@media (min-width: 1536px) {
+  .ivy-modal.\32xl\:px-12 { padding-left: 3rem !important; padding-right: 3rem !important; }
+  .ivy-modal.\32xl\:py-12 { padding-top: 3rem !important; padding-bottom: 3rem !important; }
+}
+/* Native-dialog equivalent of inset-0 fixed bg-gray-900/50. */
+dialog.ivy-modal::backdrop {
+  position: fixed;
+  inset: 0;
+  background: color-mix(in srgb, var(--ivy-color-gray-900) 50%, transparent);
+}
+/* Scrollable review dialogs share the outer inset without doubling it inside. */
+.ivy-modal .wo-review-modal-header { padding: 0 0 1rem; }
+.ivy-modal .wo-review-modal-body { padding: 1rem 0 0; }
+/* The builder settings drawer uses the same overlay and content insets. */
+.settings-modal-backdrop.ivy-modal-backdrop { background-color: color-mix(in srgb, var(--ivy-color-gray-900) 50%, transparent); }
+.ivy-modal-drawer .assistant-settings-header { padding: 0 0 1rem !important; }
+.ivy-modal-drawer .assistant-settings-body { margin: 0 !important; padding: 1rem 0 0 !important; }
+.ivy-modal-drawer .ivy-says-shell > div { margin-left: 0 !important; margin-right: 0 !important; margin-bottom: 0 !important; }
+
+/* Drawer actions stay close to the bottom at every responsive modal inset. */
+dialog.ivy-modal.assistant-config-drawer { padding-bottom: 1.5rem !important; }

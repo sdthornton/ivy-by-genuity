@@ -1,0 +1,7 @@
+/* Creation-page shell only. Imported builder styles live in its iframe. */
+html { --font-outfit: "Outfit", sans-serif; font-family: var(--font-outfit); }
+body { font-family: var(--font-outfit); }
+.assistant-creation-shell { flex: 1; min-width: 0; height: 100vh; padding: 12px 12px 12px 0; }
+.assistant-creation-frame { display: block; width: 100%; height: 100%; border: 0; border-radius: 16px; background: var(--ivy-color-gray-50); }
+aside a[aria-current="page"] { background: var(--ivy-color-slate-900); color: var(--ivy-color-gray-25); }
+@media (max-width: 1023px) { .assistant-creation-shell { padding-left: 12px; } }

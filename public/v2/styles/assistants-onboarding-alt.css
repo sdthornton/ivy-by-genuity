@@ -1,0 +1,22 @@
+/* A no-source preview of assistant outcomes, isolated from the other onboarding design. */
+.assistant-preview { overflow: hidden; border-color: var(--ivy-color-gray-200); background: var(--ivy-color-gray-25); }
+.assistant-preview h2, .assistant-preview h3, .assistant-preview h4 { color: var(--ivy-color-gray-800); }
+.assistant-preview-heading { border-bottom: 1px solid var(--ivy-color-gray-200); }
+.assistant-preview-heading p, .assistant-preview-footer p { margin: 6px 0 0; color: var(--ivy-color-gray-500); line-height: 1.5; }
+.assistant-preview-connection { color: var(--ivy-color-gray-500); border-color: var(--ivy-color-gray-200); background: var(--ivy-color-gray-50); white-space: nowrap; }
+.assistant-preview-connection > span, .assistant-preview-signal, .assistant-preview-evidence > span { display: inline-flex; }
+.assistant-preview-layout { display: grid; grid-template-columns: minmax(0,1.4fr) minmax(0,1fr); }
+.assistant-preview-examples, .assistant-preview-capabilities { min-width: 0; }
+.assistant-preview-sample, .assistant-preview-origin { color: var(--ivy-color-gray-500); }
+.assistant-preview-finding { border-color: var(--ivy-color-gray-200); background: var(--ivy-color-gray-25); }
+.assistant-preview-finding > p { margin: 8px 0 12px; color: var(--ivy-color-gray-500); line-height: 1.5; }
+.assistant-preview-signal { color: var(--ivy-color-indigo-500); }
+.assistant-preview-signal[data-priority="high"] { color: var(--ivy-color-error-500); }
+.assistant-preview-evidence { color: var(--ivy-color-gray-400); }
+.assistant-preview-capabilities { border-left: 1px solid var(--ivy-color-gray-200); background: var(--ivy-color-bluegray-50); }
+.assistant-preview-capability-list { margin-top: 24px; }
+.assistant-preview-capability-icon { display: grid; place-items: center; width: 32px; height: 32px; background: var(--ivy-color-indigo-100); color: var(--ivy-color-indigo-600); }
+.assistant-preview-capability-list h4 { margin: 12px 0 6px; }
+.assistant-preview-capability-list p { margin: 0; color: var(--ivy-color-gray-500); line-height: 1.5; }
+.assistant-preview-footer { border-top: 1px solid var(--ivy-color-gray-200); }
+@container (max-width: 700px) { .assistant-preview-layout { grid-template-columns: minmax(0,1fr); } .assistant-preview-capabilities { border-left: 0; border-top: 1px solid var(--ivy-color-gray-200); } }
