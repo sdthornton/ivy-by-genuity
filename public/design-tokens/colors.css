@@ -427,6 +427,12 @@
   --ivy-color-primary: #465FFF;
   /* User-approved override: brand-100 */
   --ivy-color-brand-100: #DDE9FF;
+  /* User-approved override: brand-50 */
+  --ivy-color-brand-50: #ECF3FF;
   /* User-approved override: brand-25 */
   --ivy-color-brand-25: #F2F7FF;
+  /* User-approved override: brand-800 */
+  --ivy-color-brand-800: #252DAE;
+  /* User-approved override: brand-900 */
+  --ivy-color-brand-900: #262E89;
 }

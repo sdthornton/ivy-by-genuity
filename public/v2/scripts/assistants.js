@@ -5,6 +5,9 @@
   const isShow=document.body?.dataset.assistantPage==='show';
   const isOnboarding=document.body?.dataset.assistantVariant==='onboarding';
   const isOnboardingPreview=isOnboarding&&document.body.dataset.assistantPreview==='no-sources';
+  const hasOnboardingCardLinks=isOnboarding&&document.body.hasAttribute('data-assistant-card-links');
+  const hasOnboardingCardTooltips=hasOnboardingCardLinks&&document.body.dataset.assistantCardLinks==='tooltips';
+  let previewAssistantCards=false;
   let showPage;
   const esc=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
   const paths={
@@ -19,6 +22,8 @@
     alert:'<path d="m12 3 10 18H2ZM12 9v5M12 17h.01"/>',
     chevron:'<path d="m9 6 6 6-6 6"/>',
     arrow:'<path d="M4 12h16m-6-6 6 6-6 6"/>',
+    eye:'<path d="M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6-10-6-10-6Z"/><circle cx="12" cy="12" r="2.5"/>',
+    arrowLeft:'<path d="M20 12H4m6-6-6 6 6 6"/>',
     check:'<path d="m5 12 4 4L19 6"/>',
     calendar:'<rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 11h18"/>',
     clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
@@ -82,20 +87,24 @@
     try {
       const stored=JSON.parse(window.sessionStorage.getItem(sessionKey)||'null');if(!stored||![1,2].includes(stored.version))return;
       for(const a of assistants){const item=stored.assistants?.find(item=>item.id===a.id);if(!item)continue;if(typeof item.enabled==='boolean')a.enabled=item.enabled;if(Array.isArray(item.selectedSources))a.selectedSources=item.selectedSources.filter(name=>a.sources.includes(name)&&sourceIsConnected(name));if(Object.hasOwn(cadenceLabels,item.cadence))a.cadence=item.cadence;if(Array.isArray(item.selectedCapabilities))a.selectedCapabilities=item.selectedCapabilities.filter(i=>Number.isInteger(i)&&i>=0&&i<capabilitySets[a.id].length);if(typeof item.notify==='boolean')a.notify=item.notify;if(Array.isArray(item.notifyChannels))a.notifyChannels=item.notifyChannels.filter(channel=>['in-app','email'].includes(channel));if(typeof item.pending==='boolean')a.pending=item.pending;if(/^([01]\d|2[0-3]):[0-5]\d$/.test(item.startTime))a.startTime=item.startTime;if(Object.hasOwn(timeZones,item.timeZone))a.timeZone=item.timeZone;if(weekdays.includes(item.day))a.day=item.day;if(typeof item.last==='string'||item.last===null)a.last=item.last;if(stored.version===1&&[4,5].includes(a.id)){a.enabled=false;a.pending=false;}}
-      for(const f of findings){const item=stored.findings?.find(item=>item.id===f.id);if(typeof item?.acknowledged==='boolean'&&f.condition!=='resolved')f.acknowledged=item.acknowledged;}
+      for(const f of findings){const item=stored.findings?.find(item=>item.id===f.id);if(typeof item?.acknowledged==='boolean'&&f.condition!=='resolved')f.acknowledged=item.acknowledged;if(typeof item?.dismissed==='boolean')f.dismissed=item.dismissed;if(Number.isFinite(item?.alertAt))f.alertAt=item.alertAt;}
       if(Array.isArray(stored.dismissedSuggestions))dismissedSuggestions.push(...stored.dismissedSuggestions.filter(id=>suggestionCopy[id]?.ready));
     } catch (_) { /* The file preview also works when browser storage is unavailable. */ }
   }
   function saveSession() {
-    try {window.sessionStorage.setItem(sessionKey,JSON.stringify({version:2,assistants:assistants.map(({id,enabled,selectedSources,selectedCapabilities,cadence,notify,notifyChannels,pending,startTime,timeZone,day,last})=>({id,enabled,selectedSources,selectedCapabilities,cadence,notify,notifyChannels,pending,startTime,timeZone,day,last})),findings:findings.map(({id,acknowledged})=>({id,acknowledged})),dismissedSuggestions}));} catch (_) { /* Optional preview persistence. */ }
+    try {window.sessionStorage.setItem(sessionKey,JSON.stringify({version:2,assistants:assistants.map(({id,enabled,selectedSources,selectedCapabilities,cadence,notify,notifyChannels,pending,startTime,timeZone,day,last})=>({id,enabled,selectedSources,selectedCapabilities,cadence,notify,notifyChannels,pending,startTime,timeZone,day,last})),findings:findings.map(({id,acknowledged,dismissed,alertAt})=>({id,acknowledged,dismissed,alertAt})),dismissedSuggestions}));} catch (_) { /* Optional preview persistence. */ }
   }
   restoreSession();
   assistants.forEach(a=>{a.selectedSources=a.selectedSources.filter(sourceIsConnected);});
   const rank={critical:4,high:3,medium:2,low:1};
   let view='overview',layout='grid',availability='all',findingState='all',toastTimer;
   const dialog=$('#assistant-dialog');
+  const attentionRail=$('#assistant-attention-list');
+  const attentionScrollbar=$('#assistant-attention-scrollbar');
+  const highlightsToggle=$('#assistants-highlights-toggle');
+  let indexHighlightsHidden=false;
   const owned=a=>findings.filter(f=>f.assistant===a.id&&f.condition!=='resolved');
-  const waiting=items=>items.filter(f=>f.condition!=='resolved'&&!f.acknowledged);
+  const waiting=items=>items.filter(f=>f.condition!=='resolved'&&!f.acknowledged&&!f.dismissed);
   function searchText() {return isOnboarding?'':$('#assistant-search').value.trim();}
   function filtered() {
     const query=searchText().toLowerCase();
@@ -127,9 +136,9 @@
     a.running=true;render();toast('Running a preview investigation using sample evidence.');
     runTimers.set(a.id,setTimeout(()=>{if(!a.enabled)return;a.running=false;a.pending=false;a.last='Just now';runTimers.delete(a.id);render();toast('Preview check completed. Existing sample findings retained.');},2400));
   }
-  function lifecycleBadges(f) {
+  function lifecycleBadges(f,showReviewState=true) {
     const changeTone=['Worsened','Resurfaced'].includes(f.change)?'warning':f.change==='Improving'?'success':f.change==='New'?'info':'neutral';
-    return `${badge(f.severity,['critical','high'].includes(f.severity)?'danger':'neutral')}${f.condition==='resolved'?badge('Verified resolved','success'):badge(f.change,changeTone)}${f.verification==='unavailable'?badge('Verification unavailable','warning'):''}${f.acknowledged&&f.condition!=='resolved'?badge('Acknowledged'):''}`;
+    return `${badge(f.severity,['critical','high'].includes(f.severity)?'danger':'neutral')}${f.condition==='resolved'?badge('Verified resolved','success'):badge(f.change,changeTone)}${showReviewState&&f.verification==='unavailable'?badge('Verification unavailable','warning'):''}${showReviewState&&f.dismissed?badge('Dismissed'):''}${showReviewState&&f.acknowledged&&!f.dismissed&&f.condition!=='resolved'?badge('Acknowledged'):''}`;
   }
   function elapsedMinutes(value) {const match=value.match(/(\d+)\s*(m|h|day)/);return match?Number(match[1])*(match[2]==='day'?1440:match[2]==='h'?60:1):0;}
   function matchesFindingState(f) {
@@ -144,7 +153,36 @@
     return `<article class="assistant-card p-4 specialist-card" data-specialist-action="open" data-assistant-id="${a.id}" tabindex="0" role="link" aria-labelledby="assistant-title-${a.id}" style="--icon-bg:var(--ivy-color-${a.family}-100);--icon-border:var(--ivy-color-${a.family}-200)"><div class="specialist-card-topline">${cardSchedule(a)}</div><header class="assistant-card-header"><span class="assistant-icon h-11 w-11">${icon(a.glyph,'h-5 w-5')}</span><div class="specialist-card-heading text-base font-semibold"><h2 id="assistant-title-${a.id}" class="font-semibold"><span class="assistant-title">${esc(a.title)}</span></h2><span class="specialist-built-in text-xs">Built-in specialist</span></div>${badge(stateLabel(a),!a.enabled?'neutral':a.pending?'info':a.coverageGap?'warning':'success')}</header><p class="assistant-description text-xs">${esc(a.description)}</p><div class="specialist-source-list">${a.selectedSources.map(source).join('')}</div><div class="specialist-scope text-xs">${a.scope?`${icon('health')}${esc(a.scope)}`:!a.enabled?'Connected sources ready':a.pending?'Scope will appear after the first check':''}</div><div class="specialist-card-status">${items.length?`<strong class="text-sm font-semibold">${items.length} open ${items.length===1?'finding':'findings'}</strong><span class="text-xs">${needs?`${needs} to review`:'All acknowledged'}</span>`:a.enabled&&!a.pending&&a.last?`<strong class="text-sm font-medium">${icon('check')}No open findings</strong><span class="text-xs">From the latest available evidence</span>`:`<strong class="text-sm font-medium">${!a.enabled?'Not monitoring yet':a.pending?'Ready for the first check':'Not checked yet'}</strong><span class="text-xs">${!a.enabled?'Turn on to start proactive investigations.':a.cadence==='manual'?'Use Run Now on the assistant page.':'Findings will appear as evidence is collected.'}</span>`}</div>${a.enabled&&a.coverageGap?`<p class="specialist-coverage-note text-xs">${icon('alert')}${esc(a.coverage)}</p>`:''}<footer class="assistant-footer specialist-card-footer"><span class="specialist-check-time text-xs">${a.enabled?(a.last?`${icon('clock')}Checked ${a.last}`:'Awaiting first check'):'Off · Checks stopped'}</span><div class="specialist-card-actions">${powerToggle(a)}<button type="button" class="specialist-settings" data-specialist-action="configure" data-assistant-id="${a.id}" aria-label="Configure ${esc(a.title)}">${icon('settings')}</button><button type="button" class="specialist-open text-sm" data-specialist-action="open" data-assistant-id="${a.id}">View Assistant ${icon('arrow')}</button></div></footer></article>`;
   }
   function onboardingCard(a) {
-    return `<article class="assistant-card specialist-intro-card p-4 rounded-lg" data-specialist-action="open" data-assistant-id="${a.id}" tabindex="0" role="link" aria-labelledby="assistant-title-${a.id}" style="--icon-bg:var(--ivy-color-${a.family}-100);--icon-border:var(--ivy-color-${a.family}-200)"><span class="assistant-icon h-11 w-11">${icon(a.glyph,'h-5 w-5')}</span><div class="min-w-0 flex-1"><h2 id="assistant-title-${a.id}" class="text-sm font-semibold">${esc(a.title)}</h2><span class="specialist-intro-count text-xs">${capabilitySets[a.id].length} Capabilities</span></div><span class="specialist-intro-arrow shrink-0">${icon('arrow','h-4 w-4')}</span></article>`;
+    const action=isOnboardingPreview?'open':'preview-assistant';
+    const recommendedSources=isOnboardingPreview?'':`<div class="flex flex-wrap items-center gap-2 mt-1.5" role="group" aria-label="Recommended Sources">
+      ${a.sources.map(name=>`<img class="h-4 w-4 object-contain" src="${sourceAssets[name]}" width="16" height="16" alt="${esc(name)}" title="${esc(name)}"/>`).join('')}
+    </div>`;
+    const titleId=`assistant-title-${a.id}`;
+    const tooltipId=`assistant-action-${a.id}`;
+    const actionLabel=previewAssistantCards?'Preview Assistant':'View Assistant';
+    const tooltip=hasOnboardingCardTooltips?`<span class="specialist-intro-tooltip" id="${tooltipId}" role="tooltip">${actionLabel}</span>`:'';
+    const tooltipAttributes=hasOnboardingCardTooltips?` aria-describedby="${tooltipId}"`:hasOnboardingCardLinks?` title="${actionLabel}"`:'';
+    const iconColors=`--icon-bg:var(--ivy-color-${a.family}-100);--icon-border:var(--ivy-color-${a.family}-200)`;
+    const actionIcon=hasOnboardingCardLinks&&previewAssistantCards?'eye':'arrow';
+    const indicator=`<span class="specialist-intro-arrow shrink-0">${icon(actionIcon,'h-4 w-4')}</span>`;
+    const content=`
+      <span class="assistant-icon h-10 w-10">${icon(a.glyph,'h-4 w-4')}</span>
+      <div class="min-w-0 flex-1">
+        <h2 id="${titleId}" class="text-sm font-normal">${esc(a.title)}</h2>
+        <span class="specialist-intro-count text-xs"${isOnboardingPreview?'':' hidden'}>${capabilitySets[a.id].length} Capabilities</span>
+        ${recommendedSources}
+      </div>`;
+    if(hasOnboardingCardLinks&&!previewAssistantCards){
+      return `<article class="assistant-card specialist-intro-card rounded-lg hover:shadow-md focus-within:shadow-md" style="${iconColors}">
+        <a class="specialist-intro-link p-4" href="${assistantShowHref(a)}" aria-labelledby="${titleId}"${tooltipAttributes}>${content}${indicator}</a>
+        ${tooltip}
+      </article>`;
+    }
+    return `<article class="assistant-card specialist-intro-card p-4 rounded-lg${isOnboardingPreview?'':' hover:shadow-md focus-within:shadow-md'}" data-specialist-action="${action}" data-assistant-id="${a.id}" tabindex="0" role="${isOnboardingPreview?'link':'button'}" ${isOnboardingPreview?'':'aria-haspopup="dialog"'} aria-labelledby="${titleId}"${tooltipAttributes} style="${iconColors}">
+      ${content}
+      ${indicator}
+      ${tooltip}
+    </article>`;
   }
   function overviewCard(a) {
     const items=owned(a),action='open';
@@ -169,13 +207,35 @@
     'identity-inactive':'Application assignments remain, with no recent service activity recorded. Confirm whether access is still needed.'
   };
   function historyCard(f) { return findingRow(f,{history:true}); }
+  const findingReviewActions={
+    'acknowledge-open':{label:'Acknowledge for Later',glyph:'check'},
+    'dismiss-finding':{label:'Dismiss',glyph:'close'},
+    'schedule-finding-alert':{label:'Schedule an Alert',glyph:'calendar'},
+    'chat-finding':{label:'Start a Chat',glyph:'sparkles'}
+  };
+  function findingReviewControl(f) {
+    return `<span class="as-finding-split-action">
+        <button type="button" class="as-finding-icon-button" data-finding-primary data-specialist-action="acknowledge-open" data-finding-id="${f.id}" aria-label="Acknowledge for Later" title="Acknowledge for Later">${icon('check')}<span>Acknowledge</span></button>
+        <details class="as-finding-action-menu"><summary aria-label="Choose Finding Action" title="Choose Finding Action"><svg class="as-finding-dropdown-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary>
+          <span class="as-finding-action-options">${Object.entries(findingReviewActions).map(([action,{label,glyph}])=>`<button type="button" data-specialist-action="choose-finding-action" data-finding-action="${action}">${icon(glyph)}${label}</button>`).join('')}</span>
+        </details>
+      </span>`;
+  }
   function findingRow(f,options={}) {
     const a=assistants.find(a=>a.id===f.assistant),priority=options.priority===true;
     const headline=findingHeadlines[f.id]||f.title;
     const evidence=findingEvidence[f.id]||f.confirmed?.[0]||f.evidence;
+    const checkedTime=`<span class="specialist-issue-time text-xs">${f.verification==='unavailable'?'Last evidence '+esc(f.observed):'Checked '+esc(f.checked)}</span>`;
+    const findingActions=`<span class="as-finding-actions">
+      <button type="button" class="as-finding-icon-button" data-specialist-action="finding" data-finding-id="${f.id}" aria-label="View More" title="View More">${icon('arrow')}</button>
+
+    </span>`;
+    const recommendation=options.recommendation
+      ? `<span class="specialist-finding-aside">${checkedTime}<span class="specialist-finding-recommendation"><strong class="text-xs font-medium">${icon('sparkles')}Ivy recommends...</strong><span class="text-xs">${esc(suggestionCopy[f.id]?.ready?suggestionCopy[f.id].title:f.next||'No recommendation available.')}</span></span></span>${findingActions}`
+      : `<span class="specialist-finding-arrow">${icon('arrow')}</span>`;
     if(options.findingsTab)return `<button type="button" class="specialist-finding specialist-issue-row specialist-tab-finding p-4 rounded-lg" data-severity="${f.severity}" data-specialist-action="finding" data-finding-id="${f.id}"><span class="specialist-finding-icon" data-severity="${f.severity}">${icon('alert')}</span><span class="specialist-finding-copy"><span class="specialist-issue-top"><span class="specialist-finding-top text-xs">${lifecycleBadges(f)}<span class="border bg-gray-50 px-2 rounded-xl ml-2">${esc(a.title)}</span></span><span class="specialist-issue-time text-xs">${f.verification==='unavailable'?'Last Evidence '+esc(f.observed):'Checked '+esc(f.checked)}</span></span><strong class="text-sm font-semibold">${esc(headline)}</strong><span class="specialist-issue-evidence text-xs">${esc(evidence)}</span></span><span class="specialist-tab-finding-footer flex gap-4"><span class="specialist-issue-meta text-xs">${source(f.source)}<span aria-hidden="true">•</span><span class="inline-flex items-center gap-1">${icon('identity','h-3 w-3')}${esc(f.affected)}</span></span><span class="specialist-finding-arrow">${icon('arrow')}</span></span></button>`;
 
-    return `<button type="button" class="specialist-finding specialist-issue-row ${options.list?'specialist-issue-list-row px-2 py-3 rounded-none':'p-4 rounded-lg'}${priority?' specialist-issue-priority':''}" data-severity="${f.severity}" data-specialist-action="finding" data-finding-id="${f.id}"${options.descriptionTooltip?` title="${esc(evidence)}"`:""}>${options.list?'':`<span class="specialist-finding-icon" data-severity="${f.severity}">${icon('alert')}</span>`}<span class="specialist-finding-copy"><span class="specialist-issue-top"><span class="specialist-finding-top text-xs">${priority?'<span class="specialist-priority-label font-medium">Top Priority</span>':''}${lifecycleBadges(f)}</span><span class="specialist-issue-time text-xs">${f.verification==='unavailable'?'Last evidence '+esc(f.observed):'Checked '+esc(f.checked)}</span></span><strong class="text-sm font-semibold">${esc(headline)}</strong>${options.descriptionTooltip?'':`<span class="specialist-issue-evidence text-xs">${esc(evidence)}</span>`}<span class="specialist-issue-meta text-xs">${options.descriptionTooltip?`${source(f.source)}<span aria-hidden="true">•</span><span class="inline-flex items-center gap-1">${icon('identity','h-3 w-3')}${esc(f.affected)}</span><span aria-hidden="true">•</span><span class="border bg-gray-50 px-2 rounded-xl">${esc(a.title)}</span>`:`<span class="inline-flex items-center gap-1">${icon('identity','h-3 w-3')}${esc(f.affected)}</span><span aria-hidden="true">•</span>${source(f.source)}<span aria-hidden="true">•</span><span>${esc(a.title)}</span>`}</span>${options.history===true?`<span class="specialist-history-events text-xs">${f.history.map(event=>`<span>${esc(event)}</span>`).join('')}</span>`:''}</span><span class="specialist-finding-arrow">${icon('arrow')}</span></button>`;
+    return `<${options.recommendation?'article':'button type="button"'} class="specialist-finding specialist-issue-row${options.recommendation?' specialist-finding-with-recommendation':''} ${options.list?'specialist-issue-list-row px-2 py-3 rounded-none':'p-4 rounded-lg'}${priority?' specialist-issue-priority':''}" data-severity="${f.severity}"${options.recommendation?'':` data-specialist-action="finding" data-finding-id="${f.id}"`}${options.descriptionTooltip?` title="${esc(evidence)}"`:""}>${options.list?'':`<span class="specialist-finding-icon" data-severity="${f.severity}">${icon('alert')}</span>`}<span class="specialist-finding-copy"><span class="specialist-issue-top"><span class="specialist-finding-top text-xs">${priority?'<span class="specialist-priority-label font-medium">Top Priority</span>':''}${lifecycleBadges(f,!options.preview)}</span>${options.recommendation?'':checkedTime}</span><strong class="text-sm font-semibold">${esc(headline)}</strong>${options.preview||options.descriptionTooltip?'':`<span class="specialist-issue-evidence text-xs">${esc(evidence)}</span>`}<span class="specialist-issue-meta text-xs">${options.descriptionTooltip?`${source(f.source)}<span aria-hidden="true">•</span><span class="inline-flex items-center gap-1">${icon('identity','h-3 w-3')}${esc(f.affected)}</span><span aria-hidden="true">•</span><span class="border bg-gray-50 px-2 rounded-xl">${esc(a.title)}</span>`:`<span class="inline-flex items-center gap-1">${icon('identity','h-3 w-3')}${esc(f.affected)}</span><span aria-hidden="true">•</span>${source(f.source)}<span aria-hidden="true">•</span><span>${esc(a.title)}</span>`}</span>${options.history===true?`<span class="specialist-history-events text-xs">${f.history.map(event=>`<span>${esc(event)}</span>`).join('')}</span>`:''}</span>${recommendation}</${options.recommendation?'article':'button'}>`;
   }
   function suggestionCard(f) {
     const copy=suggestionCopy[f.id];
@@ -188,15 +248,29 @@
     const shown=expanded?runs:runs.slice(0,5);
     return `<header class="specialist-section-heading"><h2 ${expanded?'id="assistant-dialog-title"':''} class="text-sm font-medium">Recent Runs</h2>${expanded?'':'<button type="button" class="a-text" data-specialist-action="all-runs">View All</button>'}</header><div class="${expanded?'specialist-runs-scroll':''}"><ul class="specialist-index-runs">${assistants.filter(a=>a.running).map(a=>`<li><span class="specialist-index-run-icon" data-run-state="running">${icon('clock','h-3 w-3')}</span><span class="specialist-index-run-copy"><strong class="text-xs font-medium">${esc(a.title)}</strong><span class="text-xs">Running Now</span></span>${badge('In Progress','info')}</li>`).join('')}${shown.map(run=>`<li><span class="specialist-index-run-icon" data-run-state="${run.error?'error':'complete'}">${icon(run.error?'alert':'check','h-3 w-3')}</span><span class="specialist-index-run-copy"><strong class="text-xs font-medium">${esc(run.assistant.title)}</strong><span class="text-xs">${esc(run.time)}</span></span>${run.error?`<span class="specialist-index-run-error text-xs" tabindex="0" title="${esc(run.error)}">Error</span>`:`<span class="specialist-index-run-count text-xs">${run.count} ${run.count===1?'Finding':'Findings'}</span>`}</li>`).join('')}${!shown.length?'<li class="text-xs">No Recent Runs</li>':''}</ul></div>`;
   }
+  function updateAttentionScrollbar() {
+    const {clientWidth,scrollLeft,scrollWidth}=attentionRail;
+    const hasFindings=attentionRail.firstElementChild?.matches('.specialist-finding');
+    const overflow=clientWidth&&hasFindings?Math.max(0,scrollWidth-clientWidth):0;
+    attentionScrollbar.max=String(overflow);
+    attentionScrollbar.disabled=overflow===0;
+    attentionScrollbar.value=String(Math.max(0,Math.min(scrollLeft,overflow)));
+    attentionScrollbar.style.setProperty('--attention-thumb-width',overflow?`${100*clientWidth/scrollWidth}%`:'100%');
+  }
   function renderAttention() {
-    if(isOnboarding)return;
+    if(!attentionRail)return;
     const attention=waiting(findings).filter(f=>['New','Worsened','Resurfaced'].includes(f.change)||f.severity==='critical').sort((a,b)=>rank[b.severity]-rank[a.severity]||Number(b.change==='Worsened')-Number(a.change==='Worsened'));
     $('#assistant-attention').hidden=view!=='overview';
-    $('#assistant-attention-list').innerHTML=attention.length?attention.map(f=>findingRow(f,{descriptionTooltip:true})).join(''):'<div class="specialist-caught-up text-sm">No new, worsening, or urgent conditions to review. Ongoing findings remain available in Stream.</div>';
+    attentionRail.innerHTML=attention.length?attention.map(f=>findingRow(f,{descriptionTooltip:true})).join(''):'<div class="specialist-caught-up text-sm">No new, worsening, or urgent conditions to review. Ongoing findings remain available in Stream.</div>';
+    updateAttentionScrollbar();
   }
   function render() {
     saveSession();
     if(isShow){showPage.render();return;}
+    if(isOnboardingPreview)document.querySelectorAll('[data-preview-finding]').forEach(slide=>{
+      const finding=findings.find(item=>item.id===slide.dataset.previewFinding);
+      if(finding)slide.innerHTML=findingRow(finding,{preview:true});
+    });
     renderAttention();
     const enabled=assistants.filter(a=>a.enabled),unreviewed=waiting(findings),changed=unreviewed.filter(f=>['New','Worsened','Resurfaced'].includes(f.change)),items=filtered();
     if(!isOnboarding){
@@ -205,7 +279,8 @@
     }
     $('#assistant-grid').innerHTML=layout==='list'?(items.length?assistantTable(items):''):items.map(isOnboarding?onboardingCard:view==='overview'?overviewCard:card).join('');
     $('#assistant-grid').dataset.layout=layout;
-    if(!isOnboarding){$('#assistant-summary').hidden=view!=='overview';$('#assistant-recent-runs').hidden=view==='history';}
+    if(!isOnboarding){$('#assistant-summary').hidden=view!=='overview'||indexHighlightsHidden;$('#assistant-recent-runs').hidden=view==='history';}
+    if(highlightsToggle)highlightsToggle.hidden=view!=='overview';
     $('#assistant-layout').hidden=view==='history';
     $('#assistant-catalog').hidden=isOnboardingPreview||view==='stream'||view==='history';
     if(!isOnboarding){
@@ -223,7 +298,7 @@
     const stream=findings.filter(matchesFindingState).filter(f=>`${f.title} ${assistants.find(a=>a.id===f.assistant).title} ${f.source} ${f.evidence}`.toLowerCase().includes(queryText)).sort((a,b)=>elapsedMinutes(a.checked)-elapsedMinutes(b.checked)||rank[b.severity]-rank[a.severity]);
     $('#assistant-stream-list').innerHTML=stream.map(f=>findingRow(f,{findingsTab:true})).join('');
     $('#assistant-stream-empty').hidden=stream.length>0;
-    $('#assistant-stream-count').textContent=`showing ${stream.length} of ${findings.length} findings`;
+    $('#assistant-stream-count').textContent=`Showing ${stream.length} of ${findings.length}`;
     document.querySelectorAll('[data-specialist-layout]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.specialistLayout===layout)));
     $('#assistant-empty').hidden=items.length>0;
     if(!isOnboarding)$('#assistant-count').textContent=`showing ${items.length} of 5`;
@@ -234,35 +309,316 @@
   function toast(text) {clearTimeout(toastTimer);$('#assistant-toast').textContent=text;$('#assistant-toast').hidden=false;toastTimer=setTimeout(()=>$('#assistant-toast').hidden=true,4000);}
   function openDialog(body,drawer=false,tour=false) {if(dialog.open)dialog.close();dialog.classList.toggle('assistant-config-drawer',drawer);dialog.classList.toggle('assistant-tour',tour);dialog.removeAttribute('aria-describedby');dialog.innerHTML=`<button type="button" class="assistant-dialog-close" data-specialist-action="close" aria-label="Close dialog">${icon('close','h-5 w-5')}</button>${body}`;dialog.showModal();}
   function allFindings() {openDialog(`<h2 id="assistant-dialog-title">Assistant findings</h2><p class="text-sm">Repeated checks refresh an ongoing finding. A return after verified resolution creates a new linked occurrence.</p><div class="specialist-dialog-findings">${findings.slice().sort((a,b)=>rank[b.severity]-rank[a.severity]).map(findingRow).join('')}</div>`);}
+  function assistantShowHref(a) {return (isOnboarding?'assistant-show-off.html':'assistant-show.html')+'?id='+a.id;}
   function openAssistant(a) {
-    saveSession();window.location.href=(isOnboarding?'assistant-show-off.html':'assistant-show.html')+'?id='+a.id;
+    saveSession();window.location.href=assistantShowHref(a);
+  }
+  const additionalPreviewFindings={
+    1:[{title:'An Unexpected Sign-In Was Followed by a Global Admin Role Grant',evidence:'Entra ID recorded a sign-in from an unfamiliar location shortly before the account gained the Global Administrator role.',source:'Entra ID',affected:'1 account',severity:'critical'}],
+    2:[
+      {title:'18 Dispatch Workstations Are Stuck Restarting After an Update',evidence:'Intune recorded repeated restarts on the same workstations after the latest update.',source:'Intune',affected:'18 devices',severity:'critical'},
+      {title:'6 Devices Repeatedly Failed the Same Update',evidence:'Kaseya VSA recorded the same install error on all six devices across multiple attempts.',source:'Kaseya VSA',affected:'6 devices'}
+    ],
+    4:[{title:'Both Internet Uplinks Are Down at the Boston Office',evidence:'Meraki reports that the primary and backup uplinks are both unavailable.',source:'Cisco Meraki',affected:'1 site',severity:'critical'}],
+    5:[
+      {title:'A License Change Removed Email Access for 42 Support Staff',evidence:'Microsoft 365 records show the accounts lost their Exchange Online entitlement after a group license change.',source:'Microsoft 365',affected:'42 accounts',severity:'critical'},
+      {title:'4 New Hires Are Missing Required App Licenses',evidence:'Entra ID shows all four accounts in the onboarding group, with the required licenses still unassigned.',source:'Entra ID',affected:'4 accounts'},
+      {title:'12 Assigned Licenses Show No Recent Activity',evidence:'Microsoft 365 recorded no activity for these assignments in the past 30 days.',source:'Microsoft 365',affected:'12 licenses'}
+    ]
+  };
+  const previewIntroductions={
+    1:'Connect the dots between sign-in failures, device health, and access changes.',
+    2:'Catch recurring device and update problems before they disrupt someone’s day.',
+    3:'Find gaps in protection and see which threats still need attention.',
+    4:'Trace recurring connection problems across devices and sites.',
+    5:'Find out what’s blocking app access and where licenses may be going unused.'
+  };
+  function previewFindingCarousel(examples) {
+    const findingCards=examples.map(f=>{
+      const severity=f.severity||'low';
+      const label=severity[0].toUpperCase()+severity.slice(1);
+      const tone=['critical','high'].includes(severity)?'danger':'neutral';
+      return `<li class="assistant-preview-finding-card">
+      <article class="specialist-finding specialist-issue-row p-4 rounded-lg shadow-md" data-severity="${severity}">
+        <span class="specialist-finding-icon" data-severity="${severity}" aria-hidden="true">${icon('alert')}</span>
+        <div class="specialist-finding-copy">
+          <div class="specialist-finding-top">${badge(label,tone)}</div>
+          <strong class="text-sm font-semibold">${esc(findingHeadlines[f.id]||f.title)}</strong>
+          <span class="specialist-issue-evidence text-xs">${esc(findingEvidence[f.id]||f.confirmed?.[0]||f.evidence)}</span>
+          <div class="specialist-issue-meta text-xs">${source(f.source)}<span aria-hidden="true">•</span><span>${esc(f.affected)}</span></div>
+        </div>
+      </article>
+    </li>`;
+    });
+    const cards=findingCards.join('');
+    // Keep each half of the loop wider than the carousel on desktop.
+    const repeat=examples.length<3?`<ul class="assistant-preview-finding-group" aria-hidden="true" inert>${cards}</ul>`:'';
+    const cardCount=examples.length*(repeat?2:1);
+    return `<section data-preview-finding-carousel tabindex="0" role="group" aria-label="Example Findings" aria-roledescription="carousel">
+      <div class="assistant-preview-finding-track" style="--finding-loop-duration:${cardCount*7.5}s">
+        <ul class="assistant-preview-finding-group assistant-preview-finding-peek" aria-hidden="true" inert>${findingCards.at(-1)}</ul>
+        <ul class="assistant-preview-finding-group">${cards}</ul>${repeat}
+        <ul class="assistant-preview-finding-group" aria-hidden="true" inert>${cards}</ul>${repeat}
+      </div>
+    </section>`;
+  }
+  let assistantPreview;
+  const inlineDetails=$('[data-assistant-inline-details]');
+  let inlinePreview;
+  function previewFindings(a) {
+    return [...owned(a),...(additionalPreviewFindings[a.id]||[])]
+      .sort((first,second)=>Number(second.severity==='critical')-Number(first.severity==='critical'));
+  }
+  function showInlineAssistant(a) {
+    const {situationCards,capabilityRows}=window.IvyAssistantShow;
+    inlinePreview={assistant:a,selectedCapability:null};
+    inlineDetails.innerHTML=`
+      <header class="assistant-preview-heading flex items-start gap-3">
+        <span class="assistant-icon h-10 w-10" style="--icon-bg:var(--ivy-color-${a.family}-100);--icon-border:var(--ivy-color-${a.family}-200)">${icon(a.glyph)}</span>
+        <div class="min-w-0 flex-1">
+          <h2 class="text-xl font-semibold" tabindex="-1">${esc(a.title)}</h2>
+          <p class="text-sm">${esc(previewIntroductions[a.id])}</p>
+        </div>
+        <button type="button" class="a-text inline-flex shrink-0 items-center gap-1" data-specialist-action="inline-explore">${icon('arrowLeft')} Explore other Assistants</button>
+      </header>
+      ${situationCards(a,{esc,icon})}
+      <section class="assistant-inline-section" aria-labelledby="inline-capabilities-title">
+        <header class="as-section-heading">
+          <h3 id="inline-capabilities-title" class="text-base font-semibold">Built-In Capabilities</h3>
+          <p class="text-sm">Each built-in capability shows what the assistant checks and which sources it uses.</p>
+        </header>
+        <div class="as-capabilities-grid" id="as-capability-grid">${capabilityRows(a,null,{esc,icon,source})}</div>
+      </section>
+      <section class="assistant-inline-section" aria-labelledby="inline-findings-title">
+        <header class="as-section-heading">
+          <h3 id="inline-findings-title" class="text-base font-semibold">Spot What Needs Attention</h3>
+          <p class="text-sm">Findings show what the assistant flags, who or what is affected, and where the signal came from.</p>
+        </header>
+        ${previewFindingCarousel(previewFindings(a))}
+      </section>
+      <footer class="assistant-inline-actions flex flex-wrap items-center gap-3">
+        <button type="button" class="a-secondary" data-specialist-action="inline-explore">Explore More</button>
+        <button type="button" class="a-primary gap-2" data-specialist-action="open" data-assistant-id="${a.id}">Continue to Assistant ${icon('arrow')}</button>
+      </footer>`;
+    $('[data-assistant-choices]').hidden=true;
+    inlineDetails.hidden=false;
+    inlineDetails.querySelector('h2').focus();
+  }
+  function openAssistantPreview(a) {
+    const slides=[
+      {title:`Meet Your ${a.title} Assistant`,subtitle:previewIntroductions[a.id]},
+      {title:'See What It Can Investigate',subtitle:'Each built-in capability shows what the assistant checks and which sources it uses.'},
+      {title:'Spot What Needs Attention',subtitle:'Findings show what the assistant flags, who or what is affected, and where the signal came from.'}
+    ];
+    assistantPreview={assistant:a,index:0,selectedCapability:null,hasExploredCapabilities:false,visitedSlides:new Set(),slides};
+    openDialog(`
+      <header class="assistant-tour-top flex items-center gap-2">
+        <span class="assistant-icon h-7 w-7" style="--icon-bg:var(--ivy-color-${a.family}-100);--icon-border:var(--ivy-color-${a.family}-200)">${icon(a.glyph,'h-4 w-4')}</span>
+        <span class="font-medium">${esc(a.title)}</span>
+      </header>
+      <div class="assistant-tour-body as-content" data-onboarding-preview-slide><h2 id="assistant-dialog-title" class="font-semibold">${esc(slides[0].title)}</h2></div>
+      <footer class="assistant-tour-footer">
+        <nav class="assistant-tour-dots" aria-label="Walkthrough Steps">
+          ${slides.map(({title},index)=>`<button type="button" data-specialist-action="preview-step" data-preview-index="${index}" aria-label="Step ${index+1}: ${esc(title)}"></button>`).join('')}
+        </nav>
+        <div class="assistant-tour-actions flex-wrap items-center" data-onboarding-preview-actions></div>
+      </footer>`,false,true);
+    renderAssistantPreview(true);
+  }
+  function renderAssistantPreview(opening=false) {
+    const preview=assistantPreview;
+    const {assistant:a,index,selectedCapability,slides}=preview;
+    const {title,subtitle}=slides[index];
+    const {situationCards,capabilityRows}=window.IvyAssistantShow;
+    const last=index===slides.length-1;
+    let body;
+    if(index===0){
+      body=situationCards(a,{esc,icon});
+    }else if(last){
+      body=previewFindingCarousel(previewFindings(a));
+    }else{
+      const helpers={esc,icon,source};
+      // Overlap each expanded layout so the tallest one sets the available height.
+      const expandedLayouts=capabilitySets[a.id].map((_,capabilityIndex)=>`
+        <div class="as-capabilities-grid assistant-preview-capability-sizing" inert aria-hidden="true">
+          ${capabilityRows(a,capabilityIndex,helpers,`preview-sizing-${capabilityIndex}`)}
+        </div>`).join('');
+      body=`<div class="assistant-preview-capabilities">
+        <div class="as-capabilities-grid" id="as-capability-grid">${capabilityRows(a,selectedCapability,helpers)}</div>
+        ${expandedLayouts}
+      </div>`;
+    }
+    const slide=dialog.querySelector('[data-onboarding-preview-slide]');
+    const firstVisit=!preview.visitedSlides.has(index);
+    preview.visitedSlides.add(index);
+    slide.toggleAttribute('data-preview-enter',firstVisit);
+    slide.toggleAttribute('data-preview-opening',opening);
+    slide.innerHTML=`
+      <header class="assistant-preview-heading">
+        <h2 id="assistant-dialog-title" class="font-semibold" tabindex="-1">${esc(title)}</h2>
+        <p>${esc(subtitle)}</p>
+      </header>
+      <div class="assistant-preview-content">${body}</div>`;
+    const capabilityGrid=slide.querySelector('#as-capability-grid');
+    if(firstVisit&&capabilityGrid){
+      const tiles=[...capabilityGrid.querySelectorAll('.as-capability-tile')];
+      tiles.forEach((tile,tileIndex)=>{
+        tile.classList.add('assistant-preview-capability-enter');
+        tile.style.setProperty('--preview-capability-index',tileIndex);
+      });
+      const [firstTile]=tiles;
+      if(firstTile&&!preview.hasExploredCapabilities){
+        firstTile.addEventListener('animationstart',()=>{
+          window.setTimeout(()=>{
+            if(!dialog.open||!dialog.contains(firstTile)||preview.hasExploredCapabilities||capabilityGrid.contains(document.activeElement))return;
+            preview.hasExploredCapabilities=true;
+            preview.selectedCapability=0;
+            const expanded=document.createElement('template');
+            expanded.innerHTML=capabilityRows(a,0,{esc,icon,source});
+            // Update the first tile in place so its fade can continue.
+            firstTile.setAttribute('aria-expanded','true');
+            firstTile.classList.replace('rounded-lg','rounded-t-lg');
+            capabilityGrid.querySelector('.as-capability-expanded').replaceWith(
+              expanded.content.querySelector('.as-capability-expanded:not([hidden])'));
+            animatePreviewCapabilityPanel(capabilityGrid);
+          },70);
+        },{once:true});
+      }
+    }
+    dialog.querySelector('[data-onboarding-preview-actions]').innerHTML=`
+      ${last?'<a class="a-text text-sm mr-4" href="#assistant-catalog" data-specialist-action="preview-explore">Explore other Assistants</a>':''}
+      ${index?'<button type="button" class="a-secondary" data-specialist-action="preview-back">Back</button>':''}
+      ${last?`<button type="button" class="a-primary gap-2" data-specialist-action="open" data-assistant-id="${a.id}">View Assistant ${icon('arrow')}</button>`
+        :'<button type="button" class="a-primary" data-specialist-action="preview-next">Next</button>'}`;
+    dialog.querySelectorAll('[data-preview-index]').forEach(dot=>{
+      if(Number(dot.dataset.previewIndex)===index)dot.setAttribute('aria-current','step');
+      else dot.removeAttribute('aria-current');
+    });
+    dialog.scrollTop=0;
+    dialog.querySelector('#assistant-dialog-title').focus({preventScroll:true});
+  }
+  function animatePreviewCapabilityPanel(grid) {
+    const panel=grid.querySelector('.as-capability-expanded:not([hidden])');
+    if(!panel)return;
+    const panelHeight=panel.getBoundingClientRect().height;
+    panel.style.setProperty('--preview-panel-height',`${panelHeight}px`);
+    panel.setAttribute('data-preview-border-pending','');
+    panel.addEventListener('animationend',()=>panel.removeAttribute('data-preview-border-pending'),{once:true});
+    panel.classList.add('assistant-preview-panel-enter');
   }
   function openSuggestion(f) {
     const copy=suggestionCopy[f.id];if(!copy?.ready||f.condition==='resolved')return;
     const a=assistants.find(a=>a.id===f.assistant);
     openDialog(`<span class="specialist-eyebrow text-xs">SUGGESTED ACTION</span><h2 id="assistant-dialog-title">${esc(copy.title)}</h2><p class="text-xs">From ${esc(a.title)}</p><h3 class="text-sm font-semibold">Why this is worth doing</h3><p class="text-sm">${esc(copy.reason)}</p><div class="specialist-next-step"><span class="text-xs">Proposed next step</span><p class="text-sm">${esc(copy.step)}</p></div><h3 class="text-sm font-semibold">Supporting evidence</h3><p class="text-sm">${esc(f.evidence)}</p><div class="specialist-source-list">${(f.supportingSources||[f.source]).map(source).join('')}</div><p class="text-xs">Reviewing this recommendation does not change connected systems. It remains available after the finding is acknowledged, until dismissed or the condition is verified resolved.</p><div class="assistant-dialog-actions"><button type="button" class="a-primary" data-specialist-action="finding" data-finding-id="${f.id}">View underlying finding</button><button type="button" class="a-secondary" data-specialist-action="dismiss-suggestion" data-finding-id="${f.id}">Dismiss suggestion</button></div>`);
   }
+  function scheduleFindingAlert(f) {
+    const reminder=new Date(Date.now()+60*60*1000);
+    const localTime=new Date(reminder.getTime()-reminder.getTimezoneOffset()*60000).toISOString().slice(0,16);
+    openDialog(`<h2 id="assistant-dialog-title">Schedule an Alert</h2><p>${esc(f.title)}</p>
+      <form data-finding-alert-form data-finding-id="${f.id}">
+        <label>Remind Me At<input type="datetime-local" name="remindAt" value="${localTime}" required></label>
+        <p class="text-xs">Bring this finding back for review at the selected time.</p>
+        <div class="assistant-dialog-actions"><button type="button" class="a-secondary" data-specialist-action="close">Cancel</button><button type="submit" class="a-primary">Schedule Alert</button></div>
+      </form>`);
+  }
+  function startFindingChat(f) {
+    delete f.alertAt;
+    f.acknowledged=true;
+    f.dismissed=false;
+    render();
+    openDialog(`<h2 id="assistant-dialog-title">Chat About This Finding</h2><p>${esc(f.title)}</p>
+      <div class="as-finding-chat-log" role="log" aria-label="Finding Conversation">
+        <p><strong>Ivy</strong><br>${esc(f.evidence)}</p>
+      </div>
+      <form data-finding-chat-form data-finding-id="${f.id}">
+        <label>Your Message<textarea name="message" rows="3" required placeholder="Ask about this finding…"></textarea></label>
+        <div class="assistant-dialog-actions"><span class="text-xs">Sample Chat</span><button type="submit" class="a-primary">Send</button></div>
+      </form>`);
+    dialog.querySelector('textarea').focus();
+  }
+  function checkFindingAlerts() {
+    const due=findings.filter(f=>f.alertAt&&f.alertAt<=Date.now());
+    if(!due.length)return;
+    for(const f of due){delete f.alertAt;f.acknowledged=false;f.dismissed=false;}
+    render();
+    toast(due.length===1?`Reminder: ${due[0].title}`:`${due.length} findings are ready for review.`);
+  }
   function openFinding(f) {
     const a=assistants.find(a=>a.id===f.assistant),resolved=f.condition==='resolved',related=findings.find(item=>item.id===f.related);
+    const changeTone=['Worsened','Resurfaced'].includes(f.change)?'warning':f.change==='Improving'?'success':f.change==='New'?'info':'neutral';
+    const reviewStatus=resolved?'Not Required':f.dismissed?'Dismissed':f.acknowledged?'Acknowledged':'Needs Review';
     const list=items=>`<ul class="specialist-checks text-sm">${items.map(item=>`<li>${esc(item)}</li>`).join('')}</ul>`;
-    openDialog(`<div class="specialist-finding-top">${lifecycleBadges(f)}</div><p class="text-xs">${esc(f.reference)} · Sample evidence</p><h2 id="assistant-dialog-title">${esc(f.title)}</h2><p class="text-sm">${esc(a.title)} · ${esc(f.affected)}</p><dl class="specialist-evidence text-xs"><dt>Condition</dt><dd>${resolved?'Verified resolved':'Open'}</dd><dt>Latest change</dt><dd>${esc(f.change)}</dd><dt>Review status</dt><dd>${resolved?'Not required — occurrence closed':f.acknowledged?'Acknowledged':'Needs review'}</dd><dt>First observed</dt><dd>${esc(f.first)}</dd><dt>Last check</dt><dd>${esc(f.checked)}</dd><dt>Source evidence</dt><dd>${esc(f.observed)}</dd><dt>Evidence freshness</dt><dd>${f.freshness==='stale'?'Stale — current device state unverified':'Fresh at the latest evaluation'}</dd>${resolved?`<dt>Resolution verified</dt><dd>${esc(f.resolvedAt)}</dd>`:''}</dl>${f.verification==='unavailable'?'<div class="specialist-verification-note text-sm">Current state cannot be verified. The last known condition remains open; missing evidence does not establish resolution.</div>':''}${resolved?`<div class="specialist-resolution-note text-sm"><strong class="font-semibold">Why this occurrence is closed</strong><p class="text-sm">${esc(f.resolution)}</p></div>`:''}<h3 class="text-sm font-semibold">Evidence</h3><p class="text-sm">${esc(f.evidence)}</p><div class="specialist-source-list">${(f.supportingSources||[f.source]).map(source).join('')}</div><div class="specialist-assessment"><section><h3 class="text-sm font-semibold">Confirmed by evidence</h3>${list(f.confirmed)}</section><section><h3 class="text-sm font-semibold">Still uncertain</h3>${f.unknowns.length?list(f.unknowns):'<p class="text-sm">No unresolved questions about the closure of this occurrence.</p>'}</section></div>${f.hypotheses.length?`<section class="specialist-hypothesis"><h3 class="text-sm font-semibold">Supported hypotheses · not confirmed causes</h3>${list(f.hypotheses)}</section>`:''}<details class="specialist-affected" open><summary class="text-sm font-semibold">Affected objects · ${f.objects.length}</summary><div class="specialist-object-scroll"><table class="specialist-objects text-xs" aria-label="Affected objects for ${esc(f.reference)}"><thead><tr><th scope="col">Object</th><th scope="col">Type</th><th scope="col">Source record ID</th></tr></thead><tbody>${f.objects.map(([name,type,id])=>`<tr><td>${esc(name)}</td><td>${esc(type)}</td><td>${esc(id)}</td></tr>`).join('')}</tbody></table></div></details><h3 class="text-sm font-semibold">Occurrence history</h3>${list(f.history)}${related?`<div class="specialist-related"><p class="text-xs">${resolved?'This occurrence stays closed. A later recurrence has its own evidence and review status.':'New occurrence of a known condition. The earlier occurrence remains verified resolved.'}</p><button type="button" class="a-secondary" data-specialist-action="finding" data-finding-id="${related.id}">${resolved?'View new occurrence':'View previous occurrence'} · ${esc(related.reference)}</button></div>`:''}${f.next?`<div class="specialist-next-step"><span class="text-xs">Recommended next step</span><p class="text-sm">${esc(f.next)}</p></div>`:''}<p class="text-xs">${resolved?'Resolution is based on source evidence, not acknowledgment.':'Acknowledging marks this finding as reviewed. It does not resolve the condition or dismiss a suggested action.'}</p><div class="assistant-dialog-actions">${!resolved?`<button type="button" class="a-primary" data-specialist-action="acknowledge" data-finding-id="${f.id}">${f.acknowledged?'Mark as unreviewed':'Acknowledge'}</button>`:''}<button type="button" class="a-secondary" data-specialist-action="open" data-assistant-id="${a.id}">Back to assistant</button></div>`);
+    openDialog(`<div class="specialist-finding-top">${badge(f.severity,['critical','high'].includes(f.severity)?'danger':'neutral')}</div><p class="text-xs">${esc(f.reference)} · Sample evidence</p><h2 id="assistant-dialog-title">${esc(f.title)}</h2><div class="specialist-finding-context"><p class="text-sm">${esc(a.title)} · ${esc(f.affected)}</p><dl class="specialist-finding-timing text-xs"><div><dt>First Observed</dt><dd>${esc(f.first)}</dd></div><div><dt>Last Check</dt><dd>${esc(f.checked)}</dd></div></dl></div><div class="specialist-finding-statuses">${badge(resolved?'Verified Resolved':'Open',resolved?'success':'info')}${badge(f.change,changeTone)}${badge(reviewStatus,!resolved&&!f.acknowledged&&!f.dismissed?'info':'neutral')}</div>${f.verification==='unavailable'?'<div class="specialist-verification-note text-sm">Current state cannot be verified. The last known condition remains open; missing evidence does not establish resolution.</div>':''}${resolved?`<div class="specialist-resolution-note text-sm"><strong class="font-semibold">Why this occurrence is closed</strong><p class="text-sm">${esc(f.resolution)}</p></div>`:''}<h3 class="text-sm font-semibold">Evidence</h3><p class="text-sm">${esc(f.evidence)}</p><div class="specialist-source-list">${(f.supportingSources||[f.source]).map(source).join('')}</div><div class="specialist-assessment"><section><h3 class="text-sm font-semibold">Confirmed by evidence</h3>${list(f.confirmed)}</section><section><h3 class="text-sm font-semibold">Still uncertain</h3>${f.unknowns.length?list(f.unknowns):'<p class="text-sm">No unresolved questions about the closure of this occurrence.</p>'}</section></div>${f.hypotheses.length?`<section class="specialist-hypothesis"><h3 class="text-sm font-semibold">Supported hypotheses · not confirmed causes</h3>${list(f.hypotheses)}</section>`:''}<details class="specialist-affected" open><summary class="text-sm font-semibold">Affected objects · ${f.objects.length}</summary><div class="specialist-object-scroll"><table class="specialist-objects text-xs" aria-label="Affected objects for ${esc(f.reference)}"><thead><tr><th scope="col">Object</th><th scope="col">Type</th><th scope="col">Source record ID</th></tr></thead><tbody>${f.objects.map(([name,type,id])=>`<tr><td>${esc(name)}</td><td>${esc(type)}</td><td>${esc(id)}</td></tr>`).join('')}</tbody></table></div></details><h3 class="text-sm font-semibold">Occurrence history</h3>${list(f.history)}${related?`<div class="specialist-related"><p class="text-xs">${resolved?'This occurrence stays closed. A later recurrence has its own evidence and review status.':'New occurrence of a known condition. The earlier occurrence remains verified resolved.'}</p><button type="button" class="a-secondary" data-specialist-action="finding" data-finding-id="${related.id}">${resolved?'View new occurrence':'View previous occurrence'} · ${esc(related.reference)}</button></div>`:''}${f.next?`<div class="specialist-next-step"><span class="text-xs">Recommended next step</span><p class="text-sm">${esc(f.next)}</p></div>`:''}<p class="text-xs">${resolved?'Resolution is based on source evidence, not acknowledgment.':'Acknowledging marks this finding as reviewed. It does not resolve the condition or dismiss a suggested action.'}</p><div class="assistant-dialog-actions">${!resolved?`<button type="button" class="a-primary" data-specialist-action="acknowledge" data-finding-id="${f.id}">${f.acknowledged?'Mark as unreviewed':'Acknowledge'}</button>`:''}<button type="button" class="a-secondary" data-specialist-action="open" data-assistant-id="${a.id}">Back to assistant</button></div>`);
   }
   function configure(a,turnOn=false) {
     const activating=turnOn&&!a.enabled;
     openDialog(`<header class="assistant-config-heading flex items-start gap-3 pb-4 mb-4"><img src="assistant-creation/src/assets/nav-settings.svg" class="h-5 w-5 mt-1" alt=""/><div class="min-w-0 flex-1"><div class="flex items-start justify-between gap-5"><div><h2 id="assistant-dialog-title" class="text-base font-semibold m-0">Configure Assistant</h2><p class="text-sm">Sources, capabilities, and schedule for ${esc(a.title)}.</p></div><label class="assistant-config-power rounded-full" style="margin-right: -2.25rem; margin-top: 0.25rem;"><span class="text-xs font-medium" data-config-power-label>${a.enabled||activating?'On':'Off'}</span><span class="assistant-capability-switch"><input type="checkbox" role="switch" aria-label="Assistant Enabled" name="enabled" form="assistant-configuration" ${a.enabled||activating?'checked':''}/><span class="specialist-power-track" aria-hidden="true"></span></span></label></div></div></header><nav class="assistants-tabs assistant-config-tabs mb-5" role="tablist" aria-label="Assistant Configuration"><button type="button" role="tab" id="assistant-config-tab-settings" data-config-tab="settings" aria-controls="assistant-config-settings" aria-selected="true" tabindex="0">Settings</button><button type="button" role="tab" id="assistant-config-tab-schedule" data-config-tab="schedule" aria-controls="assistant-config-schedule" aria-selected="false" tabindex="-1">Schedule</button></nav><form id="assistant-configuration" class="text-sm"><div class="assistant-config-fields"><section id="assistant-config-settings" role="tabpanel" aria-labelledby="assistant-config-tab-settings"><fieldset class="assistant-config-section"><legend class="text-sm font-semibold">Sources Used by This Assistant</legend><p class="assistant-source-help text-xs">Choose which connected sources this assistant can investigate.</p>${a.sources.map((name,i)=>{const connected=sourceIsConnected(name),state=!connected?'setup':name==='Microsoft 365'?'syncing':'synced',inputId=`assistant-source-${a.id}-${i}`;return `<div class="assistant-source-option" data-source-state="${state}"><label for="${inputId}" class="assistant-source-copy"><span class="assistant-source-identity flex">${source(name,'source-card')}</span><span class="assistant-source-connection text-xs">${!connected?'Not Connected':state==='syncing'?'Syncing...':'Synced'}</span></label><div class="flex items-center gap-3">${!connected?`<a href="#" class="assistant-source-setup text-xs" data-specialist-action="source-setup" data-source-name="${esc(name)}">Set up ${icon('arrow','h-3 w-3')}</a>`:''}<span class="assistant-capability-switch"><input id="${inputId}" type="checkbox" role="switch" aria-label="Use ${esc(name)} for ${esc(a.title)}" name="source" value="${esc(name)}" ${!connected?'disabled':a.selectedSources.includes(name)?'checked':''}/><span class="specialist-power-track" aria-hidden="true"></span></span></div></div>`;}).join('')}</fieldset><fieldset class="assistant-config-section"><legend class="text-sm font-semibold">Capabilities</legend>${capabilitySets[a.id].map(([title,description],i)=>`<label class="assistant-capability-option text-sm"><span><span class="font-medium">${esc(title)}</span><span class="text-xs">${esc(description)}</span></span><span class="assistant-capability-switch"><input type="checkbox" role="switch" aria-label="${esc(title)}" name="capability" value="${i}" ${a.selectedCapabilities.includes(i)?'checked':''}/><span class="specialist-power-track" aria-hidden="true"></span></span></label>`).join('')}</fieldset><fieldset class="assistant-config-section"><legend class="text-sm font-semibold">Notifications</legend><label class="assistant-capability-option text-sm"><span class="font-medium">Notify Me About New or Worsening Findings</span><span class="assistant-capability-switch"><input type="checkbox" role="switch" name="notify" aria-label="Notify Me About New or Worsening Findings" ${a.notify?'checked':''}/><span class="specialist-power-track" aria-hidden="true"></span></span></label><fieldset class="assistant-notification-channels border px-4 py-0 rounded-lg" ${a.notify?'':'disabled'}><legend class="text-xs font-normal">Notify Me Via...</legend>${[['in-app','In-App Alerts'],['email','Email']].map(([value,label])=>`<label class="specialist-notifications text-sm"><input type="checkbox" name="notifyChannel" value="${value}" ${a.notifyChannels.includes(value)?'checked':''}/>${label}</label>`).join('')}</fieldset></fieldset></section><section id="assistant-config-schedule" role="tabpanel" aria-labelledby="assistant-config-tab-schedule" hidden><div class="assistant-config-schedule bg-gray-100 p-4 rounded-lg"><fieldset class="assistant-config-section"><legend class="text-sm font-semibold">Schedule</legend><label class="text-sm">Schedule or Trigger<select name="cadence" id="assistant-cadence">${Object.entries(cadenceLabels).map(([key,label])=>`<option value="${key}" ${a.cadence===key?'selected':''}>${label}</option>`).join('')}</select></label><div id="assistant-schedule-fields" ${a.cadence==='manual'?'hidden':''}><div class="specialist-schedule-fields"><label class="text-sm">Start Time<input type="time" name="startTime" value="${a.startTime}"/></label><label class="text-sm">Time Zone<select name="timeZone">${Object.entries(timeZones).map(([key,label])=>`<option value="${key}" ${a.timeZone===key?'selected':''}>${label}</option>`).join('')}</select></label></div><label class="text-sm" id="assistant-weekly-day" ${a.cadence==='weekly'?'':'hidden'}>Day<select name="day">${weekdays.map(day=>`<option ${a.day===day?'selected':''}>${day}</option>`).join('')}</select></label><p id="assistant-schedule-note" class="text-xs">${a.cadence==='twice'?'Checks start at this time and repeat every 12 hours.':'Checks use the selected local time and time zone.'}</p></div><p id="assistant-manual-help" class="text-xs" ${a.cadence==='manual'?'':'hidden'}>No automatic checks. Use Run Now on the assistant page whenever you need an investigation.</p><p class="text-xs">Turning off stops future checks. Existing findings and history stay available.</p></fieldset></div></section><p id="assistant-config-error" class="specialist-form-error text-xs" role="alert"></p></div><div class="assistant-dialog-actions justify-end"><button type="button" class="a-secondary" data-specialist-action="cancel-config">Cancel</button><button type="submit" class="a-primary">${activating?'Turn On Assistant':'Save Config'}</button></div></form>`,true);
   }
   let assistantTour;
-  function about() {
-    assistantTour??=window.IvyAssistantTour.create({dialog,esc,icon,openDialog,onFinish(){if(!isShow){if(!isOnboarding)view='all';render();$(isOnboardingPreview?'#assistant-preview-heading':isOnboarding?'#assistant-grid':'#tab-all').focus();}}});
+  function about(inAction=false) {
+    const heading=document.body.dataset.assistantTourHeading??
+      (isOnboardingPreview&&!inAction?'How Assistants Work':'Assistants in Action');
+    assistantTour=window.IvyAssistantTour.create({dialog,esc,icon,openDialog,inAction,heading,onFinish(){
+      if(inAction||isShow)return;
+      if(!isOnboarding)view='all';
+      render();
+      $(isOnboardingPreview?'#assistant-preview-heading':isOnboarding?'#assistant-grid':'#tab-all').focus();
+    }});
     assistantTour.open();
   }
   function handleClick(event) {
+    const capability=event.target.closest('[data-show-capability]');
+    const preview=event.currentTarget===dialog?assistantPreview:inlinePreview;
+    const grid=capability?.closest('#as-capability-grid');
+    if(grid&&preview){
+      const {assistant,selectedCapability}=preview;
+      if(preview===assistantPreview)preview.hasExploredCapabilities=true;
+      preview.selectedCapability=window.IvyAssistantShow.toggleCapability(
+        grid,assistant,Number(capability.dataset.showCapability),selectedCapability,{esc,icon,source});
+      if(selectedCapability===null)animatePreviewCapabilityPanel(grid);
+      return;
+    }
     const button=event.target.closest('[data-specialist-action]');if(!button)return;
     const action=button.dataset.specialistAction;
+    if(action==='choose-finding-action'){
+      const option=findingReviewActions[button.dataset.findingAction];
+      const menu=button.closest('.as-finding-action-menu');
+      const primary=menu.parentElement.querySelector('[data-finding-primary]');
+      primary.dataset.specialistAction=button.dataset.findingAction;
+      primary.setAttribute('aria-label',option.label);
+      primary.title=option.label;
+      primary.innerHTML=icon(option.glyph)+`<span>${button.dataset.findingAction==='acknowledge-open'?'Acknowledge':option.label}</span>`;
+      menu.open=false;
+      primary.focus();
+      return;
+    }
     if(assistantTour?.handle(action,button))return;
+    if(action==='toggle-card-preview'){
+      previewAssistantCards=!previewAssistantCards;
+      button.setAttribute('aria-checked',String(previewAssistantCards));
+      render();
+      return;
+    }
     if(action==='close'){dialog.close();return;}
+    if(action==='preview-explore'){event.preventDefault();dialog.close();return;}
+    if(action==='inline-explore'&&inlinePreview){
+      const {assistant}=inlinePreview;
+      inlineDetails.hidden=true;
+      inlineDetails.replaceChildren();
+      inlinePreview=undefined;
+      $('[data-assistant-choices]').hidden=false;
+      $(`#assistant-title-${assistant.id}`).closest('.assistant-card').focus();
+      return;
+    }
+    if(['preview-back','preview-next','preview-step'].includes(action)){
+      assistantPreview.index=action==='preview-step'?Number(button.dataset.previewIndex):
+        assistantPreview.index+(action==='preview-next'?1:-1);
+      renderAssistantPreview();
+      return;
+    }
     if(action==='source-setup'){event.preventDefault();toast(`Connect ${button.dataset.sourceName} from Sources to use it with this assistant.`);return;}
-    if(action==='about'){about();return;}
+    if(action==='about'||action==='about-action'){about(action==='about-action');return;}
+    if(action==='identity-demo'){window.IvyIdentityDemo.open({dialog,openDialog,icon,source,badge});return;}
     if(action==='all-findings'){allFindings();return;}
     if(action==='all-runs'){openDialog(indexRecentRuns(true));return;}
     if(action==='undo-suggestion'){dismissedSuggestions.pop();saveSession();renderAttention();return;}
@@ -271,15 +627,45 @@
     if(action==='dismiss-suggestion'&&f&&suggestionCopy[f.id]?.ready){if(!dismissedSuggestions.includes(f.id))dismissedSuggestions.push(f.id);if(dialog.open)dialog.close();saveSession();if(!isShow)renderAttention();toast('Suggestion dismissed. The finding remains open.');return;}
     if(action==='suggestion'&&f)openSuggestion(f);
     if(action==='finding'&&f)openFinding(f);
+    if(action==='preview-assistant'&&a){
+      if(inlineDetails)showInlineAssistant(a);
+      else openAssistantPreview(a);
+    }
     if(action==='open'&&a)openAssistant(a);
     if(action==='configure'&&a){dialog.dataset.assistantId=String(a.id);configure(a);}
     if(action==='toggle-power'&&a){if(a.enabled)stopAssistant(a);else{dialog.dataset.assistantId=String(a.id);configure(a,true);}}
     if(action==='run-now'&&a)runNow(a);
     if(action==='enable-assistant'&&a){dialog.dataset.assistantId=String(a.id);configure({...a,enabled:false},true);}
-    if(action==='acknowledge'&&f&&f.condition!=='resolved'){f.acknowledged=!f.acknowledged;render();openFinding(f);toast(f.acknowledged?'Finding acknowledged. Its condition remains open.':'Finding marked as unreviewed.');}
+    if(action==='dismiss-finding'&&f){
+      delete f.alertAt;
+      f.dismissed=true;
+      render();
+      document.querySelector('[data-finding-primary], [data-open-findings-empty]')?.focus({preventScroll:true});
+      toast('Finding dismissed.');
+      return;
+    }
+    if(action==='schedule-finding-alert'&&f){scheduleFindingAlert(f);return;}
+    if(action==='chat-finding'&&f){startFindingChat(f);return;}
+    if(action==='acknowledge-open'&&f&&f.condition!=='resolved'){
+      delete f.alertAt;
+      f.acknowledged=true;
+      f.dismissed=false;
+      render();
+      document.querySelector('[data-finding-primary], [data-open-findings-empty]')?.focus({preventScroll:true});
+      toast('Finding acknowledged.');
+      return;
+    }
+    if(action==='acknowledge'&&f&&f.condition!=='resolved'){delete f.alertAt;f.dismissed=false;f.acknowledged=!f.acknowledged;render();openFinding(f);toast(f.acknowledged?'Finding acknowledged. Its condition remains open.':'Finding marked as unreviewed.');}
   }
   $('.assistants-content').addEventListener('click',handleClick);dialog.addEventListener('click',handleClick);
-  $('.assistants-content').addEventListener('keydown',event=>{if(event.key==='Enter'&&event.target.matches('.assistant-card[data-specialist-action="open"],tr[data-specialist-action="open"]')){event.preventDefault();handleClick(event);}});
+  $('.assistants-content').addEventListener('keydown',event=>{
+    const preview=event.target.matches('.assistant-card[data-specialist-action="preview-assistant"]');
+    const open=event.target.matches('.assistant-card[data-specialist-action="open"],tr[data-specialist-action="open"]');
+    if((event.key==='Enter'&&(preview||open))||(event.key===' '&&preview)){
+      event.preventDefault();
+      handleClick(event);
+    }
+  });
   dialog.addEventListener('click',event=>{
     if((!dialog.classList.contains('assistant-config-drawer')&&!dialog.classList.contains('assistant-tour'))||event.target!==dialog)return;
     const bounds=dialog.getBoundingClientRect();
@@ -295,6 +681,36 @@
     const button=event.target.closest('[data-config-tab]');if(!button)return;
     let name;if(event.key==='ArrowRight'||event.key==='ArrowLeft')name=button.dataset.configTab==='settings'?'schedule':'settings';if(event.key==='Home')name='settings';if(event.key==='End')name='schedule';
     if(name){event.preventDefault();selectConfigTab(name,true);}
+  });
+  dialog.addEventListener('submit',event=>{
+    const form=event.target;
+    if(!form.matches('[data-finding-alert-form], [data-finding-chat-form]'))return;
+    event.preventDefault();
+    const f=findings.find(item=>item.id===form.dataset.findingId);
+    if(!f)return;
+    if(form.matches('[data-finding-alert-form]')){
+      const input=form.elements.remindAt;
+      const alertAt=new Date(input.value).getTime();
+      input.setCustomValidity(Number.isFinite(alertAt)&&alertAt>Date.now()?'':'Choose a time in the future.');
+      if(!input.reportValidity())return;
+      f.alertAt=alertAt;
+      f.acknowledged=true;
+      f.dismissed=false;
+      dialog.close();
+      render();
+      toast('Alert scheduled for '+new Date(alertAt).toLocaleString()+'.');
+      return;
+    }
+    const message=form.elements.message.value.trim();
+    if(!message)return;
+    const log=dialog.querySelector('.as-finding-chat-log');
+    log.insertAdjacentHTML('beforeend',`<p><strong>You</strong><br>${esc(message)}</p><p><strong>Ivy</strong><br>${esc(f.next||'Review the source evidence and affected objects for this finding.')}</p>`);
+    form.reset();
+    form.elements.message.focus();
+    log.scrollTop=log.scrollHeight;
+  });
+  dialog.addEventListener('input',event=>{
+    if(event.target.name==='remindAt')event.target.setCustomValidity('');
   });
   dialog.addEventListener('submit',event=>{
     if(event.target.id!=='assistant-configuration')return;
@@ -335,7 +751,45 @@
   function clearSearch() {if(!isOnboarding)$('#assistant-search').value='';render();}
   if(!isOnboarding)$('#clear-filters').addEventListener('click',clearSearch);$('#empty-clear').addEventListener('click',clearSearch);
   } else {
-    showPage=window.IvyAssistantShow.create({assistants,findings,owned,waiting,esc,icon,source,badge,stateLabel,cadenceLabels,scheduleLabel,powerToggle,findingRow,historyCard,openDialog});
+    showPage=window.IvyAssistantShow.create({assistants,findings,owned,waiting,esc,icon,source,badge,stateLabel,cadenceLabels,scheduleLabel,powerToggle,findingRow,findingReviewControl,historyCard,openDialog});
+  }
+  if(highlightsToggle){
+    highlightsToggle.addEventListener('click',()=>{
+      indexHighlightsHidden=!indexHighlightsHidden;
+      $('#assistant-summary').hidden=indexHighlightsHidden;
+      highlightsToggle.setAttribute('aria-expanded',String(!indexHighlightsHidden));
+      highlightsToggle.querySelector('span').textContent=indexHighlightsHidden?'Show Highlights':'Hide Highlights';
+    });
+  }
+  if(attentionRail){
+    let scrollIdleTimer;
+    attentionRail.addEventListener('scroll',()=>{
+      attentionScrollbar.value=String(attentionRail.scrollLeft);
+      attentionScrollbar.setAttribute('data-scrolling','');
+      clearTimeout(scrollIdleTimer);
+      scrollIdleTimer=setTimeout(()=>attentionScrollbar.removeAttribute('data-scrolling'),150);
+    },{passive:true});
+    attentionScrollbar.addEventListener('input',()=>{
+      attentionRail.scrollLeft=attentionScrollbar.valueAsNumber;
+    });
+    new ResizeObserver(updateAttentionScrollbar).observe(attentionRail);
   }
   render();
+  checkFindingAlerts();
+  setInterval(checkFindingAlerts,30000);
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden)checkFindingAlerts();});
+  document.addEventListener('click',event=>{
+    document.querySelectorAll('.as-finding-action-menu[open]').forEach(menu=>{
+      if(!menu.parentElement.contains(event.target))menu.open=false;
+    });
+  });
+  document.addEventListener('keydown',event=>{
+    if(event.key!=='Escape')return;
+    document.querySelectorAll('.as-finding-action-menu[open]').forEach(menu=>{
+      menu.open=false;
+      menu.querySelector('summary').focus();
+      event.preventDefault();
+      event.stopPropagation();
+    });
+  },true);
 })();

@@ -593,9 +593,21 @@
       "hex": "#DDE9FF",
       "source": "Ivy Category Colors.pdf, page 1, Governance & Policy. User-approved 2026-10-08."
     },
+    "brand-50": {
+      "hex": "#ECF3FF",
+      "source": "Existing bg-brand-50 utility in 3f_5_e8nhzyiv.css. Explicitly requested for assistant finding recommendations."
+    },
     "brand-25": {
       "hex": "#F2F7FF",
       "source": "Ivy Category Colors.pdf, page 1, Governance & Policy. User-approved 2026-10-08."
+    },
+    "brand-800": {
+      "hex": "#252DAE",
+      "source": "Existing bg-brand-800 utility in 3f_5_e8nhzyiv.css. Explicitly requested for the Assistants in Action opening icon."
+    },
+    "brand-900": {
+      "hex": "#262E89",
+      "source": "Existing bg-brand-900 utility in 3f_5_e8nhzyiv.css. Explicitly requested for the Assistants in Action opening icon."
     }
   }
 }

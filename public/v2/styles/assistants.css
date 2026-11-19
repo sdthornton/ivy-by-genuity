@@ -43,7 +43,8 @@ body { font-family: var(--font-outfit); }
 @container (min-width: 740px) { .assistants-grid { grid-template-columns: repeat(2,minmax(0,1fr)); } }
 @container (min-width: 1180px) { .assistants-grid { grid-template-columns: repeat(3,minmax(0,1fr)); } }
 .assistant-card { display: flex; flex-direction: column; min-width: 0; border: 1px solid var(--ivy-color-gray-200); border-radius: 14px; background: var(--ivy-color-gray-25); transition: border-color .15s, box-shadow .15s; }
-.assistant-card:hover, .assistant-card:focus-within { border-color: var(--ivy-color-indigo-300); box-shadow: 0 0 0 1px var(--ivy-color-indigo-300), 0 6px 12px var(--ivy-color-gray-200); }
+.assistant-card:hover, .assistant-card:focus-within { border-color: var(--ivy-color-indigo-300); }
+.assistant-card:not(.hover\:shadow-md):is(:hover, :focus-within) { box-shadow: 0 0 0 1px var(--ivy-color-indigo-300), 0 6px 12px var(--ivy-color-gray-200); }
 .assistant-card-header { display: flex; align-items: flex-start; gap: 14px; position: relative; }
 .assistant-icon { display: grid; place-items: center; border: 1px solid var(--icon-border); border-radius: 9px; flex-shrink: 0; background: var(--icon-bg); color: var(--ivy-color-gray-700); }
 .assistant-card-heading { flex: 1; min-width: 0; padding-right: 60px; }
@@ -83,7 +84,8 @@ body { font-family: var(--font-outfit); }
 .assistants-empty h2 { color: var(--ivy-color-gray-700); margin: 0 0 8px; font-size: 20px; }
 .assistants-empty p { margin: 0 0 20px; }
 .assistants-shell svg:not(.assistant-onboarding-symbol svg), .assistant-dialog svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
-.assistant-dialog { width: min(560px, calc(100vw - 32px)); max-height: 85vh; padding: 28px; border: 1px solid var(--ivy-color-gray-200); border-radius: 16px; background: var(--ivy-color-gray-25); color: var(--ivy-color-gray-700); box-shadow: 0 8px 32px var(--ivy-color-gray-400); font-family: inherit; }
+.assistant-dialog { width: min(560px, calc(100vw - 32px)); max-height: 85vh; padding: 28px; border: 1px solid var(--ivy-color-gray-200); border-radius: 16px; background: var(--ivy-color-gray-25); color: var(--ivy-color-gray-700); font-family: inherit; }
+.assistant-dialog:not(.shadow-2xl) { box-shadow: 0 8px 32px var(--ivy-color-gray-400); }
 .assistant-dialog::backdrop { background: var(--ivy-color-gray-800); }
 .assistant-dialog:not(.assistant-config-drawer) h2 { margin: 0 32px 16px 0; font-size: 23px; line-height: 30px; }
 .assistant-dialog p { font-size: 14px; line-height: 22px; color: var(--ivy-color-gray-500); }
