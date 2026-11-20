@@ -309,11 +309,4 @@
 .wo-finding-chart .wo-period select:focus-visible { outline: 2px solid var(--ivy-color-primary); outline-offset: 3px; }
 .wo-finding-chart > .wo-line-legend { justify-content: center; margin-bottom: 12px; }
 
-.wo-overview-navrow { display: flex; align-items: center; gap: 16px; }
-.wo-overview-navrow > nav { flex: 1; min-width: 0; }
-.wo-highlights-toggle { display: inline-flex; align-items: center; justify-content: center; gap: 6px; flex-shrink: 0; margin: -0.25rem 0 0.25rem auto; padding: 7px 10px; border: 1px solid var(--ivy-color-gray-200); border-radius: 7px; background: var(--ivy-color-gray-25); color: var(--ivy-color-gray-500); cursor: pointer; }
-.wo-highlights-toggle[hidden] { display: none !important; }
-.wo-highlights-toggle:hover { background: var(--ivy-color-gray-100); color: var(--ivy-color-gray-700); }
-.wo-highlights-toggle:focus-visible { outline: 2px solid var(--ivy-color-primary); outline-offset: 2px; }
-.wo-highlights-toggle svg { fill: none; stroke: currentColor; stroke-width: 1.5; }
-@container (max-width: 600px) { .wo-overview-navrow { flex-wrap: wrap; gap: 8px; } .wo-overview-navrow > nav { flex-basis: 100%; } }
+

@@ -105,15 +105,15 @@ window.IvyAssistantShow=(()=>{
     grid.querySelector(`[data-show-capability="${index}"]`).focus();
     return next;
   }
-  function create({assistants,findings,owned,waiting,esc,icon,source,badge,stateLabel,cadenceLabels,scheduleLabel,powerToggle,findingRow,findingReviewControl,historyCard,openDialog}) {
+  function create({assistants,findings,owned,waiting,esc,icon,source,badge,stateLabel,cadenceLabels,scheduleLabel,powerToggle,findingRow,findingsTable,findingReviewControl,getAssistantRuns,runList,runHistoryTable,openDialog}) {
     const root=document.querySelector('#assistant-show');
     const offVariant=document.body?.dataset.assistantVariant==='off';
     const id=Number(new URLSearchParams(window.location.search).get('id')||1);
     const assistant=assistants.find(a=>a.id===id);
-    let tab='overview',selectedCapability=null,accessCategory=null,accessDays=7;
+    let tab='overview',selectedCapability=null;
     let highlightsHidden=false,openFindingIndex=0,allFindingsView='cards';
     const capabilitySets=window.IvyAssistantCapabilities;
-    const tabs=[['overview','Overview'],['findings','Findings'],['history','History'],['configuration','Configuration']];
+    const tabs=[['overview','Overview'],['findings','Findings'],['history','History']];
     function capabilities(a) {
       return `<header class="as-section-heading"><h2 class="text-base font-semibold">Built-In Capabilities</h2><p class="text-xs">Select a capability to explore what it investigates and the evidence it uses.</p></header><div class="as-capabilities-grid" id="as-capability-grid">${capabilityRows(a,selectedCapability,{esc,icon,source})}</div>`;
     }
@@ -121,50 +121,58 @@ window.IvyAssistantShow=(()=>{
       const steps=[['Gather Relevant Evidence',`Inspect available records from ${a.selectedSources.join(', ')||'the sources you select'}. Check permissions, scope, and freshness before drawing conclusions.`],['Connect the Context','Match supported user, device, application, or site records. Compare affected populations, history, and relevant changes.'],['Investigate & Explain','Test possible explanations. Separate confirmed conditions, supported hypotheses, and unanswered questions.'],['Keep Findings Current','Refresh ongoing findings, surface material changes, and verify resolution from fresh evidence. A recurrence after resolution gets a new linked occurrence.']];
       return `<header class="as-section-heading"><h2 class="text-base font-semibold">How This Assistant Investigates</h2><p class="text-xs">A built-in investigation process, applied to each supported capability.</p></header><ol class="as-investigation">${steps.map(([title,description],i)=>`<li><span class="as-process-number text-xs">${i+1}</span><div class="as-process-card p-4"><span class="as-field-label text-xs">Step ${i+1}</span><h3 class="text-sm font-semibold">${title}</h3><p class="text-sm">${esc(description)}</p></div></li>`).join('')}</ol>`;
     }
-    function configuration(a) {
-      return `<section class="as-panel p-4"><header class="as-section-heading"><h2 class="text-base font-semibold">Current Configuration</h2><p class="text-xs">Settings apply to this preview session.</p></header><dl class="as-settings text-sm"><dt>Assistant</dt><dd>${powerToggle(a)}</dd><dt>Schedule or Trigger</dt><dd>${esc(scheduleLabel(a))}${!a.enabled?'<p class="text-xs">Saved configuration. Automatic checks are stopped while this assistant is off.</p>':''}</dd><dt>Selected Sources</dt><dd><div class="specialist-source-list">${a.selectedSources.map(source).join('')||'None selected'}</div></dd><dt>Notifications</dt><dd>${a.notify?'New or materially worse findings':'Off'}</dd></dl><button type="button" class="a-primary" data-specialist-action="configure" data-assistant-id="${a.id}">Edit Settings</button></section>`;
-    }
-    const accessCategories=['Sign-In Failures','Conditional Access','MFA Problems','Other Access Issues'];
-    // Thirty days of illustrative occurrence history, separate from the current open findings.
-    const accessDaily=[[1,0,1,0],[2,1,0,0],[0,0,1,0],[1,1,0,1],[0,0,0,0],[3,0,1,0],[1,1,0,0],[0,2,0,1],[2,0,1,0],[1,0,0,0],[0,1,1,0],[2,1,0,1],[1,0,0,0],[0,0,0,0],[1,2,1,0],[3,0,0,1],[1,1,1,0],[0,1,0,0],[2,0,1,1],[1,0,0,0],[0,0,0,0],[2,1,0,0],[1,0,2,0],[3,1,0,1],[1,0,1,0],[0,2,0,0],[2,0,1,1],[1,1,0,0],[2,0,0,1],[1,0,1,0]];
-    function accessHistory() {
-      return accessDaily.flatMap((counts,day)=>counts.flatMap((count,category)=>Array.from({length:count},(_,n)=>({day,category,recurring:(day+category+n)%4===0,resolved:day<24&&(day+category+n)%3===0,reviewed:(day+category+n)%3===1,object:`identity-${(day*3+category+n)%36}`})))).filter(record=>record.day>=accessDaily.length-accessDays);
-    }
-    function overviewMetrics(a) {
-      if(a.id===1){
-        const records=accessHistory(),open=records.filter(r=>!r.resolved);
-        return [[open.length,'Open Findings'],[open.filter(r=>!r.reviewed).length,'To Review'],[new Set(open.map(r=>r.object)).size,'Affected Objects'],[open.filter(r=>!r.recurring).length,'New or Worsened']];
-      }
-      const open=owned(a);
-      return [[open.length,'Open Findings'],[waiting(open).length,'To Review'],[new Set(open.flatMap(f=>(f.objects||[]).map(o=>o[2]))).size,'Affected Objects'],[open.filter(f=>['New','Worsened','Resurfaced'].includes(f.change)).length,'New or Worsened']];
-    }
-    function metricsMarkup(a) {
-      return `<dl class="as-overview-metrics py-5${a.id===1?' as-overview-metrics-divided flex justify-around':''}">${overviewMetrics(a).map(([value,label])=>`<div><dt class="text-xs">${label}</dt><dd class="text-2xl font-medium">${value}</dd></div>`).join('')}</dl>`;
-    }
-    function accessChart() {
-      const colors=['error-400','indigo-400','indigo-300','indigo-200'];
-      const offset=accessDaily.length-accessDays,days=accessDaily.slice(offset),groupSize=accessDays===30?3:1;
-      const records=accessHistory();
-      const recurring=records.filter(r=>r.recurring).length,resolved=records.filter(r=>r.resolved).length;
-      const end=new Date();end.setHours(12,0,0,0);
-      const date=day=>{const d=new Date(end);d.setDate(d.getDate()-29+day);return d.toLocaleDateString('en-US',{month:'short',day:'numeric'});};
-      const groups=Array.from({length:Math.ceil(days.length/groupSize)},(_,i)=>days.slice(i*groupSize,(i+1)*groupSize).reduce((sum,row)=>sum.map((n,c)=>n+row[c]),[0,0,0,0]));
-      const peak=Math.max(1,...groups.map(counts=>Math.max(counts[0],counts.slice(1).reduce((a,b)=>a+b,0))));
-      const tickStep=Math.max(1,Math.ceil(peak/6)),ceiling=Math.ceil(peak/tickStep)*tickStep;
-      const ticks=Array.from({length:ceiling/tickStep+1},(_,i)=>ceiling-i*tickStep);
-      const bars=groups.map((counts,i)=>{
-        const from=offset+i*groupSize,to=Math.min(29,from+groupSize-1),range=from===to?date(from):date(from)+'–'+date(to);
-        const segment=(count,category)=>count?`<button type="button" class="as-access-segment" data-access-category="${category}" style="flex:${count};background:var(--ivy-color-${colors[category]})" title="${range} · ${accessCategories[category]}: ${count} ${count===1?'finding':'findings'}" aria-label="${range}: ${count} ${accessCategories[category]}. View current findings."></button>`:'';
-        return `<div class="as-access-column"><div class="as-access-stack rounded-lg" style="height:${counts[0]/ceiling*100}%">${segment(counts[0],0)}</div><div class="as-access-stack rounded-lg" style="height:${counts.slice(1).reduce((a,b)=>a+b,0)/ceiling*100}%">${counts.slice(1).map((count,c)=>segment(count,c+1)).join('')}</div></div>`;
+    // Illustrative daily history for the seven days ending today.
+    const highlightHistory={
+      1:{raised:[2,3,1,4,3,5,4],resolved:[1,2,0,3,2,1,4],reviewHours:[6.2,5.8,6.1,4.9,4.3,4.6,3.4]},
+      2:{raised:[3,2,5,4,2,3,2],resolved:[1,3,2,4,1,3,2],reviewHours:[8.1,7.2,7.6,6.4,5.9,5.1,4.8]},
+      3:{raised:[1,2,1,3,2,1,2],resolved:[0,1,2,1,2,1,3],reviewHours:[4.5,3.8,4.1,3.2,2.8,3.1,2.2]},
+      4:{raised:[2,1,3,2,4,2,1],resolved:[1,0,2,3,1,2,2],reviewHours:[7.4,6.8,7.1,5.6,5.2,4.8,4.1]},
+      5:{raised:[1,2,2,1,3,2,2],resolved:[0,1,1,2,1,2,3],reviewHours:[9.2,8.4,8.8,7.1,6.6,5.9,5.4]}
+    };
+    function highlights(a) {
+      const history=highlightHistory[a.id];
+      const series=[
+        {key:'raised',title:'New Findings',description:'First-time findings, by day',color:'blue',type:'line'},
+        {key:'resolved',title:'Findings Resolved',description:'Verified resolutions, by day',color:'purple',type:'bars'},
+        {key:'reviewHours',title:'Time to Acknowledge',description:'Average hours to acknowledge',color:'orange',type:'line'}
+      ];
+      const dates=Array.from({length:7},(_,i)=>{
+        const date=new Date();
+        date.setDate(date.getDate()-6+i);
+        return date.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+      });
+      return series.map(metric=>{
+        const values=history[metric.key];
+        const total=values.reduce((sum,value)=>sum+value,0);
+        const value=metric.key==='reviewHours'?(total/values.length).toFixed(1)+'h':total;
+        const peak=Math.max(...values,1)*1.15;
+        const points=values.map((n,i)=>[8+i*224/6,76-n/peak*64]);
+        const line=points.reduce((path,[x,y],i)=>{
+          if(!i)return `M ${x} ${y}`;
+          const [previousX,previousY]=points[i-1];
+          const midpoint=(previousX+x)/2;
+          return path+` C ${midpoint} ${previousY}, ${midpoint} ${y}, ${x} ${y}`;
+        },'');
+        const gradient=`as-history-${a.id}-${metric.key}`;
+        const marks=metric.type==='bars'
+          ? points.map(([x,y],i)=>`<rect x="${x-7}" y="${y}" width="14" height="${76-y}" rx="3" fill="currentColor"><title>${dates[i]}: ${values[i]}</title></rect>`).join('')
+          : `<defs><linearGradient id="${gradient}" x1="0" y1="0" x2="0" y2="1"><stop stop-color="var(--ivy-color-${metric.color}-100)"/><stop offset="1" stop-color="var(--ivy-color-gray-25)"/></linearGradient></defs>
+            <path d="${line} L 232 80 L 8 80 Z" fill="url(#${gradient})"/>
+            <path d="${line}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+            ${points.map(([x,y],i)=>`<circle cx="${x}" cy="${y}" r="3" fill="currentColor"><title>${dates[i]}: ${values[i]}${metric.key==='reviewHours'?' hours':''}</title></circle>`).join('')}`;
+        return `<article class="as-history-highlight" style="--history-accent:var(--ivy-color-${metric.color}-600)">
+          <header><h2 class="text-sm font-medium">${metric.title}</h2><p class="text-xs">${metric.description}</p></header>
+          <div class="as-history-value">${value}</div><span class="as-history-period text-xs">Last 7 Days</span>
+          <svg class="as-history-chart" viewBox="0 0 240 84" role="img" aria-label="${metric.title}. ${values.map((n,i)=>dates[i]+': '+n).join(', ')}" style="stroke:none">${marks}</svg>
+          <div class="as-history-dates text-xs" aria-hidden="true"><span>${dates[0]}</span><span>${dates[6]}</span></div>
+        </article>`;
       }).join('');
-      return `<section class="as-access-chart" aria-labelledby="as-access-chart-title"><header class="as-overview-section-header"><div class="flex items-center flex-wrap gap-6"><h2 id="as-access-chart-title" class="text-base font-medium">Access Issues Over Time</h2><div class="as-access-summary inline-flex items-center gap-3 text-xs"><span>${records.length-recurring} New Findings</span><span aria-hidden="true">•</span><span>${recurring} Recurring</span><span aria-hidden="true">•</span><span>${resolved} Resolved</span></div></div><select class="as-access-period text-xs" data-access-days aria-label="Chart Timeframe">${[7,14,30].map(n=>`<option value="${n}" ${n===accessDays?'selected':''}>Last ${n} Days</option>`).join('')}</select></header><div class="as-access-plot"><div class="as-access-scale text-xs" aria-hidden="true">${ticks.map(n=>`<span>${n}</span>`).join('')}</div><div class="as-access-graph"><div class="as-access-grid" aria-hidden="true">${ticks.map(()=>'<span></span>').join('')}</div><div class="as-access-bars" style="grid-template-columns:repeat(${groups.length},minmax(0,1fr))" role="group" aria-label="Finding occurrences over the last ${accessDays} days, grouped into ${groupSize}-day totals. Select a segment to see current findings of that type.">${bars}</div><div class="as-access-axis text-xs" aria-hidden="true"><span>${date(offset)}</span><span>${date(offset+Math.floor((accessDays-1)/2))}</span><span>${date(29)}</span></div></div></div><footer class="as-access-footer"><div class="as-access-key text-xs">${accessCategories.map((label,i)=>`<button type="button" data-access-category="${i}"><span class="rounded-sm" style="background:var(--ivy-color-${colors[i]})"></span>${label}</button>`).join('')}</div><span class="text-xs">${groupSize===1?'Daily Totals':'3-Day Totals'}</span></footer></section>`;
     }
-    function findingCategory(f) {return f.id==='identity-signin'?0:f.id==='identity-admin'?2:3;}
     function overview(a) {
       const open=owned(a);
       const rank={critical:4,high:3,medium:2,low:1};
       const allOpen=open.slice().sort((x,y)=>rank[y.severity]-rank[x.severity]);
-      const summary=`<section id="as-highlights" class="as-panel as-overview-summary rounded-lg overflow-hidden p-5" aria-label="Finding Activity Summary"${highlightsHidden?' hidden':''}>${a.id===1?accessChart():''}${metricsMarkup(a)}</section>`;
+      const summary=`<section id="as-highlights" class="as-history-highlights" aria-label="Finding Trends Over the Last Seven Days"${highlightsHidden?' hidden':''}>${highlights(a)}</section>`;
       const empty=`<section class="as-panel p-4 rounded-lg"><h2 class="text-base font-medium">${!a.enabled?'Assistant Is Off':a.pending?'First Check Pending':!a.last?'Ready for the First Check':'No Open Findings'}</h2><p class="text-sm">${!a.enabled?'Turn on this assistant to resume investigations. Previous findings and history stay available.':!a.last?'Findings will appear after the first investigation. Use Run Now to start a preview check.':'No open conditions in the available source evidence. Check source coverage for any gaps.'}</p></section>`;
       return `<div class="as-overview">${summary}${allOpen.length?`<section aria-labelledby="as-all-findings-heading"><header class="as-overview-section-header"><h2 id="as-all-findings-heading" class="text-base font-medium">Recent Findings</h2><button type="button" class="a-text" data-show-tab="findings">View all</button></header><ul class="as-open-findings-grid grid gap-4${highlightsHidden?' as-open-findings-full-width':''}">${allOpen.map(f=>`<li>${findingRow(f)}</li>`).join('')}</ul></section>`:empty}</div>`;
     }
@@ -175,32 +183,15 @@ window.IvyAssistantShow=(()=>{
       return `<section class="as-open-carousel" role="region" aria-roledescription="carousel" aria-label="Open Findings">
         <div role="group" aria-roledescription="slide" aria-label="${openFindingIndex+1} of ${items.length}">${findingRow(finding,{recommendation:true})}</div>
         <div class="as-open-carousel-controls">
-          ${items.length>1?`<div class="as-open-carousel-navigation">
-            <button type="button" class="as-open-carousel-arrow" data-open-finding-direction="-1" aria-label="Previous Open Finding">${icon('arrowLeft')}</button>
+          <div class="as-open-carousel-navigation">
+            <button type="button" class="as-open-carousel-arrow" data-open-finding-direction="-1" aria-label="Previous Open Finding"${items.length===1?' disabled':''}>${icon('arrowLeft')}</button>
             <div class="as-open-carousel-dots" role="group" aria-label="Choose Open Finding">${items.map((item,i)=>`<button type="button" data-open-finding-index="${i}" aria-label="Finding ${i+1}: ${esc(item.title)}"${i===openFindingIndex?' aria-current="true"':''}></button>`).join('')}</div>
-            <button type="button" class="as-open-carousel-arrow" data-open-finding-direction="1" aria-label="Next Open Finding">${icon('arrow')}</button>
-          </div>`:''}
-          ${findingReviewControl(finding)}
+            <button type="button" class="as-open-carousel-arrow" data-open-finding-direction="1" aria-label="Next Open Finding"${items.length===1?' disabled':''}>${icon('arrow')}</button>
+          </div>
           <span class="as-open-carousel-count text-xs" role="status">${openFindingIndex+1} of ${items.length}</span>
+          ${findingReviewControl(finding)}
         </div>
       </section>`;
-    }
-    function allFindingsTable(items) {
-      return `<div class="specialist-table-shell"><table class="specialist-table as-findings-table text-xs" aria-label="All Findings">
-        <colgroup><col style="width:38%"><col style="width:12%"><col style="width:18%"><col style="width:17%"><col style="width:15%"></colgroup>
-        <thead><tr><th scope="col">Finding</th><th scope="col">Priority</th><th scope="col">Status</th><th scope="col">Source</th><th scope="col">Last Checked</th></tr></thead>
-        <tbody>${items.map(f=>{
-          const status=f.condition==='resolved'?'Resolved':f.dismissed?'Dismissed':f.acknowledged?'Acknowledged':f.change||'Open';
-          const tone=f.condition==='resolved'?'success':['Worsened','Resurfaced'].includes(status)?'warning':status==='New'?'info':'neutral';
-          return `<tr data-specialist-action="finding" data-finding-id="${f.id}">
-            <td><button type="button" class="as-finding-table-open" data-specialist-action="finding" data-finding-id="${f.id}">${esc(f.title)}</button><span class="as-finding-table-affected">${esc(f.affected)}</span></td>
-            <td>${badge(f.severity,['high','critical'].includes(f.severity)?'danger':'neutral')}</td>
-            <td>${badge(status,tone)}</td>
-            <td>${source(f.source)}</td>
-            <td>${esc(f.verification==='unavailable'?f.observed:f.checked)}</td>
-          </tr>`;
-        }).join('')}</tbody>
-      </table></div>`;
     }
     function allFindingsSection(items) {
       const viewIcons={
@@ -213,15 +204,14 @@ window.IvyAssistantShow=(()=>{
             ${['cards','table'].map(view=>`<button type="button" data-all-findings-view="${view}" aria-label="${view==='cards'?'Card View':'Table View'}" title="${view==='cards'?'Card View':'Table View'}" aria-pressed="${allFindingsView===view}"><svg viewBox="0 0 24 24" aria-hidden="true">${viewIcons[view]}</svg></button>`).join('')}
           </div>
         </header>
-        ${items.length?(allFindingsView==='table'?allFindingsTable(items):`<ul class="as-open-findings-grid grid gap-4">${items.map(f=>`<li>${findingRow(f)}</li>`).join('')}</ul>`):'<p class="specialist-inline-empty text-sm">No findings have been recorded yet.</p>'}
+        ${items.length?(allFindingsView==='table'?findingsTable(items):`<ul class="as-open-findings-grid grid gap-4">${items.map(f=>`<li>${findingRow(f)}</li>`).join('')}</ul>`):'<p class="specialist-inline-empty text-sm">No findings have been recorded yet.</p>'}
       </section>`;
     }
     function content(a) {
-      const open=owned(a).filter(f=>a.id!==1||accessCategory===null||findingCategory(f)===accessCategory),all=findings.filter(f=>f.assistant===a.id);
-      if(tab==='configuration')return configuration(a);
-      if(tab==='findings')return `<section class="specialist-suggestions as-open-findings-panel" aria-labelledby="as-open-findings-heading"><header class="as-section-heading"><div class="as-open-findings-title"><h2 id="as-open-findings-heading" class="text-base font-semibold">${accessCategory===null?'Open Findings':esc(accessCategories[accessCategory])}</h2><span class="text-xs">${waiting(open).length} to review</span></div>${accessCategory!==null?'<button type="button" class="a-text" data-access-category="all">Show All Findings</button>':''}</header>${openFindingsCarousel(waiting(open))}</section>
+      const open=owned(a),all=findings.filter(f=>f.assistant===a.id);
+      if(tab==='findings')return `<section class="specialist-suggestions as-open-findings-panel" aria-labelledby="as-open-findings-heading"><header class="as-section-heading"><div class="as-open-findings-title"><h2 id="as-open-findings-heading" class="text-base font-semibold">Open Findings</h2><span class="text-xs">${waiting(open).length} to review</span></div></header>${openFindingsCarousel(waiting(open))}</section>
         ${allFindingsSection(all)}`;
-      if(tab==='history')return `<header class="as-section-heading"><h2 class="text-base font-semibold">Finding History</h2><p class="text-xs">Occurrences and meaningful changes, including verified resolutions.</p></header><div class="specialist-findings">${all.length?all.map(historyCard).join(''):'<p class="specialist-inline-empty text-sm">No findings have been recorded yet.</p>'}</div>`;
+      if(tab==='history')return `<header class="as-section-heading"><h2 class="text-base font-semibold">Run History</h2></header>${runHistoryTable(getAssistantRuns(a.id))}`;
       return overview(a);
     }
     function systemRows(a) {
@@ -231,11 +221,11 @@ window.IvyAssistantShow=(()=>{
         return `<div class="as-system-row text-xs"><span class="as-system-identity" ${state==='setup'?'data-setup="missing"':''}>${source(name,'source-card')}</span>${status}</div>`;
       }).join('');
     }
-    function recentRuns(a,expanded=false) {
-      const latest=owned(a).length;
-      const runs=a.last?[[a.last,latest],['Yesterday, 8:00 AM',latest],['2 Days Ago, 8:00 AM',null,`Could not access ${a.sources.includes('Microsoft 365')?'Microsoft 365':a.sources[0]}. The run stopped before completing the investigation.`],['3 Days Ago, 8:00 AM',Math.max(0,latest-1)],['4 Days Ago, 8:00 AM',Math.max(0,latest-2)]]:[];
-      if(expanded&&a.last)for(let day=5;day<14;day++)runs.push([`${day} Days Ago, 8:00 AM`,Math.max(0,latest-day%3)]);
-      return `<section class="${expanded?'as-recent-runs':'as-panel as-recent-runs p-5 rounded-lg'}" aria-labelledby="${expanded?'assistant-dialog-title':'as-recent-runs-heading'}"><header class="flex items-center justify-between gap-3 mb-4"><h2 id="${expanded?'assistant-dialog-title':'as-recent-runs-heading'}" class="flex items-center gap-2 text-md font-medium !mb-0">${icon('clock','h-4 w-4')}Recent Runs</h2>${expanded?'':'<button type="button" class="a-text" data-show-all-runs>View All</button>'}</header><div class="${expanded?'as-recent-runs-scroll':''}"><ul class="as-recent-run-list text-xs">${a.running?`<li><span class="inline-flex items-center gap-2">${icon('clock','h-3 w-3')}Running Now</span>${badge('In Progress','info')}</li>`:''}${runs.map(([time,count,error])=>`<li data-run-state="${error?'error':'complete'}"><span class="inline-flex items-center gap-2">${icon(error?'alert':'check','h-3 w-3')}<span>${esc(time)}</span></span>${error?`<span class="as-run-error" tabindex="0" title="${esc(error)}" aria-label="Run Error: ${esc(error)}">Error</span>`:`<span class="as-run-findings">${count} ${count===1?'Finding':'Findings'}</span>`}</li>`).join('')}${!runs.length&&!a.running?'<li>No runs yet</li>':''}</ul></div></section>`;
+    function recentRuns(a) {
+      return `<section class="as-panel as-recent-runs p-5 rounded-lg" aria-labelledby="as-recent-runs-heading">
+        <header class="flex items-center justify-between gap-3 mb-4"><h2 id="as-recent-runs-heading" class="flex items-center gap-2 text-md font-medium !mb-0">${icon('clock','h-4 w-4')}Recent Runs</h2><button type="button" class="a-text" data-show-tab="history">View All</button></header>
+        ${runList(a.id)}
+      </section>`;
     }
     function sidebar(a) {
       const useful=`<section class="as-panel as-deliverables p-4"><h2 class="text-sm font-semibold">Useful for...</h2><ul class="text-sm">${['Findings and meaningful changes','Affected users, devices, apps, or sites','Source evidence and its limitations','Recommended next steps'].map(text=>`<li>${icon('check')}${text}</li>`).join('')}</ul></section>`;
@@ -257,7 +247,7 @@ window.IvyAssistantShow=(()=>{
       if(offVariant){renderOff(assistant);return;}
       const a=assistant,open=owned(a);
       document.title=a.title+' | Assistants | Ivy';document.querySelector('#assistant-show-breadcrumb').textContent=a.title;
-      root.innerHTML=`<header class="as-header"><div class="as-heading mb-6"><span class="assistant-icon h-11 w-11" style="--icon-bg:var(--ivy-color-${a.family}-100);--icon-border:var(--ivy-color-${a.family}-200)">${icon(a.glyph,'h-5 w-5')}</span><div><div class="as-title-row"><h1>${esc(a.title)}</h1><span class="as-title-status">${badge(a.enabled?'Enabled':'Off',a.enabled?'success':'neutral')}</span></div><p class="text-sm">${esc(a.description)}</p></div></div><div class="as-header-action"><span class="inline-flex items-center gap-2 text-xs text-gray-500">${a.enabled?a.selectedCapabilities.length:0} of ${capabilitySets[a.id].length} Capabilities On</span>${a.enabled?`<span class="text-xs text-gray-500" aria-hidden="true">•</span><span class="inline-flex items-center gap-2 text-xs text-gray-500 mr-3">${icon('calendar')}${esc(scheduleLabel(a))}</span>`:`<button type="button" class="a-primary" data-specialist-action="enable-assistant" data-assistant-id="${a.id}">Enable Assistant</button>`}<button type="button" class="a-secondary as-header-config border" data-specialist-action="configure" data-assistant-id="${a.id}">${icon('settings')} Config</button>${a.enabled?`<button type="button" class="a-secondary" data-specialist-action="run-now" data-assistant-id="${a.id}" ${a.running?'disabled aria-busy="true"':''}>${icon('arrow')}${a.running?'Checking…':'Run Now'}</button>`:''}</div></header><div class="as-tabs-toolbar"><nav class="assistants-tabs as-tabs" role="tablist" aria-label="Assistant Details">${tabs.map(([key,label])=>`<button type="button" role="tab" id="as-tab-${key}" aria-controls="as-content" aria-selected="${tab===key}" tabindex="${tab===key?0:-1}" data-show-tab="${key}">${label}${key==='findings'?` <span>${open.length}</span>`:''}</button>`).join('')}</nav><button type="button" class="as-highlights-toggle" data-show-highlights aria-controls="as-highlights" aria-expanded="${!highlightsHidden}"${tab==='overview'?'':' hidden'}><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18M9 4v6M15 4v6"/></svg><span>${highlightsHidden?'Show Highlights':'Hide Highlights'}</span></button></div><div class="as-layout"><section class="as-content" id="as-content" role="tabpanel" aria-labelledby="as-tab-${tab}" tabindex="0">${content(a)}</section>${sidebar(a)}</div>`;
+      root.innerHTML=`<header class="as-header"><div class="as-heading mb-6"><span class="assistant-icon h-11 w-11" style="--icon-bg:var(--ivy-color-${a.family}-100);--icon-border:var(--ivy-color-${a.family}-200)">${icon(a.glyph,'h-5 w-5')}</span><div><div class="as-title-row"><h1>${esc(a.title)}</h1><span class="as-title-status">${badge(a.enabled?'Enabled':'Off',a.enabled?'success':'neutral')}</span></div><p class="text-sm">${esc(a.description)}</p></div></div><div class="as-header-action"><span class="inline-flex items-center gap-2 text-xs text-gray-500">${a.enabled?a.selectedCapabilities.length:0} of ${capabilitySets[a.id].length} Capabilities On</span>${a.enabled?`<span class="text-xs text-gray-500" aria-hidden="true">•</span><span class="inline-flex items-center gap-2 text-xs text-gray-500 mr-3">${icon('calendar')}${esc(scheduleLabel(a))}</span>`:`<button type="button" class="a-primary" data-specialist-action="enable-assistant" data-assistant-id="${a.id}">Enable Assistant</button>`}<button type="button" class="a-secondary as-header-config border" data-specialist-action="configure" data-assistant-id="${a.id}">${icon('settings')} Config</button>${a.enabled?`<button type="button" class="a-secondary" data-specialist-action="run-now" data-assistant-id="${a.id}" ${a.running?'disabled aria-busy="true"':''}>${icon('arrow')}${a.running?'Checking…':'Run Now'}</button>`:''}</div></header><nav class="as-highlights-nav as-tabs-toolbar" aria-label="Assistant Navigation"><div class="assistants-tabs as-tabs" role="tablist" aria-label="Assistant Details">${tabs.map(([key,label])=>`<button type="button" role="tab" id="as-tab-${key}" aria-controls="as-content" aria-selected="${tab===key}" tabindex="${tab===key?0:-1}" data-show-tab="${key}">${label}${key==='findings'?` <span>${open.length}</span>`:''}</button>`).join('')}</div><button type="button" class="as-nav-configuration" data-specialist-action="configure" data-assistant-id="${a.id}" aria-haspopup="dialog">Configuration</button><button type="button" class="as-highlights-toggle" data-show-highlights="" aria-controls="as-highlights" aria-expanded="${!highlightsHidden}" style="margin-left: auto;"${tab==='overview'?'':' hidden'}><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"></rect><path d="M3 10h18M9 4v6M15 4v6"></path></svg><span style="background: none; font-size: 12px; font-weight: 400; padding: 0;">${highlightsHidden?'Show highlights':'Hide highlights'}</span></button></nav><div class="as-layout"><section class="as-content" id="as-content" role="tabpanel" aria-labelledby="as-tab-${tab}" tabindex="0">${content(a)}</section>${sidebar(a)}</div>`;
     }
     root.addEventListener('click',event=>{
       const toggle=event.target.closest('[data-show-highlights]');
@@ -266,7 +256,7 @@ window.IvyAssistantShow=(()=>{
       root.querySelector('#as-highlights').hidden=highlightsHidden;
       root.querySelector('.as-open-findings-grid')?.classList.toggle('as-open-findings-full-width',highlightsHidden);
       toggle.setAttribute('aria-expanded',String(!highlightsHidden));
-      toggle.querySelector('span').textContent=highlightsHidden?'Show Highlights':'Hide Highlights';
+      toggle.querySelector('span').textContent=highlightsHidden?'Show highlights':'Hide highlights';
     });
     root.addEventListener('click',event=>{
       const control=event.target.closest('[data-open-finding-direction], [data-open-finding-index]');
@@ -288,8 +278,7 @@ window.IvyAssistantShow=(()=>{
       root.querySelector('.as-all-findings-section').outerHTML=allFindingsSection(findings.filter(f=>f.assistant===assistant.id));
       root.querySelector(`[data-all-findings-view="${allFindingsView}"]`).focus({preventScroll:true});
     });
-    root.addEventListener('change',event=>{if(event.target.matches('[data-access-days]')){accessDays=Number(event.target.value);root.querySelector('.as-access-chart').outerHTML=accessChart();root.querySelector('.as-overview-metrics').outerHTML=metricsMarkup(assistant);root.querySelector('[data-access-days]').focus();}});
-    root.addEventListener('click',event=>{if(event.target.closest('[data-show-all-runs]')){openDialog(recentRuns(assistant,true));return;}const segment=event.target.closest('[data-access-category]');if(segment){accessCategory=segment.dataset.accessCategory==='all'?null:Number(segment.dataset.accessCategory);tab='findings';render();root.querySelector('#as-tab-findings').focus();return;}const capability=event.target.closest('[data-show-capability]');if(capability){selectedCapability=toggleCapability(root.querySelector('#as-capability-grid'),assistant,Number(capability.dataset.showCapability),selectedCapability,{esc,icon,source});return;}if(event.target.closest('[data-show-close-how]')){document.querySelector('#assistant-how-dialog').close();return;}const button=event.target.closest('[data-show-tab]');if(button){tab=button.dataset.showTab;render();root.querySelector('#as-tab-'+tab).focus();}});
+    root.addEventListener('click',event=>{const capability=event.target.closest('[data-show-capability]');if(capability){selectedCapability=toggleCapability(root.querySelector('#as-capability-grid'),assistant,Number(capability.dataset.showCapability),selectedCapability,{esc,icon,source});return;}if(event.target.closest('[data-show-close-how]')){document.querySelector('#assistant-how-dialog').close();return;}const button=event.target.closest('[data-show-tab]');if(button){tab=button.dataset.showTab;render();root.querySelector('#as-tab-'+tab).focus();}});
     root.addEventListener('keydown',event=>{const button=event.target.closest('[data-show-tab]');if(!button)return;const index=tabs.findIndex(([key])=>key===button.dataset.showTab);let next;if(event.key==='ArrowRight')next=(index+1)%tabs.length;if(event.key==='ArrowLeft')next=(index+tabs.length-1)%tabs.length;if(event.key==='Home')next=0;if(event.key==='End')next=tabs.length-1;if(next!==undefined){event.preventDefault();tab=tabs[next][0];render();root.querySelector('#as-tab-'+tab).focus();}});
     return {render};
   }

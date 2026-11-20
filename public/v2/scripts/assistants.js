@@ -11,6 +11,7 @@
   let showPage;
   const esc=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
   const paths={
+    assistants:'<path d="M9.64624 6.34328H6.78341C6.21194 6.34328 5.66385 6.57024 5.25968 6.97426C4.85551 7.37829 4.62834 7.92629 4.62813 8.49776V17.5507C4.62813 18.1224 4.8552 18.6706 5.2594 19.0748C5.66359 19.479 6.2118 19.706 6.78341 19.706H15.8372C16.4088 19.706 16.957 19.479 17.3612 19.0748C17.7654 18.6706 17.9925 18.1224 17.9925 17.5507V13.7613L19.2857 12.8745V17.5515C19.2854 18.4661 18.9221 19.3431 18.2754 19.9897C17.6287 20.6364 16.7517 20.9998 15.8372 21H6.78341C5.86889 20.9998 4.99189 20.6364 4.34522 19.9897C3.69856 19.3431 3.33517 18.4661 3.33496 17.5515V8.49856C3.33486 8.04564 3.42398 7.59713 3.59723 7.17865C3.77048 6.76017 4.02448 6.37992 4.34471 6.05962C4.66494 5.73932 5.04513 5.48524 5.46356 5.31189C5.882 5.13854 6.33049 5.04931 6.78341 5.04931H10.4048L9.64624 6.34328Z" fill="currentColor"></path><path d="M15.94 3C16.0555 3 16.1535 3.08286 16.1782 3.19601C16.4045 4.24799 16.9303 5.21206 17.6921 5.97198C18.4521 6.73425 19.4165 7.2603 20.4689 7.48665C20.582 7.51135 20.6649 7.60936 20.6649 7.72569C20.6642 7.78169 20.6444 7.83578 20.6087 7.87897C20.5731 7.92216 20.5237 7.95186 20.4689 7.96313C19.4168 8.18963 18.4527 8.71567 17.6929 9.4778C16.9207 10.2476 16.391 11.2268 16.1695 12.2944C16.1587 12.3475 16.13 12.3953 16.0883 12.4298C16.0465 12.4643 15.9942 12.4835 15.94 12.484C15.8858 12.4835 15.8335 12.4643 15.7917 12.4298C15.7499 12.3953 15.7213 12.3475 15.7105 12.2944C15.4889 11.2268 14.9593 10.2476 14.1871 9.4778C13.4173 8.70559 12.4381 8.17595 11.3705 7.95436C11.3174 7.9436 11.2696 7.91495 11.235 7.87318C11.2005 7.83141 11.1814 7.77907 11.1808 7.72489C11.1808 7.61334 11.2605 7.51773 11.3705 7.49542C12.4381 7.27384 13.4173 6.74419 14.1871 5.97198C14.9492 5.21214 15.4752 4.24807 15.7017 3.19601C15.713 3.14101 15.7429 3.09156 15.7862 3.05589C15.8296 3.02022 15.8838 3.00049 15.94 3Z" fill="currentColor"></path>',
     sparkles:'<path d="m9 3 2 5 5 2-5 2-2 5-2-5-5-2 5-2ZM19 3v4M17 5h4M19 15v6M16 18h6"/>',
     search:'<circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4 4"/>',
     identity:'<circle cx="12" cy="8" r="4"/><path d="M4 22v-2a8 8 0 0 1 16 0v2M16 3l4 1v4"/>',
@@ -18,6 +19,7 @@
     security:'<path d="m12 2 8 4v6c0 5-8 10-8 10S4 17 4 12V6ZM8 11l3 3 5-6"/>',
     network:'<rect x="8" y="2" width="8" height="6" rx="1"/><rect x="1" y="16" width="8" height="6" rx="1"/><rect x="15" y="16" width="8" height="6" rx="1"/><path d="M12 8v4M5 16v-4h14v4"/>',
     licensing:'<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="m14 18 3 3 5-7"/>',
+    question:'<circle cx="12" cy="12" r="9"/><path d="M9.5 9a2.5 2.5 0 0 1 5 .5c0 1.5-2.5 2-2.5 3.5M12 17h.01"/>',
     info:'<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7h.01"/>',
     alert:'<path d="m12 3 10 18H2ZM12 9v5M12 17h.01"/>',
     chevron:'<path d="m9 6 6 6-6 6"/>',
@@ -30,7 +32,7 @@
     settings:'<path d="M4 6h16M4 12h16M4 18h16"/><circle cx="8" cy="6" r="2"/><circle cx="16" cy="12" r="2"/><circle cx="10" cy="18" r="2"/>',
     close:'<path d="m6 6 12 12M18 6 6 18"/>'
   };
-  const icon=(name,classes='h-4 w-4')=>`<svg class="${classes}" viewBox="0 0 24 24" aria-hidden="true">${paths[name]||paths.alert}</svg>`;
+  const icon=(name,classes='h-4 w-4')=>`<svg class="${classes}" viewBox="0 0 24 24" aria-hidden="true"${name==='assistants'?' style="stroke:none"':''}>${paths[name]||paths.alert}</svg>`;
   const sourceAssets={
     'Entra ID':'assistant-creation/src/assets/integrations/entra-id.png',
     'Microsoft 365':'components/assets/microsoft-365.png',Intune:'components/assets/intune.svg',Sophos:'components/assets/sophos.png',
@@ -39,7 +41,10 @@
     'Cisco Umbrella':'assistant-creation/src/assets/integrations/cisco-umbrella.png'
   };
   const sourceIsConnected=name=>name!=='Intune';
-  const source=(name,...options)=>{const large=options[0]==='source-card';return `<span class="specialist-source text-xs"><img class="${large?'h-5 w-5':'h-4 w-4'}" src="${sourceAssets[name]}" width="${large?20:16}" height="${large?20:16}" alt=""/>${esc(name)}</span>`;};
+  const source=(name,...options)=>{
+    const large=options[0]==='source-card',iconOnly=options[0]==='icon-only';
+    return `<span class="specialist-source text-xs"${iconOnly?` title="${esc(name)}"`:''}><img class="${large?'h-5 w-5':'h-4 w-4'}" src="${sourceAssets[name]}" width="${large?20:16}" height="${large?20:16}" alt="${iconOnly?esc(name):''}"/>${iconOnly?'':esc(name)}</span>`;
+  };
   const cadenceLabels={daily:'Daily',weekdays:'Weekdays',twice:'Every 12 hours',weekly:'Weekly',manual:'On demand only'};
   const timeZones={'America/Los_Angeles':'Pacific Time','America/New_York':'Eastern Time','Europe/London':'London Time',UTC:'UTC'};
   const weekdays=['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday'];
@@ -82,22 +87,37 @@
     'identity-inactive':{ready:true,title:'Confirm access for 9 accounts',reason:'Inactive accounts still have application access. Confirm the business need before proposing removal.',step:'Review the nine account owners and their application assignments. Ask the responsible owner to confirm whether each assignment is still needed before considering access changes.'}
   };
   const dismissedSuggestions=[];
+  const assistantRuns=[];
+  let restoredRunHistory=false;
   const sessionKey='ivy-specialist-preview-v1';
   function restoreSession() {
     try {
       const stored=JSON.parse(window.sessionStorage.getItem(sessionKey)||'null');if(!stored||![1,2].includes(stored.version))return;
       for(const a of assistants){const item=stored.assistants?.find(item=>item.id===a.id);if(!item)continue;if(typeof item.enabled==='boolean')a.enabled=item.enabled;if(Array.isArray(item.selectedSources))a.selectedSources=item.selectedSources.filter(name=>a.sources.includes(name)&&sourceIsConnected(name));if(Object.hasOwn(cadenceLabels,item.cadence))a.cadence=item.cadence;if(Array.isArray(item.selectedCapabilities))a.selectedCapabilities=item.selectedCapabilities.filter(i=>Number.isInteger(i)&&i>=0&&i<capabilitySets[a.id].length);if(typeof item.notify==='boolean')a.notify=item.notify;if(Array.isArray(item.notifyChannels))a.notifyChannels=item.notifyChannels.filter(channel=>['in-app','email'].includes(channel));if(typeof item.pending==='boolean')a.pending=item.pending;if(/^([01]\d|2[0-3]):[0-5]\d$/.test(item.startTime))a.startTime=item.startTime;if(Object.hasOwn(timeZones,item.timeZone))a.timeZone=item.timeZone;if(weekdays.includes(item.day))a.day=item.day;if(typeof item.last==='string'||item.last===null)a.last=item.last;if(stored.version===1&&[4,5].includes(a.id)){a.enabled=false;a.pending=false;}}
       for(const f of findings){const item=stored.findings?.find(item=>item.id===f.id);if(typeof item?.acknowledged==='boolean'&&f.condition!=='resolved')f.acknowledged=item.acknowledged;if(typeof item?.dismissed==='boolean')f.dismissed=item.dismissed;if(Number.isFinite(item?.alertAt))f.alertAt=item.alertAt;}
+      if(Array.isArray(stored.runs)){
+        const validRuns=stored.runs.filter(run=>typeof run.id==='string'&&assistants.some(a=>a.id===run.assistantId)&&Number.isFinite(run.startedAt)&&Array.isArray(run.findings)&&Array.isArray(run.sources)&&['Completed','Incomplete','Running','Cancelled'].includes(run.status));
+        assistantRuns.push(...validRuns);
+        restoredRunHistory=true;
+        for(const run of assistantRuns){
+          if(run.status==='Running'){
+            run.status='Incomplete';
+            run.error='The preview was closed before this check finished.';
+            run.finishedAt=Date.now();
+          }
+        }
+      }
       if(Array.isArray(stored.dismissedSuggestions))dismissedSuggestions.push(...stored.dismissedSuggestions.filter(id=>suggestionCopy[id]?.ready));
     } catch (_) { /* The file preview also works when browser storage is unavailable. */ }
   }
   function saveSession() {
-    try {window.sessionStorage.setItem(sessionKey,JSON.stringify({version:2,assistants:assistants.map(({id,enabled,selectedSources,selectedCapabilities,cadence,notify,notifyChannels,pending,startTime,timeZone,day,last})=>({id,enabled,selectedSources,selectedCapabilities,cadence,notify,notifyChannels,pending,startTime,timeZone,day,last})),findings:findings.map(({id,acknowledged,dismissed,alertAt})=>({id,acknowledged,dismissed,alertAt})),dismissedSuggestions}));} catch (_) { /* Optional preview persistence. */ }
+    try {window.sessionStorage.setItem(sessionKey,JSON.stringify({version:2,assistants:assistants.map(({id,enabled,selectedSources,selectedCapabilities,cadence,notify,notifyChannels,pending,startTime,timeZone,day,last})=>({id,enabled,selectedSources,selectedCapabilities,cadence,notify,notifyChannels,pending,startTime,timeZone,day,last})),findings:findings.map(({id,acknowledged,dismissed,alertAt})=>({id,acknowledged,dismissed,alertAt})),dismissedSuggestions,runs:assistantRuns}));} catch (_) { /* Optional preview persistence. */ }
   }
   restoreSession();
   assistants.forEach(a=>{a.selectedSources=a.selectedSources.filter(sourceIsConnected);});
+  if(!restoredRunHistory)seedAssistantRuns();
   const rank={critical:4,high:3,medium:2,low:1};
-  let view='overview',layout='grid',availability='all',findingState='all',toastTimer;
+  let view='overview',layout='grid',availability='all',findingState='all',findingsView='cards',toastTimer;
   const dialog=$('#assistant-dialog');
   const attentionRail=$('#assistant-attention-list');
   const attentionScrollbar=$('#assistant-attention-scrollbar');
@@ -110,8 +130,8 @@
     const query=searchText().toLowerCase();
     return assistants.filter(a=>(view!=='all'||availability==='all'||availability==='enabled'&&a.enabled||availability==='disabled'&&!a.enabled)&&`${a.title} ${a.description} ${a.sources.join(' ')}`.toLowerCase().includes(query));
   }
-  function badge(label,tone='neutral') {return `<span class="specialist-badge text-xs" data-tone="${tone}">${esc(label)}</span>`;}
-  function stateLabel(a) {return !a.enabled?'Off':a.running?'Checking now':a.pending?'First check pending':a.cadence==='manual'?'Ready to Run':a.coverageGap?'Coverage gap':'Watching';}
+  function badge(label,tone='neutral') {return `<span class="specialist-badge text-xs" data-tone="${tone}"${String(label).toLowerCase()==='critical'?' data-priority="critical"':''}>${esc(label)}</span>`;}
+  function stateLabel(a) {return a.enabled?'Enabled':'Off';}
   function scheduleLabel(a) {
     if(a.cadence==='manual')return 'On demand · Manual trigger';
     const [hour,minute]=a.startTime.split(':').map(Number),time=`${hour%12||12}:${String(minute).padStart(2,'0')} ${hour>=12?'PM':'AM'}`;
@@ -127,14 +147,49 @@
     return `<span class="specialist-card-schedule text-xs" title="${esc((a.enabled?'':'Off · Saved setting: ')+scheduleLabel(a))}">${icon('calendar','h-3 w-3')}<span>${esc(label)}</span></span>`;
   }
   function powerToggle(a) {if(isOnboarding)return '';return `<button type="button" class="specialist-power text-xs" role="switch" aria-checked="${a.enabled}" aria-label="Turn ${a.enabled?'off':'on'} ${esc(a.title)}" data-specialist-action="toggle-power" data-assistant-id="${a.id}" ${!a.enabled?'aria-haspopup="dialog"':''}><span class="specialist-power-track" aria-hidden="true"></span><span>${a.enabled?'On':'Off'}</span></button>`;}
+  function cancelAssistantRun(a) {
+    clearTimeout(runTimers.get(a.id));
+    runTimers.delete(a.id);
+    const run=assistantRuns.find(item=>item.assistantId===a.id&&item.status==='Running');
+    if(run){
+      run.status='Cancelled';
+      run.finishedAt=Date.now();
+      run.error='The assistant was turned off before the check finished.';
+    }
+    a.running=false;
+    return run;
+  }
   function stopAssistant(a) {
-    clearTimeout(runTimers.get(a.id));runTimers.delete(a.id);a.running=false;a.enabled=false;a.pending=false;
-    render();toast('Assistant turned off. Future checks stopped; findings and history kept.');
+    const run=cancelAssistantRun(a);
+    a.enabled=false;
+    a.pending=false;
+    render();
+    if(run&&dialog.open&&dialog.dataset.runId===run.id)openRunResult(run);
+    toast('Assistant turned off. Future checks stopped; findings and history kept.');
   }
   function runNow(a) {
     if(!a.enabled||a.running)return;
-    a.running=true;render();toast('Running a preview investigation using sample evidence.');
-    runTimers.set(a.id,setTimeout(()=>{if(!a.enabled)return;a.running=false;a.pending=false;a.last='Just now';runTimers.delete(a.id);render();toast('Preview check completed. Existing sample findings retained.');},2400));
+    const number=Math.max(0,...getAssistantRuns(a.id).map(run=>run.number))+1;
+    const startedAt=Date.now();
+    const run={id:`assistant-${a.id}-run-${number}`,number,assistantId:a.id,startedAt,finishedAt:null,status:'Running',trigger:'On Demand',sources:[...a.selectedSources],findings:[],error:null,illustrative:true};
+    assistantRuns.push(run);
+    a.running=true;
+    render();
+    toast('Running a preview investigation using sample evidence.');
+    runTimers.set(a.id,setTimeout(()=>{
+      if(!a.enabled)return;
+      run.status='Completed';
+      run.finishedAt=Date.now();
+      run.findings=snapshotFindings(owned(a));
+      for(const f of run.findings)f.checked='Just Now';
+      a.running=false;
+      a.pending=false;
+      a.last='Just now';
+      runTimers.delete(a.id);
+      render();
+      if(dialog.open&&dialog.dataset.runId===run.id)openRunResult(run);
+      toast('Preview check completed.');
+    },2400));
   }
   function lifecycleBadges(f,showReviewState=true) {
     const changeTone=['Worsened','Resurfaced'].includes(f.change)?'warning':f.change==='Improving'?'success':f.change==='New'?'info':'neutral';
@@ -148,9 +203,39 @@
     if(findingState==='unavailable')return f.verification==='unavailable';
     return f.change.toLowerCase()===findingState;
   }
+  function assistantEvidence(a) {
+    const sources=a.selectedSources.map(name=>source(name,'icon-only')).join('');
+    return `<div class="specialist-card-evidence text-xs">
+      ${sources?`<span class="specialist-source-list" role="group" aria-label="Selected Sources">${sources}</span>`:''}
+      ${sources&&a.scope?'<span aria-hidden="true">•</span>':''}
+      ${a.scope?`<span>${esc(a.scope)}</span>`:''}
+    </div>`;
+  }
   function card(a) {
-    const items=owned(a),needs=waiting(items).length;
-    return `<article class="assistant-card p-4 specialist-card" data-specialist-action="open" data-assistant-id="${a.id}" tabindex="0" role="link" aria-labelledby="assistant-title-${a.id}" style="--icon-bg:var(--ivy-color-${a.family}-100);--icon-border:var(--ivy-color-${a.family}-200)"><div class="specialist-card-topline">${cardSchedule(a)}</div><header class="assistant-card-header"><span class="assistant-icon h-11 w-11">${icon(a.glyph,'h-5 w-5')}</span><div class="specialist-card-heading text-base font-semibold"><h2 id="assistant-title-${a.id}" class="font-semibold"><span class="assistant-title">${esc(a.title)}</span></h2><span class="specialist-built-in text-xs">Built-in specialist</span></div>${badge(stateLabel(a),!a.enabled?'neutral':a.pending?'info':a.coverageGap?'warning':'success')}</header><p class="assistant-description text-xs">${esc(a.description)}</p><div class="specialist-source-list">${a.selectedSources.map(source).join('')}</div><div class="specialist-scope text-xs">${a.scope?`${icon('health')}${esc(a.scope)}`:!a.enabled?'Connected sources ready':a.pending?'Scope will appear after the first check':''}</div><div class="specialist-card-status">${items.length?`<strong class="text-sm font-semibold">${items.length} open ${items.length===1?'finding':'findings'}</strong><span class="text-xs">${needs?`${needs} to review`:'All acknowledged'}</span>`:a.enabled&&!a.pending&&a.last?`<strong class="text-sm font-medium">${icon('check')}No open findings</strong><span class="text-xs">From the latest available evidence</span>`:`<strong class="text-sm font-medium">${!a.enabled?'Not monitoring yet':a.pending?'Ready for the first check':'Not checked yet'}</strong><span class="text-xs">${!a.enabled?'Turn on to start proactive investigations.':a.cadence==='manual'?'Use Run Now on the assistant page.':'Findings will appear as evidence is collected.'}</span>`}</div>${a.enabled&&a.coverageGap?`<p class="specialist-coverage-note text-xs">${icon('alert')}${esc(a.coverage)}</p>`:''}<footer class="assistant-footer specialist-card-footer"><span class="specialist-check-time text-xs">${a.enabled?(a.last?`${icon('clock')}Checked ${a.last}`:'Awaiting first check'):'Off · Checks stopped'}</span><div class="specialist-card-actions">${powerToggle(a)}<button type="button" class="specialist-settings" data-specialist-action="configure" data-assistant-id="${a.id}" aria-label="Configure ${esc(a.title)}">${icon('settings')}</button><button type="button" class="specialist-open text-sm" data-specialist-action="open" data-assistant-id="${a.id}">View Assistant ${icon('arrow')}</button></div></footer></article>`;
+    const items=owned(a);
+    const outcome=items.length
+      ? `${items.length} Open ${items.length===1?'Finding':'Findings'}`
+      : a.enabled&&a.last?'No Open Findings':a.enabled?'Awaiting First Check':'Not Monitoring Yet';
+    const checked=a.running?'Checking Now':a.last?`Checked ${a.last}`:a.enabled?'Awaiting First Check':'No Checks Yet';
+    return `<article class="assistant-card p-4 specialist-card" data-specialist-action="open" data-assistant-id="${a.id}" tabindex="0" role="link" aria-labelledby="assistant-title-${a.id}" style="--icon-bg:var(--ivy-color-${a.family}-100);--icon-border:var(--ivy-color-${a.family}-200)">
+      <header class="assistant-card-header">
+        <span class="assistant-icon h-11 w-11">${icon(a.glyph,'h-5 w-5')}</span>
+        <div class="specialist-card-heading text-base font-semibold">
+          <h2 id="assistant-title-${a.id}" class="font-semibold"><span class="assistant-title">${esc(a.title)}</span></h2>
+          <div class="specialist-mini-meta text-xs">
+            <span class="specialist-mini-state" data-state="${a.enabled?'watching':'disabled'}"><span class="specialist-mini-dot" aria-hidden="true"></span>${esc(stateLabel(a))}</span>
+            <span class="specialist-mini-outcome">${esc(outcome)}</span>
+          </div>
+        </div>
+        <span class="specialist-card-schedule-top">${cardSchedule(a)}</span>
+      </header>
+      <p class="assistant-description text-xs">${esc(a.description)}</p>
+      ${assistantEvidence(a)}
+      <footer class="assistant-footer specialist-card-footer">
+        <span class="specialist-check-time text-xs">${icon('clock')}${esc(checked)}</span>
+        ${powerToggle(a)}
+      </footer>
+    </article>`;
   }
   function onboardingCard(a) {
     const action=isOnboardingPreview?'open':'preview-assistant';
@@ -186,9 +271,9 @@
   }
   function overviewCard(a) {
     const items=owned(a),action='open';
-    const state=!a.enabled?'disabled':a.pending?'pending':a.coverageGap?'gap':'watching';
+    const state=a.enabled?'watching':'disabled';
     const outcome=items.length?`${items.length} open ${items.length===1?'finding':'findings'}`:!a.enabled?'Turn on to investigate':a.pending||!a.last?'Not checked yet':'No open findings';
-    return `<article class="assistant-card p-4 specialist-mini-card" data-specialist-action="open" data-assistant-id="${a.id}" tabindex="0" role="link" aria-labelledby="assistant-title-${a.id}" style="--icon-bg:var(--ivy-color-${a.family}-100);--icon-border:var(--ivy-color-${a.family}-200)"><span class="assistant-icon h-11 w-11">${icon(a.glyph,'h-5 w-5')}</span><div class="specialist-mini-copy text-sm font-semibold"><h2 id="assistant-title-${a.id}" class="font-semibold"><span class="assistant-title" title="${esc(a.title)}">${esc(a.title)}</span></h2><div class="specialist-mini-meta text-xs"><span class="specialist-mini-state" data-state="${state}"><span class="specialist-mini-dot" aria-hidden="true"></span>${esc(stateLabel(a))}</span><span class="specialist-mini-outcome">${esc(outcome)}</span></div></div><div class="specialist-mini-controls flex flex-col justify-end text-right ml-auto"><div class="specialist-card-topline" data-specialist-action="open" data-assistant-id="${a.id}">${cardSchedule(a)}</div>${powerToggle(a)}</div><button type="button" class="specialist-mini-open" data-specialist-action="${action}" data-assistant-id="${a.id}" aria-label="${action==='open'?'View':'Enable'} ${esc(a.title)}">${icon('arrow')}</button></article>`;
+    return `<article class="assistant-card p-4 specialist-mini-card" data-specialist-action="open" data-assistant-id="${a.id}" tabindex="0" role="link" aria-labelledby="assistant-title-${a.id}" style="--icon-bg:var(--ivy-color-${a.family}-100);--icon-border:var(--ivy-color-${a.family}-200)"><span class="assistant-icon h-11 w-11">${icon(a.glyph,'h-5 w-5')}</span><div class="specialist-mini-copy text-sm font-semibold"><h2 id="assistant-title-${a.id}" class="font-semibold"><span class="assistant-title" title="${esc(a.title)}">${esc(a.title)}</span></h2><div class="specialist-mini-meta text-xs"><span class="specialist-mini-state" data-state="${state}"><span class="specialist-mini-dot" aria-hidden="true"></span>${esc(stateLabel(a))}</span><span class="specialist-mini-outcome">${esc(outcome)}</span></div>${assistantEvidence(a)}</div><div class="specialist-mini-controls flex flex-col justify-end text-right ml-auto"><div class="specialist-card-topline" data-specialist-action="open" data-assistant-id="${a.id}">${cardSchedule(a)}</div>${powerToggle(a)}</div><button type="button" class="specialist-mini-open" data-specialist-action="${action}" data-assistant-id="${a.id}" aria-label="${action==='open'?'View':'Enable'} ${esc(a.title)}">${icon('arrow')}</button></article>`;
   }
   function assistantTable(items) {
     return `<div class="specialist-table-shell"><table class="specialist-table text-xs" aria-label="Assistants"><colgroup><col style="width:34%"><col style="width:14%"><col style="width:20%"><col style="width:22%"><col style="width:10%"></colgroup><thead><tr><th scope="col">Assistant</th><th scope="col">Status</th><th scope="col">Schedule</th><th scope="col">Findings</th><th scope="col"><span class="sr-only">Actions</span></th></tr></thead><tbody>${items.map(a=>{
@@ -206,18 +291,18 @@
     'identity-admin':'No registration record was found in the collected evidence. Effective enforcement still needs verification.',
     'identity-inactive':'Application assignments remain, with no recent service activity recorded. Confirm whether access is still needed.'
   };
-  function historyCard(f) { return findingRow(f,{history:true}); }
   const findingReviewActions={
     'acknowledge-open':{label:'Acknowledge for Later',glyph:'check'},
     'dismiss-finding':{label:'Dismiss',glyph:'close'},
     'schedule-finding-alert':{label:'Schedule an Alert',glyph:'calendar'},
     'chat-finding':{label:'Start a Chat',glyph:'sparkles'}
   };
-  function findingReviewControl(f) {
+  function findingReviewControl(f,{modal=false}={}) {
+    const disabled=action=>modal&&((action==='acknowledge-open'&&f.acknowledged)||(f.condition==='resolved'&&action!=='chat-finding'));
     return `<span class="as-finding-split-action">
-        <button type="button" class="as-finding-icon-button" data-finding-primary data-specialist-action="acknowledge-open" data-finding-id="${f.id}" aria-label="Acknowledge for Later" title="Acknowledge for Later">${icon('check')}<span>Acknowledge</span></button>
+        <button type="button" class="as-finding-icon-button" data-finding-primary data-specialist-action="acknowledge-open" data-finding-id="${f.id}" aria-label="Acknowledge for Later" title="Acknowledge for Later"${disabled('acknowledge-open')?' disabled':''}>${icon('check')}<span>Acknowledge</span></button>
         <details class="as-finding-action-menu"><summary aria-label="Choose Finding Action" title="Choose Finding Action"><svg class="as-finding-dropdown-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary>
-          <span class="as-finding-action-options">${Object.entries(findingReviewActions).map(([action,{label,glyph}])=>`<button type="button" data-specialist-action="choose-finding-action" data-finding-action="${action}">${icon(glyph)}${label}</button>`).join('')}</span>
+          <span class="as-finding-action-options">${Object.entries(findingReviewActions).map(([action,{label,glyph}])=>`<button type="button" data-specialist-action="choose-finding-action" data-finding-action="${action}"${disabled(action)?' disabled':''}>${icon(glyph)}${label}</button>`).join('')}</span>
         </details>
       </span>`;
   }
@@ -233,20 +318,122 @@
     const recommendation=options.recommendation
       ? `<span class="specialist-finding-aside">${checkedTime}<span class="specialist-finding-recommendation"><strong class="text-xs font-medium">${icon('sparkles')}Ivy recommends...</strong><span class="text-xs">${esc(suggestionCopy[f.id]?.ready?suggestionCopy[f.id].title:f.next||'No recommendation available.')}</span></span></span>${findingActions}`
       : `<span class="specialist-finding-arrow">${icon('arrow')}</span>`;
-    if(options.findingsTab)return `<button type="button" class="specialist-finding specialist-issue-row specialist-tab-finding p-4 rounded-lg" data-severity="${f.severity}" data-specialist-action="finding" data-finding-id="${f.id}"><span class="specialist-finding-icon" data-severity="${f.severity}">${icon('alert')}</span><span class="specialist-finding-copy"><span class="specialist-issue-top"><span class="specialist-finding-top text-xs">${lifecycleBadges(f)}<span class="border bg-gray-50 px-2 rounded-xl ml-2">${esc(a.title)}</span></span><span class="specialist-issue-time text-xs">${f.verification==='unavailable'?'Last Evidence '+esc(f.observed):'Checked '+esc(f.checked)}</span></span><strong class="text-sm font-semibold">${esc(headline)}</strong><span class="specialist-issue-evidence text-xs">${esc(evidence)}</span></span><span class="specialist-tab-finding-footer flex gap-4"><span class="specialist-issue-meta text-xs">${source(f.source)}<span aria-hidden="true">•</span><span class="inline-flex items-center gap-1">${icon('identity','h-3 w-3')}${esc(f.affected)}</span></span><span class="specialist-finding-arrow">${icon('arrow')}</span></span></button>`;
+    if(options.findingsTab)return `<button type="button" class="specialist-finding specialist-issue-row specialist-tab-finding p-4 rounded-lg" data-severity="${f.severity}" data-specialist-action="finding" data-finding-id="${f.id}"><span class="specialist-finding-icon" data-severity="${f.severity}">${icon('alert')}</span><span class="specialist-finding-copy"><span class="specialist-issue-top"><span class="specialist-finding-top text-xs">${lifecycleBadges(f)}<span class="specialist-finding-assistant ml-2">${icon('assistants','h-3 w-3')}${esc(a.title)}</span></span><span class="specialist-issue-time text-xs">${f.verification==='unavailable'?'Last Evidence '+esc(f.observed):'Checked '+esc(f.checked)}</span></span><strong class="text-sm font-semibold">${esc(headline)}</strong><span class="specialist-issue-evidence text-xs">${esc(evidence)}</span></span><span class="specialist-tab-finding-footer flex gap-4"><span class="specialist-issue-meta text-xs">${source(f.source)}<span aria-hidden="true">•</span><span class="inline-flex items-center gap-1">${icon('identity','h-3 w-3')}${esc(f.affected)}</span></span><span class="specialist-finding-arrow">${icon('arrow')}</span></span></button>`;
 
-    return `<${options.recommendation?'article':'button type="button"'} class="specialist-finding specialist-issue-row${options.recommendation?' specialist-finding-with-recommendation':''} ${options.list?'specialist-issue-list-row px-2 py-3 rounded-none':'p-4 rounded-lg'}${priority?' specialist-issue-priority':''}" data-severity="${f.severity}"${options.recommendation?'':` data-specialist-action="finding" data-finding-id="${f.id}"`}${options.descriptionTooltip?` title="${esc(evidence)}"`:""}>${options.list?'':`<span class="specialist-finding-icon" data-severity="${f.severity}">${icon('alert')}</span>`}<span class="specialist-finding-copy"><span class="specialist-issue-top"><span class="specialist-finding-top text-xs">${priority?'<span class="specialist-priority-label font-medium">Top Priority</span>':''}${lifecycleBadges(f,!options.preview)}</span>${options.recommendation?'':checkedTime}</span><strong class="text-sm font-semibold">${esc(headline)}</strong>${options.preview||options.descriptionTooltip?'':`<span class="specialist-issue-evidence text-xs">${esc(evidence)}</span>`}<span class="specialist-issue-meta text-xs">${options.descriptionTooltip?`${source(f.source)}<span aria-hidden="true">•</span><span class="inline-flex items-center gap-1">${icon('identity','h-3 w-3')}${esc(f.affected)}</span><span aria-hidden="true">•</span><span class="border bg-gray-50 px-2 rounded-xl">${esc(a.title)}</span>`:`<span class="inline-flex items-center gap-1">${icon('identity','h-3 w-3')}${esc(f.affected)}</span><span aria-hidden="true">•</span>${source(f.source)}<span aria-hidden="true">•</span><span>${esc(a.title)}</span>`}</span>${options.history===true?`<span class="specialist-history-events text-xs">${f.history.map(event=>`<span>${esc(event)}</span>`).join('')}</span>`:''}</span>${recommendation}</${options.recommendation?'article':'button'}>`;
+    return `<${options.recommendation?'article':'button type="button"'} class="specialist-finding specialist-issue-row${options.recommendation?' specialist-finding-with-recommendation':''} ${options.list?'specialist-issue-list-row px-2 py-3 rounded-none':'p-4 rounded-lg'}${priority?' specialist-issue-priority':''}" data-severity="${f.severity}"${options.recommendation?'':` data-specialist-action="finding" data-finding-id="${f.id}"`}${options.descriptionTooltip?` title="${esc(evidence)}"`:""}>${options.list?'':`<span class="specialist-finding-icon" data-severity="${f.severity}">${icon('alert')}</span>`}<span class="specialist-finding-copy"><span class="specialist-issue-top"><span class="specialist-finding-top text-xs">${priority?'<span class="specialist-priority-label font-medium">Top Priority</span>':''}${lifecycleBadges(f,!options.preview)}</span>${options.recommendation?'':checkedTime}</span><strong class="text-sm font-semibold">${esc(headline)}</strong>${options.preview||options.descriptionTooltip?'':`<span class="specialist-issue-evidence text-xs">${esc(evidence)}</span>`}<span class="specialist-issue-meta text-xs">${options.descriptionTooltip?`${source(f.source)}<span aria-hidden="true">•</span><span class="inline-flex items-center gap-1">${icon('identity','h-3 w-3')}${esc(f.affected)}</span><span aria-hidden="true">•</span><span class="specialist-finding-assistant">${icon('assistants','h-3 w-3')}${esc(a.title)}</span>`:`<span class="inline-flex items-center gap-1">${icon('identity','h-3 w-3')}${esc(f.affected)}</span><span aria-hidden="true">•</span>${source(f.source)}<span aria-hidden="true">•</span><span class="specialist-finding-assistant">${icon('assistants','h-3 w-3')}${esc(a.title)}</span>`}</span>${options.history===true?`<span class="specialist-history-events text-xs">${f.history.map(event=>`<span>${esc(event)}</span>`).join('')}</span>`:''}</span>${recommendation}</${options.recommendation?'article':'button'}>`;
+  }
+  function findingsTable(items,{includeAssistant=false}={}) {
+    const widths=includeAssistant?[30,18,10,15,14,13]:[38,12,18,17,15];
+    return `<div class="specialist-table-shell"><table class="specialist-table as-findings-table${includeAssistant?' specialist-cross-assistant-table':''} text-xs" aria-label="All Findings">
+      <colgroup>${widths.map(width=>`<col style="width:${width}%">`).join('')}</colgroup>
+      <thead><tr><th scope="col">Finding</th>${includeAssistant?'<th scope="col">Assistant</th>':''}<th scope="col">Priority</th><th scope="col">Status</th><th scope="col">Source</th><th scope="col">Last Checked</th></tr></thead>
+      <tbody>${items.map(f=>{
+        const status=f.condition==='resolved'?'Resolved':f.dismissed?'Dismissed':f.acknowledged?'Acknowledged':f.change||'Open';
+        const tone=f.condition==='resolved'?'success':['Worsened','Resurfaced'].includes(status)?'warning':status==='New'?'info':'neutral';
+        return `<tr data-specialist-action="finding" data-finding-id="${f.id}">
+          <td><button type="button" class="as-finding-table-open" data-specialist-action="finding" data-finding-id="${f.id}">${esc(f.title)}</button><span class="as-finding-table-affected">${esc(f.affected)}</span></td>
+          ${includeAssistant?`<td>${esc(assistants.find(a=>a.id===f.assistant).title)}</td>`:''}
+          <td>${badge(f.severity,['high','critical'].includes(f.severity)?'danger':'neutral')}</td>
+          <td>${badge(status,tone)}</td>
+          <td>${source(f.source)}</td>
+          <td>${esc(f.verification==='unavailable'?f.observed:f.checked)}</td>
+        </tr>`;
+      }).join('')}</tbody>
+    </table></div>`;
   }
   function suggestionCard(f) {
     const copy=suggestionCopy[f.id];
     return `<article class="specialist-suggestion p-4" aria-labelledby="suggestion-title-${f.id}"><div class="specialist-suggestion-heading"><h3 id="suggestion-title-${f.id}" class="text-sm font-semibold">${esc(copy.title)}</h3>${badge(f.severity,f.severity==='critical'?'danger':f.severity==='high'?'warning':'info')}</div><p class="text-xs">${esc(copy.reason)}</p><div class="specialist-suggestion-actions text-xs"><button type="button" class="specialist-suggestion-review" data-specialist-action="suggestion" data-finding-id="${f.id}" aria-label="Review ${esc(copy.title)}">${icon('arrow','h-3 w-3')}Review action</button><button type="button" class="specialist-suggestion-dismiss" data-specialist-action="dismiss-suggestion" data-finding-id="${f.id}" aria-label="Dismiss suggestion: ${esc(copy.title)}">${icon('close','h-3 w-3')}Dismiss</button></div></article>`;
   }
+  function snapshotFindings(items) {
+    return JSON.parse(JSON.stringify(items));
+  }
+  function seedAssistantRuns() {
+    const now=Date.now();
+    for(const a of assistants.filter(item=>item.last)){
+      const current=findings.filter(f=>f.assistant===a.id&&f.condition!=='resolved');
+      for(let day=0;day<14;day++){
+        const startedAt=now-(day?day*86400000:elapsedMinutes(a.last)*60000);
+        const error=day===2&&a.id===2?'Could not access Intune. The run stopped before completing the investigation.':null;
+        const count=day?Math.max(0,current.length-(day%3)):current.length;
+        const snapshots=snapshotFindings(error?[]:current.slice(0,count));
+        if(day)for(const f of snapshots){
+          f.acknowledged=false;
+          f.dismissed=false;
+          f.checked=new Date(startedAt).toLocaleString();
+          f.change='Ongoing';
+        }
+        assistantRuns.push({
+          id:`assistant-${a.id}-run-${14-day}`,number:14-day,assistantId:a.id,
+          startedAt,finishedAt:startedAt+34000,status:error?'Incomplete':'Completed',
+          trigger:a.cadence==='manual'?'On Demand':'Scheduled',sources:[...a.selectedSources],
+          findings:snapshots,error,illustrative:true
+        });
+      }
+    }
+  }
+  function getAssistantRuns(assistantId) {
+    return assistantRuns.filter(run=>assistantId===undefined||run.assistantId===assistantId)
+      .sort((a,b)=>b.startedAt-a.startedAt||b.number-a.number);
+  }
+  function runStatus(run) {
+    return badge(run.status,run.status==='Completed'?'success':run.status==='Running'?'info':run.status==='Incomplete'?'warning':'neutral');
+  }
+  function runTime(run) {
+    return new Date(run.startedAt).toLocaleString(undefined,{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
+  }
+  function runDuration(run) {
+    return run.finishedAt?`${Math.max(0,Math.round((run.finishedAt-run.startedAt)/1000))}s`:'—';
+  }
+  function runCount(run) {
+    return run.status==='Completed'?String(run.findings.length):'—';
+  }
+  function runList(assistantId,limit=5) {
+    const runs=getAssistantRuns(assistantId).slice(0,limit);
+    return `<ul class="specialist-index-runs specialist-clickable-runs">${runs.map(run=>{
+      const a=assistants.find(item=>item.id===run.assistantId);
+      return `<li><button type="button" class="specialist-run-link" data-specialist-action="run-result" data-run-id="${esc(run.id)}" aria-label="View Run ${run.number} for ${esc(a.title)}">
+        <span class="specialist-index-run-icon" data-run-state="${run.status==='Completed'?'complete':run.status==='Running'?'running':'error'}">${icon(run.status==='Completed'?'check':run.status==='Running'?'clock':'alert')}</span>
+        <span class="specialist-index-run-copy">${assistantId===undefined?`<strong class="text-xs font-medium">${esc(a.title)}</strong>`:''}<span class="text-xs">#${run.number} · ${esc(runTime(run))}</span></span>
+        ${run.status==='Completed'?`<span class="specialist-index-run-count text-xs">${runCount(run)} ${run.findings.length===1?'Finding':'Findings'}</span>`:runStatus(run)}
+      </button></li>`;
+    }).join('')}${!runs.length?'<li class="text-xs">No Runs Yet</li>':''}</ul>`;
+  }
+  function runHistoryTable(runs,{includeAssistant=false}={}) {
+    if(!runs.length)return '<p class="specialist-inline-empty text-sm">No runs have been recorded yet.</p>';
+    return `<div class="specialist-table-shell"><table class="specialist-table specialist-run-table text-xs" aria-label="Run History">
+      <thead><tr><th scope="col">Run</th>${includeAssistant?'<th scope="col">Assistant</th>':''}<th scope="col">Started</th><th scope="col">Status</th><th scope="col">Findings</th><th scope="col">Duration</th><th scope="col">Trigger</th></tr></thead>
+      <tbody>${runs.map(run=>`<tr data-specialist-action="run-result" data-run-id="${esc(run.id)}">
+        <td><button type="button" class="as-finding-table-open" data-specialist-action="run-result" data-run-id="${esc(run.id)}" aria-label="View Run ${run.number}">#${run.number}</button></td>
+        ${includeAssistant?`<td>${esc(assistants.find(a=>a.id===run.assistantId).title)}</td>`:''}
+        <td>${esc(runTime(run))}</td><td>${runStatus(run)}</td><td>${runCount(run)}</td><td>${runDuration(run)}</td><td>${run.trigger}</td>
+      </tr>`).join('')}</tbody>
+    </table></div>`;
+  }
+  function openRunResult(run) {
+    const a=assistants.find(item=>item.id===run.assistantId);
+    openDialog(`<div class="specialist-run-heading">${runStatus(run)}<span class="text-xs">Run #${run.number}</span></div>
+      <h2 id="assistant-dialog-title">${esc(a.title)}</h2>
+      <dl class="specialist-run-metadata text-xs">
+        <div><dt>Started</dt><dd>${esc(new Date(run.startedAt).toLocaleString())}</dd></div>
+        <div><dt>Duration</dt><dd>${runDuration(run)}</dd></div>
+        <div><dt>Trigger</dt><dd>${run.trigger}</dd></div>
+        <div><dt>Findings</dt><dd>${runCount(run)}</dd></div>
+      </dl>
+      <div class="specialist-source-list">${run.sources.map(source).join('')}</div>
+      ${run.error?`<p class="specialist-verification-note text-sm">${esc(run.error)}</p>`:''}
+      <h3 class="text-sm font-medium">Findings From This Run</h3>
+      <div class="specialist-run-findings">${run.findings.length?run.findings.map(f=>`<details class="specialist-run-finding">
+        <summary><span class="specialist-finding-top">${lifecycleBadges(f)}</span><strong class="text-sm font-medium">${esc(findingHeadlines[f.id]||f.title)}</strong></summary>
+        <p class="text-sm">${esc(f.evidence)}</p><div class="specialist-issue-meta text-xs">${source(f.source)}<span>·</span>${esc(f.affected)}</div>
+        ${f.next?`<div class="specialist-next-step"><strong class="text-xs">Suggested Next Step</strong><p class="text-sm">${esc(f.next)}</p></div>`:''}
+      </details>`).join(''):`<p class="specialist-inline-empty text-sm">${run.status==='Running'?'This check is still running.':run.status==='Completed'?'No findings were returned by this run.':'This run did not finish, so no finding results are available.'}</p>`}</div>
+      ${run.illustrative?'<p class="text-xs">Illustrative Run History</p>':''}`);
+    dialog.dataset.runId=run.id;
+  }
   function indexRecentRuns(expanded=false) {
-    const latest=assistants.filter(a=>a.last).map(a=>({assistant:a,time:a.last,minutes:elapsedMinutes(a.last),count:owned(a).length})).sort((a,b)=>a.minutes-b.minutes);
-    const runs=[...latest,...latest.filter(run=>run.assistant.enabled).map(run=>({...run,time:'Yesterday, 8:00 AM',error:run.assistant.id===2?'Could not access Intune. The run stopped before completing the investigation.':null}))];
-    if(expanded)for(let day=2;day<8;day++)for(const run of latest.filter(run=>run.assistant.enabled))runs.push({...run,time:`${day} Days Ago, 8:00 AM`});
-    const shown=expanded?runs:runs.slice(0,5);
-    return `<header class="specialist-section-heading"><h2 ${expanded?'id="assistant-dialog-title"':''} class="text-sm font-medium">Recent Runs</h2>${expanded?'':'<button type="button" class="a-text" data-specialist-action="all-runs">View All</button>'}</header><div class="${expanded?'specialist-runs-scroll':''}"><ul class="specialist-index-runs">${assistants.filter(a=>a.running).map(a=>`<li><span class="specialist-index-run-icon" data-run-state="running">${icon('clock','h-3 w-3')}</span><span class="specialist-index-run-copy"><strong class="text-xs font-medium">${esc(a.title)}</strong><span class="text-xs">Running Now</span></span>${badge('In Progress','info')}</li>`).join('')}${shown.map(run=>`<li><span class="specialist-index-run-icon" data-run-state="${run.error?'error':'complete'}">${icon(run.error?'alert':'check','h-3 w-3')}</span><span class="specialist-index-run-copy"><strong class="text-xs font-medium">${esc(run.assistant.title)}</strong><span class="text-xs">${esc(run.time)}</span></span>${run.error?`<span class="specialist-index-run-error text-xs" tabindex="0" title="${esc(run.error)}">Error</span>`:`<span class="specialist-index-run-count text-xs">${run.count} ${run.count===1?'Finding':'Findings'}</span>`}</li>`).join('')}${!shown.length?'<li class="text-xs">No Recent Runs</li>':''}</ul></div>`;
+    return `<header class="specialist-section-heading"><h2 ${expanded?'id="assistant-dialog-title"':''} class="text-sm font-medium">${expanded?'Run History':'Recent Runs'}</h2>${expanded?'':'<button type="button" class="a-text" data-specialist-action="all-runs">View All</button>'}</header>
+      ${expanded?runHistoryTable(getAssistantRuns(),{includeAssistant:true}):runList()}`;
   }
   function updateAttentionScrollbar() {
     const {clientWidth,scrollLeft,scrollWidth}=attentionRail;
@@ -292,11 +479,13 @@
     $('#assistant-history').hidden=view!=='history';
     if(!isOnboarding)$('#assistant-catalog-title').textContent='Assistants';
     const queryText=searchText().toLowerCase();
-    const history=findings.filter(f=>`${f.title} ${assistants.find(a=>a.id===f.assistant).title} ${f.source} ${f.history.join(' ')}`.toLowerCase().includes(queryText));
-    $('#assistant-history-list').innerHTML=history.map(historyCard).join('');
+    const history=getAssistantRuns().filter(run=>`${assistants.find(a=>a.id===run.assistantId).title} ${run.number} ${run.status} ${run.trigger} ${run.sources.join(' ')}`.toLowerCase().includes(queryText));
+    $('#assistant-history-list').innerHTML=history.length?runHistoryTable(history,{includeAssistant:true}):'';
     $('#assistant-history-empty').hidden=history.length>0;
     const stream=findings.filter(matchesFindingState).filter(f=>`${f.title} ${assistants.find(a=>a.id===f.assistant).title} ${f.source} ${f.evidence}`.toLowerCase().includes(queryText)).sort((a,b)=>elapsedMinutes(a.checked)-elapsedMinutes(b.checked)||rank[b.severity]-rank[a.severity]);
-    $('#assistant-stream-list').innerHTML=stream.map(f=>findingRow(f,{findingsTab:true})).join('');
+    $('#assistant-stream-list').classList.toggle('specialist-findings-card-grid',findingsView==='cards');
+    $('#assistant-stream-list').innerHTML=findingsView==='table'&&stream.length?findingsTable(stream,{includeAssistant:true}):stream.map(f=>findingRow(f,{descriptionTooltip:true})).join('');
+    document.querySelectorAll('[data-findings-view]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.findingsView===findingsView)));
     $('#assistant-stream-empty').hidden=stream.length>0;
     $('#assistant-stream-count').textContent=`Showing ${stream.length} of ${findings.length}`;
     document.querySelectorAll('[data-specialist-layout]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.specialistLayout===layout)));
@@ -307,7 +496,7 @@
     document.querySelectorAll('[data-specialist-view]').forEach(button=>{const name=button.dataset.specialistView;button.setAttribute('aria-selected',String(name===view));button.tabIndex=name===view?0:-1;const count=button.querySelector('span');if(count&&name==='all')count.textContent=assistants.length;});
   }
   function toast(text) {clearTimeout(toastTimer);$('#assistant-toast').textContent=text;$('#assistant-toast').hidden=false;toastTimer=setTimeout(()=>$('#assistant-toast').hidden=true,4000);}
-  function openDialog(body,drawer=false,tour=false) {if(dialog.open)dialog.close();dialog.classList.toggle('assistant-config-drawer',drawer);dialog.classList.toggle('assistant-tour',tour);dialog.removeAttribute('aria-describedby');dialog.innerHTML=`<button type="button" class="assistant-dialog-close" data-specialist-action="close" aria-label="Close dialog">${icon('close','h-5 w-5')}</button>${body}`;dialog.showModal();}
+  function openDialog(body,drawer=false,tour=false) {if(dialog.open)dialog.close();delete dialog.dataset.runId;dialog.classList.toggle('assistant-config-drawer',drawer);dialog.classList.toggle('assistant-tour',tour);dialog.removeAttribute('aria-describedby');dialog.innerHTML=`<button type="button" class="assistant-dialog-close" data-specialist-action="close" aria-label="Close dialog">${icon('close','h-5 w-5')}</button>${body}`;dialog.showModal();}
   function allFindings() {openDialog(`<h2 id="assistant-dialog-title">Assistant findings</h2><p class="text-sm">Repeated checks refresh an ongoing finding. A return after verified resolution creates a new linked occurrence.</p><div class="specialist-dialog-findings">${findings.slice().sort((a,b)=>rank[b.severity]-rank[a.severity]).map(findingRow).join('')}</div>`);}
   function assistantShowHref(a) {return (isOnboarding?'assistant-show-off.html':'assistant-show.html')+'?id='+a.id;}
   function openAssistant(a) {
@@ -548,7 +737,11 @@
     const changeTone=['Worsened','Resurfaced'].includes(f.change)?'warning':f.change==='Improving'?'success':f.change==='New'?'info':'neutral';
     const reviewStatus=resolved?'Not Required':f.dismissed?'Dismissed':f.acknowledged?'Acknowledged':'Needs Review';
     const list=items=>`<ul class="specialist-checks text-sm">${items.map(item=>`<li>${esc(item)}</li>`).join('')}</ul>`;
-    openDialog(`<div class="specialist-finding-top">${badge(f.severity,['critical','high'].includes(f.severity)?'danger':'neutral')}</div><p class="text-xs">${esc(f.reference)} · Sample evidence</p><h2 id="assistant-dialog-title">${esc(f.title)}</h2><div class="specialist-finding-context"><p class="text-sm">${esc(a.title)} · ${esc(f.affected)}</p><dl class="specialist-finding-timing text-xs"><div><dt>First Observed</dt><dd>${esc(f.first)}</dd></div><div><dt>Last Check</dt><dd>${esc(f.checked)}</dd></div></dl></div><div class="specialist-finding-statuses">${badge(resolved?'Verified Resolved':'Open',resolved?'success':'info')}${badge(f.change,changeTone)}${badge(reviewStatus,!resolved&&!f.acknowledged&&!f.dismissed?'info':'neutral')}</div>${f.verification==='unavailable'?'<div class="specialist-verification-note text-sm">Current state cannot be verified. The last known condition remains open; missing evidence does not establish resolution.</div>':''}${resolved?`<div class="specialist-resolution-note text-sm"><strong class="font-semibold">Why this occurrence is closed</strong><p class="text-sm">${esc(f.resolution)}</p></div>`:''}<h3 class="text-sm font-semibold">Evidence</h3><p class="text-sm">${esc(f.evidence)}</p><div class="specialist-source-list">${(f.supportingSources||[f.source]).map(source).join('')}</div><div class="specialist-assessment"><section><h3 class="text-sm font-semibold">Confirmed by evidence</h3>${list(f.confirmed)}</section><section><h3 class="text-sm font-semibold">Still uncertain</h3>${f.unknowns.length?list(f.unknowns):'<p class="text-sm">No unresolved questions about the closure of this occurrence.</p>'}</section></div>${f.hypotheses.length?`<section class="specialist-hypothesis"><h3 class="text-sm font-semibold">Supported hypotheses · not confirmed causes</h3>${list(f.hypotheses)}</section>`:''}<details class="specialist-affected" open><summary class="text-sm font-semibold">Affected objects · ${f.objects.length}</summary><div class="specialist-object-scroll"><table class="specialist-objects text-xs" aria-label="Affected objects for ${esc(f.reference)}"><thead><tr><th scope="col">Object</th><th scope="col">Type</th><th scope="col">Source record ID</th></tr></thead><tbody>${f.objects.map(([name,type,id])=>`<tr><td>${esc(name)}</td><td>${esc(type)}</td><td>${esc(id)}</td></tr>`).join('')}</tbody></table></div></details><h3 class="text-sm font-semibold">Occurrence history</h3>${list(f.history)}${related?`<div class="specialist-related"><p class="text-xs">${resolved?'This occurrence stays closed. A later recurrence has its own evidence and review status.':'New occurrence of a known condition. The earlier occurrence remains verified resolved.'}</p><button type="button" class="a-secondary" data-specialist-action="finding" data-finding-id="${related.id}">${resolved?'View new occurrence':'View previous occurrence'} · ${esc(related.reference)}</button></div>`:''}${f.next?`<div class="specialist-next-step"><span class="text-xs">Recommended next step</span><p class="text-sm">${esc(f.next)}</p></div>`:''}<p class="text-xs">${resolved?'Resolution is based on source evidence, not acknowledgment.':'Acknowledging marks this finding as reviewed. It does not resolve the condition or dismiss a suggested action.'}</p><div class="assistant-dialog-actions">${!resolved?`<button type="button" class="a-primary" data-specialist-action="acknowledge" data-finding-id="${f.id}">${f.acknowledged?'Mark as unreviewed':'Acknowledge'}</button>`:''}<button type="button" class="a-secondary" data-specialist-action="open" data-assistant-id="${a.id}">Back to assistant</button></div>`);
+    const evidenceList=(items,glyph)=>`<ul class="specialist-checks specialist-evidence-list text-sm">${items.map(item=>`<li>${icon(glyph)}<span>${esc(item)}</span></li>`).join('')}</ul>`;
+    openDialog(`<header class="specialist-finding-modal-header"><h2 id="assistant-dialog-title" class="font-bold">${esc(f.title)}</h2><div class="specialist-finding-context"><p class="specialist-finding-context-summary text-sm"><span class="specialist-finding-assistant-label bg-bluegray-100 rounded-sm hover:shadow-xs">${icon('assistants')}<span>${esc(a.title)}</span></span><span>· ${esc(f.affected)}</span></p><dl class="specialist-finding-timing text-xs"><div><dt>First Observed</dt><dd>${esc(f.first)}</dd></div><div><dt>Last Check</dt><dd>${esc(f.checked)}</dd></div></dl></div></header><div class="specialist-finding-modal-body"><div class="specialist-finding-statuses">${badge(f.severity,['critical','high'].includes(f.severity)?'danger':'neutral')}${badge(resolved?'Verified Resolved':'Open',resolved?'success':'info')}${badge(f.change,changeTone)}${badge(reviewStatus,!resolved&&!f.acknowledged&&!f.dismissed?'review':'neutral')}</div>${f.verification==='unavailable'?'<div class="specialist-verification-note text-sm">Current state cannot be verified. The last known condition remains open; missing evidence does not establish resolution.</div>':''}${resolved?`<div class="specialist-resolution-note text-sm"><strong class="font-semibold">Why this occurrence is closed</strong><p class="text-sm">${esc(f.resolution)}</p></div>`:''}<h3 class="specialist-finding-evidence-heading text-sm font-semibold"><span class="specialist-source-list">${(f.supportingSources||[f.source]).map(source).join('')}</span><span>Evidence</span></h3><p class="text-sm">${esc(f.evidence)}</p><div class="specialist-assessment"><section class="specialist-assessment-confirmed px-6 py-4"><h3 class="text-sm font-semibold">Confirmed</h3>${evidenceList(f.confirmed,'info')}</section><section class="px-6 py-4"><h3 class="text-sm font-semibold">Still uncertain</h3>${f.unknowns.length?evidenceList(f.unknowns,'question'):'<p class="text-sm">No unresolved questions about the closure of this occurrence.</p>'}</section></div>${f.hypotheses.length?`<section class="specialist-hypothesis"><h3 class="text-sm font-semibold">Supported hypotheses · not confirmed causes</h3>${list(f.hypotheses)}</section>`:''}<details class="specialist-affected" open><summary class="text-sm font-semibold">Affected objects · ${f.objects.length}</summary><div class="specialist-object-scroll"><table class="specialist-objects text-xs" aria-label="Affected objects for ${esc(f.reference)}"><thead><tr><th scope="col">Object</th><th scope="col">Type</th><th scope="col">Source record ID</th></tr></thead><tbody>${f.objects.map(([name,type,id])=>`<tr><td>${esc(name)}</td><td>${esc(type)}</td><td>${esc(id)}</td></tr>`).join('')}</tbody></table></div></details><h3 class="text-sm font-semibold">Occurrence History</h3>${list(f.history)}${related?`<div class="specialist-related"><p class="text-xs">${resolved?'This occurrence stays closed. A later recurrence has its own evidence and review status.':'New occurrence of a known condition. The earlier occurrence remains verified resolved.'}</p><button type="button" class="a-secondary" data-specialist-action="finding" data-finding-id="${related.id}">${resolved?'View new occurrence':'View previous occurrence'} · ${esc(related.reference)}</button></div>`:''}${f.next?`<div class="specialist-next-step"><span class="specialist-next-step-heading text-xs"><img src="../assets/ivy-stars-light.svg" width="20" height="21" alt=""/>Recommended next step</span><p class="text-sm">${esc(f.next)}</p></div>`:''}<p class="text-xs">${resolved?'Resolution is based on source evidence, not acknowledgment.':'Acknowledging marks this finding as reviewed. It does not resolve the condition.'}</p></div><footer class="specialist-finding-modal-footer">
+      <button type="button" class="a-secondary gap-2" data-specialist-action="${isShow?'close':'open'}" data-assistant-id="${a.id}" aria-label="${isShow?'Back to Assistant':'View Assistant'}">${isShow?`Back ${icon('arrow')}`:`${icon('arrow')} View Assistant`}</button>
+      ${findingReviewControl(f,{modal:true})}
+    </footer>`);
   }
   function configure(a,turnOn=false) {
     const activating=turnOn&&!a.enabled;
@@ -585,6 +778,8 @@
       const menu=button.closest('.as-finding-action-menu');
       const primary=menu.parentElement.querySelector('[data-finding-primary]');
       primary.dataset.specialistAction=button.dataset.findingAction;
+      const currentFinding=findings.find(item=>item.id===primary.dataset.findingId);
+      primary.disabled=Boolean(button.closest('.specialist-finding-modal-footer')&&((button.dataset.findingAction==='acknowledge-open'&&currentFinding.acknowledged)||(currentFinding.condition==='resolved'&&button.dataset.findingAction!=='chat-finding')));
       primary.setAttribute('aria-label',option.label);
       primary.title=option.label;
       primary.innerHTML=icon(option.glyph)+`<span>${button.dataset.findingAction==='acknowledge-open'?'Acknowledge':option.label}</span>`;
@@ -620,6 +815,11 @@
     if(action==='about'||action==='about-action'){about(action==='about-action');return;}
     if(action==='identity-demo'){window.IvyIdentityDemo.open({dialog,openDialog,icon,source,badge});return;}
     if(action==='all-findings'){allFindings();return;}
+    if(action==='run-result'){
+      const run=assistantRuns.find(item=>item.id===button.dataset.runId);
+      if(run)openRunResult(run);
+      return;
+    }
     if(action==='all-runs'){openDialog(indexRecentRuns(true));return;}
     if(action==='undo-suggestion'){dismissedSuggestions.pop();saveSession();renderAttention();return;}
     if(action==='cancel-config'){dialog.close();return;}
@@ -637,6 +837,7 @@
     if(action==='run-now'&&a)runNow(a);
     if(action==='enable-assistant'&&a){dialog.dataset.assistantId=String(a.id);configure({...a,enabled:false},true);}
     if(action==='dismiss-finding'&&f){
+      if(button.closest('.specialist-finding-modal-footer'))dialog.close();
       delete f.alertAt;
       f.dismissed=true;
       render();
@@ -647,6 +848,7 @@
     if(action==='schedule-finding-alert'&&f){scheduleFindingAlert(f);return;}
     if(action==='chat-finding'&&f){startFindingChat(f);return;}
     if(action==='acknowledge-open'&&f&&f.condition!=='resolved'){
+      if(button.closest('.specialist-finding-modal-footer'))dialog.close();
       delete f.alertAt;
       f.acknowledged=true;
       f.dismissed=false;
@@ -727,7 +929,7 @@
     if(Object.hasOwn(timeZones,timeZone))a.timeZone=timeZone;
     if(weekdays.includes(day))a.day=day;
     a.pending=enabled&&cadence!=='manual'&&!a.last;
-    if(!enabled){clearTimeout(runTimers.get(a.id));runTimers.delete(a.id);a.running=false;}
+    if(!enabled)cancelAssistantRun(a);
     dialog.close();if(enabled&&document.body?.dataset.assistantVariant==='off'){openAssistant(a);return;}render();toast(!enabled?'Assistant is off. Findings and history kept.':newlyEnabled?`Assistant turned on · ${scheduleLabel(a)}`:'Assistant settings updated in this preview.');
   });
   dialog.addEventListener('change',event=>{
@@ -743,6 +945,10 @@
     button.addEventListener('click',()=>{view=button.dataset.specialistView;render();});
     button.addEventListener('keydown',event=>{const tabs=[...document.querySelectorAll('[data-specialist-view]')],index=tabs.indexOf(button);let next;if(event.key==='ArrowRight')next=(index+1)%tabs.length;if(event.key==='ArrowLeft')next=(index+tabs.length-1)%tabs.length;if(event.key==='Home')next=0;if(event.key==='End')next=tabs.length-1;if(next!==undefined){event.preventDefault();view=tabs[next].dataset.specialistView;render();tabs[next].focus();}});
   });
+  document.querySelectorAll('[data-findings-view]').forEach(button=>button.addEventListener('click',()=>{
+    findingsView=button.dataset.findingsView==='table'?'table':'cards';
+    render();
+  }));
   document.querySelectorAll('[data-specialist-layout]').forEach(button=>button.addEventListener('click',()=>{layout=button.dataset.specialistLayout;render();}));
   document.querySelectorAll('[data-specialist-icon]').forEach(element=>element.innerHTML=icon(element.dataset.specialistIcon));
   $('#assistant-finding-state').addEventListener('change',event=>{findingState=event.target.value;render();});
@@ -751,14 +957,14 @@
   function clearSearch() {if(!isOnboarding)$('#assistant-search').value='';render();}
   if(!isOnboarding)$('#clear-filters').addEventListener('click',clearSearch);$('#empty-clear').addEventListener('click',clearSearch);
   } else {
-    showPage=window.IvyAssistantShow.create({assistants,findings,owned,waiting,esc,icon,source,badge,stateLabel,cadenceLabels,scheduleLabel,powerToggle,findingRow,findingReviewControl,historyCard,openDialog});
+    showPage=window.IvyAssistantShow.create({assistants,findings,owned,waiting,esc,icon,source,badge,stateLabel,cadenceLabels,scheduleLabel,powerToggle,findingRow,findingsTable,findingReviewControl,getAssistantRuns,runList,runHistoryTable,openDialog});
   }
   if(highlightsToggle){
     highlightsToggle.addEventListener('click',()=>{
       indexHighlightsHidden=!indexHighlightsHidden;
       $('#assistant-summary').hidden=indexHighlightsHidden;
       highlightsToggle.setAttribute('aria-expanded',String(!indexHighlightsHidden));
-      highlightsToggle.querySelector('span').textContent=indexHighlightsHidden?'Show Highlights':'Hide Highlights';
+      highlightsToggle.querySelector('span').textContent=indexHighlightsHidden?'Show highlights':'Hide highlights';
     });
   }
   if(attentionRail){
