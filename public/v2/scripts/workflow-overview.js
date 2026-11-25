@@ -96,7 +96,7 @@ window.IvyWorkflowOverview = (() => {
         <p class="wo-related-meta text-sm">Select an item to see its related run and Ivy recommendations.</p>
       </div>`:''}
       <div class="wo-context-section">
-        <h4 class="text-sm font-semibold">Recent Runs</h4>
+        <h4 class="text-sm font-semibold flex items-center gap-2">${icon('clock','h-4 w-4')}Recent Runs</h4>
         ${recentRuns.length?`<ul class="wo-recent-list">${recentRuns.map(({workflow,run})=>`<li>
           <button type="button" class="wo-recent-run" data-overview-action="result" data-workflow-id="${workflow.id}" data-run-id="${esc(run.id)}">
             <span class="wo-recent-run-name"><span class="text-sm font-medium">${esc(workflow.title)}</span>
@@ -217,7 +217,7 @@ window.IvyWorkflowOverview = (() => {
       const activity=window.IvyWorkflowActivity.select({reviewItems,runningRuns:latest.filter(item=>item.run.status==='Running')});
       const statuses=[['Completed','Completed'],['Incomplete','Partial'],['Failed','Failed'],['Running','Running']].map(([status,label])=>({label,count:runs.filter(item=>item.run.status===status).length}));
       const outputHistory=chartData.days.map(day=>runs.filter(item=>dayKey(item.run.at)===day.key&&['Completed','Incomplete'].includes(item.run.status)).length);
-      const metricCards=`<article class="wo-metric wo-run-summary"><h3 class="text-sm font-semibold">Recent runs</h3><p class="wo-metric-description text-xs">Workflow execution at a glance</p><div class="wo-run-summary-body"><div class="wo-run-summary-total"><strong class="wo-metric-value text-display-sm font-semibold">${runs.length}</strong><span class="text-xs">Runs</span></div><dl class="wo-run-statuses">${statuses.map(status=>`<div><dt class="text-xs">${status.label}</dt><dd class="text-xl font-semibold">${status.count}</dd></div>`).join('')}</dl></div></article>`+[
+      const metricCards=`<article class="wo-metric wo-run-summary"><h3 class="text-sm font-semibold flex items-center gap-2">${icon('clock','h-4 w-4')}Recent runs</h3><p class="wo-metric-description text-xs">Workflow execution at a glance</p><div class="wo-run-summary-body"><div class="wo-run-summary-total"><strong class="wo-metric-value text-display-sm font-semibold">${runs.length}</strong><span class="text-xs">Runs</span></div><dl class="wo-run-statuses">${statuses.map(status=>`<div><dt class="text-xs">${status.label}</dt><dd class="text-xl font-semibold">${status.count}</dd></div>`).join('')}</dl></div></article>`+[
         ['Outputs available','Completed and partial run outputs',outputs.length,'indigo-400',outputHistory,false,'outputs'],
         ['Recommended next steps','Actions suggested across all runs',chartData.series[2].total,'blue-600',chartData.days.map(day=>day.values[2]),true,'recommendations'],
         ['Runs needing attention','Failed or incomplete runs',chartData.series[0].total,'error-400',chartData.days.map(day=>day.values[0]),false,'run issues']

@@ -818,13 +818,14 @@
       .overview-slider-stage > .overview-slide { grid-area: 1 / 1; min-width: 0; align-self: center; }
       .overview-slider-stage > .overview-slide[aria-hidden="true"] { visibility: hidden; pointer-events: none; }
       #overview-intro .overview-metrics { margin-bottom: 0; margin-left: -0.5rem; margin-right: -0.5rem; }
+      .overview-slider-controls { margin-top: 0; }
       .overview-slider-controls button { border: 0; background: var(--ivy-color-gray-300); cursor: pointer; }
       .overview-slider-controls[hidden] { display: none; }
       .overview-slider-controls button[aria-pressed="true"] { background: var(--ivy-color-primary); }
       .overview-slider-controls button:focus-visible { outline: 2px solid var(--ivy-color-primary); outline-offset: 3px; }
       .overview-intro-layout { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 40px; align-items: stretch; }
       .overview-intro-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px; }
-      .overview-weekly-chart { display: flex; flex-direction: column; min-width: 0; margin: 0; padding: 20px; border: 1px solid var(--ivy-color-indigo-200); border-radius: 14px; }
+      .overview-weekly-chart { display: flex; flex-direction: column; min-width: 0; margin: 0; padding: 20px; border: 1px solid rgba(0,0,0,0.075); border-radius: 14px; }
       .overview-weekly-chart figcaption, .overview-weekly-axis { display: flex; justify-content: space-between; gap: 12px; color: var(--ivy-color-gray-500); font-size: 12px; }
       .overview-weekly-bars { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); align-items: end; gap: 10px; flex: 1; margin-top: 30px; }
       .overview-weekly-bar { position: relative; height: var(--bar-height); min-height: 4px; border-radius: 5px; background: var(--ivy-color-indigo-300); }
@@ -835,11 +836,11 @@
       @media (max-width: 600px) { .overview-intro-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } .overview-weekly-bars { gap: 6px; } }
       .overview-metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; margin-bottom: 0.5rem; }
       .overview-metrics[hidden] { display: none !important; }
-      .overview-metric { min-width: 0; padding: 1.25rem 1.25rem 0.5rem; border: 1px solid var(--ivy-color-gray-200); border-radius: 16px; background: var(--ivy-color-gray-25); }
-      .overview-metric h2 { margin: 0; font-size: 14px; font-weight: 600; color: var(--ivy-color-gray-900); }
+      .overview-metric { min-width: 0; padding: 1.25rem 1.25rem 0.5rem; border: 1px solid var(--ivy-color-gray-200); border-radius: 16px; background: var(--ivy-color-gray-25); margin-bottom: 1rem; }
+      .overview-metric h2, #overview-weekly-heading { margin: 0; font-size: 14px; font-weight: 600; color: var(--ivy-color-gray-900); }
       .overview-metric-description { margin: 0.125rem 0 1rem; font-size: 12px; line-height: 1.5; color: var(--ivy-color-gray-500); }
       .overview-metric-value { font-size: 32px; line-height: 1.15; font-weight: 600; letter-spacing: -.03em; color: var(--metric-color); font-variant-numeric: tabular-nums; }
-      .overview-metric-period { margin: 5px 0 16px; font-size: 11px; color: var(--ivy-color-gray-500); }
+      .overview-metric-period { margin: 0 0 8px; font-size: 11px; color: var(--ivy-color-gray-500); }
       .overview-metric svg { display: block; width: 100%; height: 64px; overflow: visible; }
       .collection-summary-body { display: grid; grid-template-columns: minmax(0, .8fr) minmax(0, 1.5fr); gap: 12px; align-items: center; min-height: 150px; }
       .collection-summary-total { text-align: center; color: var(--ivy-color-teal-600); }
@@ -984,7 +985,14 @@
       .index-sidebar-toggle:focus-visible { outline: 2px solid var(--ivy-color-primary); outline-offset: 2px; }
       .index-sidebar-toggle svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.5; }
       .index-navigation-row { align-items: center; }
-      .index-metrics-toggle { margin-left: auto; margin-bottom: 0.25rem; margin-top: -0.25rem; }
+      .as-highlights-nav { display: flex; align-items: center; gap: 12px; width: 100%; border-bottom: 1px solid var(--ivy-color-gray-200); }
+      .as-highlights-nav > [role="tablist"] { flex: 1; min-width: 0; }
+      .as-highlights-toggle { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; gap: 6px; margin-left: auto; padding: 7px 10px; border: 0; border-radius: 7px; background: transparent; color: var(--ivy-color-gray-500); font-size: 12px; font-weight: 400; white-space: nowrap; cursor: pointer; }
+      .as-highlights-toggle[hidden] { display: none !important; }
+      .as-highlights-toggle:hover { background: var(--ivy-color-gray-100); color: var(--ivy-color-gray-700); }
+      .as-highlights-toggle:focus-visible { outline: 2px solid var(--ivy-color-primary); outline-offset: 2px; }
+      .as-highlights-toggle svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 1.5; }
+      .as-highlights-toggle > span { background: none; font-size: 12px; font-weight: 400; padding: 0; }
       .index-shared-layout .trending-table-column { container-type: inline-size; }
       .index-shared-layout .index-browser-toolbar [data-index-controls] { width: auto; flex: 0 0 auto; margin-bottom: 0; margin-left: auto; }
       .index-browser-toolbar [data-index-controls]:not([hidden]) + .index-layout-switch { margin-left: 0; }
@@ -3436,9 +3444,12 @@
         let metricsHidden = false;
         const metricsToggle = document.createElement('button');
         metricsToggle.type = 'button';
-        metricsToggle.className = 'index-sidebar-toggle index-metrics-toggle';
+        metricsToggle.className = 'as-highlights-toggle';
+        metricsToggle.setAttribute('data-show-highlights', '');
         metricsToggle.setAttribute('aria-controls', 'overview-intro');
-        nav.parentElement.append(metricsToggle);
+        nav.classList.add('as-highlights-nav');
+        nav.parentElement.classList.remove('border-b');
+        nav.append(metricsToggle);
         function updateMetricsVisibility() {
           const overview = !panel.hidden;
           overviewIntro.hidden = !overview || metricsHidden;
@@ -3455,7 +3466,7 @@
         const overviewIntro = document.createElement('section');
         overviewIntro.id = 'overview-intro';
         overviewIntro.className = 'px-6 pt-6 pb-4 rounded-xl relative border';
-        overviewIntro.style.cssText = `background-color: white; overflow: hidden; margin-bottom: 24px; background-image: radial-gradient(ellipse 38% 70% at 76% 0%, rgba(194, 214, 255, 0.9) 0%, rgba(194, 214, 255, 0.45) 35%, rgba(194, 214, 255, 0.12) 65%, rgba(194, 214, 255, 0) 100%), radial-gradient(116.32% 285.06% at 65% 0%, #FFFFFF 0%, #F2F7FF 69.11%, #ECF3FF 100%);`;
+        overviewIntro.style.cssText = `padding: 1.5rem 2.25rem 1rem; background-color: white; overflow: hidden; margin-bottom: 24px; background-image: radial-gradient(ellipse 38% 70% at 76% 0%, rgba(194, 214, 255, 0.9) 0%, rgba(194, 214, 255, 0.45) 35%, rgba(194, 214, 255, 0.12) 65%, rgba(194, 214, 255, 0) 100%), radial-gradient(116.32% 285.06% at 65% 0%, #FFFFFF 0%, #F2F7FF 69.11%, #ECF3FF 100%);`;
         // Illustrative weekly reuse counts for the overview banner.
         const weeklyReuse = [88, 126, 145, 119, 88, 145, 126, 107, 134, 114, 145, 182];
         overviewIntro.innerHTML = `<div class="absolute inset-0" aria-hidden="true" style="background: transparent; background-image: radial-gradient(#E4E7EC 1px, transparent 1px); background-size: 16px 16px; opacity: 0.75;"></div>
@@ -3497,7 +3508,7 @@
           sliderStage.append(slide);
         });
         const sliderControls = document.createElement('div');
-        sliderControls.className = 'overview-slider-controls relative flex items-center justify-center gap-2 mt-3';
+        sliderControls.className = 'overview-slider-controls relative flex items-center justify-center gap-2';
         sliderControls.innerHTML = '<button type="button" class="w-2 h-2 p-0 rounded-full" data-overview-slide="0" aria-label="Show Shared work slide" aria-controls="overview-shared-work" aria-pressed="true"></button><button type="button" class="w-2 h-2 p-0 rounded-full" data-overview-slide="1" aria-label="Show At a glance slide" aria-controls="overview-metrics" aria-pressed="false"></button>';
         overviewIntro.append(highlightsHeading, sliderStage, sliderControls);
         let activeOverviewSlide = 0;

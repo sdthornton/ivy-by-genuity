@@ -1,10 +1,23 @@
 /* Pre-enable variant: a single primary action and capabilities-only content. */
-.as-off-divider { border: 0; border-top: 1px solid var(--ivy-color-gray-200); margin: 24px 0; }
+.as-off-toolbar { justify-content: flex-start; padding-bottom: 8px; }
+.as-sample-label { color: var(--ivy-color-gray-500); font-weight: 400; }
+.as-sample-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--ivy-color-cyan-200);
+  border-radius: 8px;
+  background: var(--ivy-color-cyan-25);
+  color: var(--ivy-color-cyan-700);
+}
+.as-sample-notice > svg { margin-top: 2px; }
+.as-sample-notice p { margin: 2px 0 0; color: var(--ivy-color-cyan-900); }
 .as-how-dialog { padding-top: 40px; }
 .as-how-dialog .as-investigation { margin-top: 20px; }
 
 /* Explain practical use before exposing the full capability reference. */
-body[data-assistant-variant="off"] .as-header-action { flex-direction: column; align-items: flex-end; gap: 8px; max-width: 180px; }
+.as-starting-blank .as-header-action { flex-direction: column; align-items: flex-end; gap: 8px; max-width: 180px; }
 .as-off-enable-help { margin: 0 0 -1rem; text-align: right; color: var(--ivy-color-gray-500); line-height: 1.5; }
 .as-off-situation .as-off-result { margin-top: 10px; color: var(--ivy-color-gray-600); }
 .as-off-capability-details { margin-top: 36px; }
@@ -12,4 +25,4 @@ body[data-assistant-variant="off"] .as-header-action { flex-direction: column; a
 .as-off-capability-details > summary::-webkit-details-marker { display: none; }
 .as-off-capability-details[open] > summary .as-chevron { transform: rotate(90deg); }
 .as-off-capability-details-body { margin-top: 8px; }
-@container (max-width: 1000px) { body[data-assistant-variant="off"] .as-header-action { align-items: flex-start; max-width: none; } .as-off-enable-help { text-align: left; } }
+@container (max-width: 1000px) { .as-starting-blank .as-header-action { align-items: flex-start; max-width: none; } .as-off-enable-help { text-align: left; } }

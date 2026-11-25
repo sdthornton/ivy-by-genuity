@@ -8,10 +8,18 @@
   const hasOnboardingCardLinks=isOnboarding&&document.body.hasAttribute('data-assistant-card-links');
   const hasOnboardingCardTooltips=hasOnboardingCardLinks&&document.body.dataset.assistantCardLinks==='tooltips';
   let previewAssistantCards=false;
+  let historyPage=1,historyQuery='';
+  let summarySlide=0,summaryAnimating=false,summaryChartObserver;
+  const historyPageSize=10;
   let showPage;
   const esc=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
   const paths={
-    assistants:'<path d="M9.64624 6.34328H6.78341C6.21194 6.34328 5.66385 6.57024 5.25968 6.97426C4.85551 7.37829 4.62834 7.92629 4.62813 8.49776V17.5507C4.62813 18.1224 4.8552 18.6706 5.2594 19.0748C5.66359 19.479 6.2118 19.706 6.78341 19.706H15.8372C16.4088 19.706 16.957 19.479 17.3612 19.0748C17.7654 18.6706 17.9925 18.1224 17.9925 17.5507V13.7613L19.2857 12.8745V17.5515C19.2854 18.4661 18.9221 19.3431 18.2754 19.9897C17.6287 20.6364 16.7517 20.9998 15.8372 21H6.78341C5.86889 20.9998 4.99189 20.6364 4.34522 19.9897C3.69856 19.3431 3.33517 18.4661 3.33496 17.5515V8.49856C3.33486 8.04564 3.42398 7.59713 3.59723 7.17865C3.77048 6.76017 4.02448 6.37992 4.34471 6.05962C4.66494 5.73932 5.04513 5.48524 5.46356 5.31189C5.882 5.13854 6.33049 5.04931 6.78341 5.04931H10.4048L9.64624 6.34328Z" fill="currentColor"></path><path d="M15.94 3C16.0555 3 16.1535 3.08286 16.1782 3.19601C16.4045 4.24799 16.9303 5.21206 17.6921 5.97198C18.4521 6.73425 19.4165 7.2603 20.4689 7.48665C20.582 7.51135 20.6649 7.60936 20.6649 7.72569C20.6642 7.78169 20.6444 7.83578 20.6087 7.87897C20.5731 7.92216 20.5237 7.95186 20.4689 7.96313C19.4168 8.18963 18.4527 8.71567 17.6929 9.4778C16.9207 10.2476 16.391 11.2268 16.1695 12.2944C16.1587 12.3475 16.13 12.3953 16.0883 12.4298C16.0465 12.4643 15.9942 12.4835 15.94 12.484C15.8858 12.4835 15.8335 12.4643 15.7917 12.4298C15.7499 12.3953 15.7213 12.3475 15.7105 12.2944C15.4889 11.2268 14.9593 10.2476 14.1871 9.4778C13.4173 8.70559 12.4381 8.17595 11.3705 7.95436C11.3174 7.9436 11.2696 7.91495 11.235 7.87318C11.2005 7.83141 11.1814 7.77907 11.1808 7.72489C11.1808 7.61334 11.2605 7.51773 11.3705 7.49542C12.4381 7.27384 13.4173 6.74419 14.1871 5.97198C14.9492 5.21214 15.4752 4.24807 15.7017 3.19601C15.713 3.14101 15.7429 3.09156 15.7862 3.05589C15.8296 3.02022 15.8838 3.00049 15.94 3Z" fill="currentColor"></path>',
+    assistants:'<path fill-rule="evenodd" clip-rule="evenodd" d="M15.375 9.99805C18.3435 9.99813 20.75 12.4046 20.75 15.373C20.75 18.3415 18.3435 20.748 15.375 20.748C12.4065 20.748 10 18.3416 10 15.373C10 12.4045 12.4065 9.99805 15.375 9.99805ZM15.375 11.498C13.2349 11.498 11.5 13.2329 11.5 15.373C11.5 17.5132 13.2349 19.248 15.375 19.248C17.515 19.248 19.25 17.5131 19.25 15.373C19.25 13.233 17.515 11.4981 15.375 11.498Z" fill="currentColor"></path><path d="M11.75 3.24805C12.9926 3.24813 14 4.25546 14 5.49805V8.63574C13.476 8.74212 12.9734 8.90778 12.5 9.12598V5.49805C12.5 5.08389 12.1641 4.74813 11.75 4.74805H5.5C5.08579 4.74805 4.75 5.08383 4.75 5.49805V11.748C4.75 12.1623 5.08579 12.498 5.5 12.498H9.12793C8.9097 12.9714 8.74408 13.474 8.6377 13.998H5.5C4.25736 13.998 3.25 12.9907 3.25 11.748V5.49805C3.25 4.25541 4.25736 3.24805 5.5 3.24805H11.75Z" fill="currentColor"></path><path d="M18.875 2.94531C19.289 2.94553 19.625 3.28123 19.625 3.69531C19.6252 4.48201 20.2631 5.11991 21.0498 5.12012C21.4638 5.12033 21.7998 5.45604 21.7998 5.87012C21.7997 6.28411 21.4638 6.6199 21.0498 6.62012C20.263 6.62033 19.625 7.25805 19.625 8.04492C19.625 8.459 19.289 8.79471 18.875 8.79492C18.4609 8.79482 18.125 8.45907 18.125 8.04492C18.125 7.25805 17.487 6.62033 16.7002 6.62012C16.286 6.62012 15.9503 6.28424 15.9502 5.87012C15.9502 5.4559 16.286 5.12012 16.7002 5.12012C17.4869 5.1199 18.1248 4.48201 18.125 3.69531C18.125 3.28116 18.4609 2.94542 18.875 2.94531Z" fill="currentColor"></path>',
+    chartBars:'<rect x="3" y="10" width="4" height="11" rx="1"/><rect x="10" y="3" width="4" height="18" rx="1"/><rect x="17" y="14" width="4" height="7" rx="1"/>',
+    play:'<path d="M7 3.5a1 1 0 0 1 1.5-.86l12 8.5a1 1 0 0 1 0 1.72l-12 8.5A1 1 0 0 1 7 20.5Z"/>',
+    users:'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2h14ZM20 21v-2a4 4 0 0 0-3-3.87M15 3.13a4 4 0 0 1 0 7.75"/><circle cx="9" cy="7" r="4"/>',
+    star:'<path d="m12 3 2.8 5.7 6.3.9-4.55 4.45 1.07 6.28L12 17.36l-5.62 2.97 1.07-6.28L2.9 9.6l6.3-.9Z"/>',
+    arrowUp:'<path d="M12 20V4m-5 5 5-5 5 5"/>',
     sparkles:'<path d="m9 3 2 5 5 2-5 2-2 5-2-5-5-2 5-2ZM19 3v4M17 5h4M19 15v6M16 18h6"/>',
     search:'<circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 4 4"/>',
     identity:'<circle cx="12" cy="8" r="4"/><path d="M4 22v-2a8 8 0 0 1 16 0v2M16 3l4 1v4"/>',
@@ -32,7 +40,7 @@
     settings:'<path d="M4 6h16M4 12h16M4 18h16"/><circle cx="8" cy="6" r="2"/><circle cx="16" cy="12" r="2"/><circle cx="10" cy="18" r="2"/>',
     close:'<path d="m6 6 12 12M18 6 6 18"/>'
   };
-  const icon=(name,classes='h-4 w-4')=>`<svg class="${classes}" viewBox="0 0 24 24" aria-hidden="true"${name==='assistants'?' style="stroke:none"':''}>${paths[name]||paths.alert}</svg>`;
+  const icon=(name,classes='h-4 w-4')=>`<svg class="${classes}${name==='assistants'?' ivy-assistants-icon shrink-0':''}" viewBox="0 0 24 24" aria-hidden="true">${paths[name]||paths.alert}</svg>`;
   const sourceAssets={
     'Entra ID':'assistant-creation/src/assets/integrations/entra-id.png',
     'Microsoft 365':'components/assets/microsoft-365.png',Intune:'components/assets/intune.svg',Sophos:'components/assets/sophos.png',
@@ -53,10 +61,10 @@
   const assistants=[
     {id:1,title:'Identity & Access',glyph:'identity',family:'purple',enabled:true,scope:'312 identities',last:'15m ago',sources:['Entra ID','Microsoft 365','Intune'],description:'Investigates sign-in failures, access restrictions, and identity changes across users, devices, and applications.',checks:['Authentication failures and recurring access issues','Privileged access and identity changes','Device and application context behind access problems'],coverage:'Identity records are matched across the three connected sources.'},
     {id:2,title:'Endpoint Health',glyph:'health',family:'blue',enabled:true,scope:'148 devices',last:'35m ago',sources:['Intune','Kaseya VSA'],description:'Investigates device reliability, performance, patching, and management problems before they interrupt users.',checks:['Device reliability and performance patterns','Patching and deployment failures','Management check-ins and compliance evidence'],coverage:'12 devices lack recent check-in evidence. Their current health cannot be verified.',coverageGap:true},
-    {id:3,title:'Endpoint Security',glyph:'security',family:'orange',enabled:true,scope:'148 devices',last:'10m ago',sources:['Sophos','Intune'],description:'Investigates endpoint threats, protection health, encryption, and security-control failures using source evidence.',checks:['Threat detections and protection-agent health','Reported encryption and security-control state','Changes in protection coverage across devices'],coverage:'Sophos protection records are linked to the Intune device inventory.'},
-    {id:4,title:'Network Health',glyph:'network',family:'teal',enabled:false,scope:'5 sites · 18 devices',last:'20m ago',sources:['Cisco Meraki','Cisco Umbrella'],description:'Investigates connectivity, infrastructure health, performance, and recurring network problems across your sites.',checks:['Offline devices and recurring connectivity failures','Infrastructure health and performance changes','DNS blocks and network-policy context'],coverage:'Five sites have recent network and DNS evidence.'},
+    {id:3,title:'Endpoint Security',glyph:'security',family:'orange',enabled:false,scope:'148 devices',last:'10m ago',sources:['Sophos','Intune'],description:'Investigates endpoint threats, protection health, encryption, and security-control failures using source evidence.',checks:['Threat detections and protection-agent health','Reported encryption and security-control state','Changes in protection coverage across devices'],coverage:'Sophos protection records are linked to the Intune device inventory.'},
+    {id:4,title:'Network Health',glyph:'network',family:'teal',enabled:true,pending:true,scope:'5 sites · 18 devices',last:null,sources:['Cisco Meraki','Cisco Umbrella'],description:'Investigates connectivity, infrastructure health, performance, and recurring network problems across your sites.',checks:['Offline devices and recurring connectivity failures','Infrastructure health and performance changes','DNS blocks and network-policy context'],coverage:'Five sites have recent network and DNS evidence.'},
     {id:5,title:'Application & Licensing',glyph:'licensing',family:'cyan',enabled:false,scope:null,last:null,sources:['Microsoft 365','Entra ID'],description:'Investigates application access, provisioning, and license usage to surface entitlement gaps and potential inefficiencies.',checks:['Application access and entitlement gaps','Provisioning and license-assignment problems','Usage evidence and potential licensing inefficiencies'],coverage:'Connected Microsoft 365 and Entra ID sources are ready to use.'}
-  ].map(item=>({...item,cadence:'daily',selectedCapabilities:[0,1,2,3,4],selectedSources:[...item.sources],notify:true,notifyChannels:['in-app'],pending:false,startTime:'08:00',timeZone:'America/Los_Angeles',day:'Monday',running:false}));
+  ].map(item=>({...item,cadence:'daily',selectedCapabilities:[0,1,2,3,4],selectedSources:[...item.sources],notify:true,notifyChannels:['in-app'],pending:item.pending??false,startTime:'08:00',timeZone:'America/Los_Angeles',day:'Monday',running:false}));
   const findings=[
     {id:'security-threat',assistant:3,title:'Active malware detection on FIN-LT-01.',severity:'critical',change:'New',affected:'1 device',source:'Sophos',checked:'10m ago',first:'Today, 9:10 AM',acknowledged:false,evidence:'Sophos reports an active malware detection on FIN-LT-01. The device identity is matched to its Intune inventory record.',next:'Inspect the threat evidence and confirm the device’s current protection state in Sophos.',history:['First observed in the latest security check.','The source still reports the detection as active.']},
     {id:'identity-signin',assistant:1,title:'Sign-in failures are affecting more Finance users.',severity:'high',change:'Worsened',affected:'7 users',source:'Entra ID',checked:'15m ago',first:'3 days ago',acknowledged:false,evidence:'The same access problem now affects 7 Finance users, up from 4. Entra ID contains 26 failed sign-ins for the affected users. The available evidence does not yet establish a policy as the cause.',next:'Compare sign-in details, device context, and policy results for the affected users.',history:['First observed: 4 users affected.','Latest material change: affected population increased to 7.']},
@@ -71,15 +79,15 @@
     'identity-signin':{reference:'F-1002',objects:['alex.morgan','jamie.lee','casey.patel','riley.chen','taylor.reed','jordan.ellis','morgan.wells'].map(name=>[name+'@example.com','User','entra-'+name]),confirmed:['26 failed sign-ins are recorded for 7 Finance users.','The affected population increased from 4 to 7 users.','A device-compliance requirement is recorded in 18 of the failed sign-in records; effective policy outcomes still need comparison.'],hypotheses:['A shared device-compliance requirement may explain the failures; policy results still need comparison.'],unknowns:['The cause is not established. Applicable policy configuration alone does not prove effective enforcement.'],observed:'15m ago'},
     'security-encryption':{reference:'F-1003',objects:['FIN-LT-04','FIN-LT-08','OPS-LT-12','OPS-LT-19'].map(name=>[name,'Device','intune-'+name.toLowerCase()]),confirmed:['The latest Intune device reports list encryption as off on these four devices.'],hypotheses:[],unknowns:['Device-owner confirmation and the reason for encryption being off are still outstanding.'],observed:'10m ago'},
     'identity-admin':{reference:'F-1004',objects:[['admin.finance@example.com','Account','entra-admin-finance'],['admin.operations@example.com','Account','entra-admin-operations']],confirmed:['Two privileged accounts have no registration record in the collected MFA evidence.'],hypotheses:[],unknowns:['Effective sign-in enforcement and the reason for the missing registration evidence are unverified.'],observed:'15m ago'},
-    'health-checkin':{reference:'F-1005',verification:'unavailable',freshness:'stale',objects:['OPS-LT-07','OPS-LT-11','FIN-LT-16'].map(name=>[name,'Device','intune-'+name.toLowerCase()]),confirmed:['Three devices have missed expected management check-ins.','The last available Intune device reports are 3 days old.','Kaseya VSA reports activity 15m ago for OPS-LT-07, despite its stale Intune check-in.'],supportingSources:['Intune','Kaseya VSA'],hypotheses:['A management connection problem is one explanation to investigate.'],unknowns:['Whether the devices are currently online or healthy cannot be verified. Missing reports do not establish resolution.'],observed:'3 days ago'},
+    'health-checkin':{reference:'F-1005',condition:'closed',closureReason:'This finding is closed in the demo. The last observed evidence is retained.',verification:'unavailable',freshness:'stale',objects:['OPS-LT-07','OPS-LT-11','FIN-LT-16'].map(name=>[name,'Device','intune-'+name.toLowerCase()]),confirmed:['Three devices have missed expected management check-ins.','The last available Intune device reports are 3 days old.','Kaseya VSA reports activity 15m ago for OPS-LT-07, despite its stale Intune check-in.'],supportingSources:['Intune','Kaseya VSA'],hypotheses:['A management connection problem is one explanation to investigate.'],unknowns:['Whether the devices are currently online or healthy cannot be verified. Missing reports do not establish resolution.'],observed:'3 days ago'},
     'identity-inactive':{reference:'F-1006',objects:Array.from({length:9},(_,i)=>['review.account'+String(i+1).padStart(2,'0')+'@example.com','Account','m365-review-'+(i+1)]),confirmed:['Nine enabled accounts retain application assignments.','No recent activity appears in the collected service evidence.'],hypotheses:[],unknowns:['Whether access is still needed. Absence of recorded activity does not prove nonuse or that an employee has departed.'],observed:'15m ago'}
   };
   findings.forEach(f=>Object.assign(f,{condition:'open',verification:'verified',freshness:'fresh',conditionKey:f.id,...findingDetails[f.id]}));
-  findings.push(
+  const networkExampleFindings=[
     {id:'network-wireless',reference:'F-1007',assistant:4,title:'Austin Wi-Fi disconnects are improving.',severity:'medium',change:'Improving',condition:'open',conditionKey:'austin-wifi-disconnects',verification:'verified',freshness:'fresh',affected:'3 access points',source:'Cisco Meraki',checked:'20m ago',observed:'20m ago',first:'5 days ago',acknowledged:true,objects:['ATX-AP-01','ATX-AP-02','ATX-AP-03'].map(name=>[name,'Access point','meraki-'+name.toLowerCase()]),evidence:'Meraki reports recurring disconnections on 3 access points, down from 12 in the prior comparison window. Failures still occur, so the condition remains open.',confirmed:['The affected access-point population decreased from 12 to 3.','Recurring disconnections are still reported on the remaining 3 access points.'],hypotheses:[],unknowns:['What caused the improvement and whether it will persist.'],next:'Continue observing the remaining access points and compare their connection evidence.',history:['First observed: 12 access points affected.','Improved: the affected population fell to 3; resolution is not yet verified.']},
     {id:'network-uplink-prior',reference:'F-1008',assistant:4,title:'Boston uplink instability was verified resolved.',severity:'high',change:'Resolved',condition:'resolved',conditionKey:'boston-uplink-instability',verification:'verified',freshness:'fresh',affected:'1 switch',source:'Cisco Meraki',checked:'2 days ago',observed:'Oct 27, 2026 · 10:00 AM Pacific',first:'Oct 24, 2026',resolvedAt:'Oct 27, 2026 · 10:00 AM Pacific',acknowledged:true,objects:[['BOS-SW-02','Switch','meraki-bos-sw-02']],evidence:'Meraki reported a stable uplink and no further uplink-flap events in two consecutive comparison windows, verifying the end of this occurrence on October 27.',confirmed:['Two consecutive checks verified a stable uplink and no continuing flap events for this occurrence.'],hypotheses:[],unknowns:[],resolution:'Stable uplink state and no new flap events in two consecutive comparison windows.',related:'network-uplink-return',next:null,history:['Oct 24: uplink instability first observed on BOS-SW-02.','Oct 27: fresh source evidence verified resolution; this occurrence was closed.']},
     {id:'network-uplink-return',reference:'F-1009',assistant:4,title:'Boston uplink instability has resurfaced.',severity:'high',change:'Resurfaced',condition:'open',conditionKey:'boston-uplink-instability',verification:'verified',freshness:'fresh',affected:'1 switch',source:'Cisco Meraki',checked:'20m ago',observed:'20m ago',first:'Today, 9:00 AM',acknowledged:false,objects:[['BOS-SW-02','Switch','meraki-bos-sw-02']],evidence:'Meraki reports 8 new uplink-flap events on BOS-SW-02 after the previous occurrence was verified resolved on October 27. This is a new occurrence of the same condition.',confirmed:['Eight new flap events are recorded for BOS-SW-02.','The previous occurrence was verified resolved before these events began.'],hypotheses:[],unknowns:['Whether the recurrence shares the earlier cause; no causal relationship to a configuration change has been established.'],related:'network-uplink-prior',next:'Compare the new uplink events with switch health and recent changes before selecting a response.',history:['Oct 27: previous occurrence F-1008 verified resolved.','Today, 9:00 AM: new occurrence F-1009 created after fresh uplink-flap events.']}
-  );
+  ];
   // Recommendations are deliberately curated; a finding alone does not create an action.
   const suggestionCopy={
     'security-encryption':{ready:true,title:'Verify encryption on 4 devices',reason:'Intune reports encryption off. Device-level verification will confirm which devices need follow-up.',step:'Open the four affected device records in Intune and compare their latest encryption reports. Confirm the reported state with device owners before planning a change.'},
@@ -89,15 +97,24 @@
   const dismissedSuggestions=[];
   const assistantRuns=[];
   let restoredRunHistory=false;
+  const isOpenFinding=f=>f.condition==='open';
   const sessionKey='ivy-specialist-preview-v1';
   function restoreSession() {
     try {
-      const stored=JSON.parse(window.sessionStorage.getItem(sessionKey)||'null');if(!stored||![1,2].includes(stored.version))return;
+      const stored=JSON.parse(window.sessionStorage.getItem(sessionKey)||'null');if(!stored||![1,2,3,4].includes(stored.version))return;
       for(const a of assistants){const item=stored.assistants?.find(item=>item.id===a.id);if(!item)continue;if(typeof item.enabled==='boolean')a.enabled=item.enabled;if(Array.isArray(item.selectedSources))a.selectedSources=item.selectedSources.filter(name=>a.sources.includes(name)&&sourceIsConnected(name));if(Object.hasOwn(cadenceLabels,item.cadence))a.cadence=item.cadence;if(Array.isArray(item.selectedCapabilities))a.selectedCapabilities=item.selectedCapabilities.filter(i=>Number.isInteger(i)&&i>=0&&i<capabilitySets[a.id].length);if(typeof item.notify==='boolean')a.notify=item.notify;if(Array.isArray(item.notifyChannels))a.notifyChannels=item.notifyChannels.filter(channel=>['in-app','email'].includes(channel));if(typeof item.pending==='boolean')a.pending=item.pending;if(/^([01]\d|2[0-3]):[0-5]\d$/.test(item.startTime))a.startTime=item.startTime;if(Object.hasOwn(timeZones,item.timeZone))a.timeZone=item.timeZone;if(weekdays.includes(item.day))a.day=item.day;if(typeof item.last==='string'||item.last===null)a.last=item.last;if(stored.version===1&&[4,5].includes(a.id)){a.enabled=false;a.pending=false;}}
-      for(const f of findings){const item=stored.findings?.find(item=>item.id===f.id);if(typeof item?.acknowledged==='boolean'&&f.condition!=='resolved')f.acknowledged=item.acknowledged;if(typeof item?.dismissed==='boolean')f.dismissed=item.dismissed;if(Number.isFinite(item?.alertAt))f.alertAt=item.alertAt;}
+      const security=assistants.find(a=>a.id===3);
+      const network=assistants.find(a=>a.id===4);
+      // Replace the legacy demo defaults while keeping completed user-initiated checks.
+      const legacyNetwork=stored.version<3&&network.last==='20m ago';
+      if(stored.version<3&&security.last==='10m ago'){security.enabled=false;security.pending=false;}
+      if(legacyNetwork)network.last=null;
+      if(stored.version<4&&!network.last){network.enabled=true;network.pending=true;}
+      if(network.last)findings.push(...networkExampleFindings);
+      for(const f of findings){const item=stored.findings?.find(item=>item.id===f.id);if(typeof item?.acknowledged==='boolean'&&isOpenFinding(f))f.acknowledged=item.acknowledged;if(item?.condition==='closed'&&isOpenFinding(f))f.condition='closed';if(typeof item?.dismissed==='boolean')f.dismissed=item.dismissed;if(Number.isFinite(item?.alertAt))f.alertAt=item.alertAt;}
       if(Array.isArray(stored.runs)){
         const validRuns=stored.runs.filter(run=>typeof run.id==='string'&&assistants.some(a=>a.id===run.assistantId)&&Number.isFinite(run.startedAt)&&Array.isArray(run.findings)&&Array.isArray(run.sources)&&['Completed','Incomplete','Running','Cancelled'].includes(run.status));
-        assistantRuns.push(...validRuns);
+        assistantRuns.push(...validRuns.filter(run=>!legacyNetwork||run.assistantId!==network.id));
         restoredRunHistory=true;
         for(const run of assistantRuns){
           if(run.status==='Running'){
@@ -111,7 +128,7 @@
     } catch (_) { /* The file preview also works when browser storage is unavailable. */ }
   }
   function saveSession() {
-    try {window.sessionStorage.setItem(sessionKey,JSON.stringify({version:2,assistants:assistants.map(({id,enabled,selectedSources,selectedCapabilities,cadence,notify,notifyChannels,pending,startTime,timeZone,day,last})=>({id,enabled,selectedSources,selectedCapabilities,cadence,notify,notifyChannels,pending,startTime,timeZone,day,last})),findings:findings.map(({id,acknowledged,dismissed,alertAt})=>({id,acknowledged,dismissed,alertAt})),dismissedSuggestions,runs:assistantRuns}));} catch (_) { /* Optional preview persistence. */ }
+    try {window.sessionStorage.setItem(sessionKey,JSON.stringify({version:4,assistants:assistants.map(({id,enabled,selectedSources,selectedCapabilities,cadence,notify,notifyChannels,pending,startTime,timeZone,day,last})=>({id,enabled,selectedSources,selectedCapabilities,cadence,notify,notifyChannels,pending,startTime,timeZone,day,last})),findings:findings.map(({id,condition,acknowledged,dismissed,alertAt})=>({id,condition,acknowledged,dismissed,alertAt})),dismissedSuggestions,runs:assistantRuns}));} catch (_) { /* Optional preview persistence. */ }
   }
   restoreSession();
   assistants.forEach(a=>{a.selectedSources=a.selectedSources.filter(sourceIsConnected);});
@@ -123,8 +140,8 @@
   const attentionScrollbar=$('#assistant-attention-scrollbar');
   const highlightsToggle=$('#assistants-highlights-toggle');
   let indexHighlightsHidden=false;
-  const owned=a=>findings.filter(f=>f.assistant===a.id&&f.condition!=='resolved');
-  const waiting=items=>items.filter(f=>f.condition!=='resolved'&&!f.acknowledged&&!f.dismissed);
+  const owned=a=>findings.filter(f=>f.assistant===a.id&&isOpenFinding(f));
+  const waiting=items=>items.filter(f=>isOpenFinding(f)&&!f.acknowledged&&!f.dismissed);
   function searchText() {return isOnboarding?'':$('#assistant-search').value.trim();}
   function filtered() {
     const query=searchText().toLowerCase();
@@ -180,6 +197,7 @@
       if(!a.enabled)return;
       run.status='Completed';
       run.finishedAt=Date.now();
+      if(a.id===4&&!a.last)findings.push(...networkExampleFindings);
       run.findings=snapshotFindings(owned(a));
       for(const f of run.findings)f.checked='Just Now';
       a.running=false;
@@ -193,12 +211,12 @@
   }
   function lifecycleBadges(f,showReviewState=true) {
     const changeTone=['Worsened','Resurfaced'].includes(f.change)?'warning':f.change==='Improving'?'success':f.change==='New'?'info':'neutral';
-    return `${badge(f.severity,['critical','high'].includes(f.severity)?'danger':'neutral')}${f.condition==='resolved'?badge('Verified resolved','success'):badge(f.change,changeTone)}${showReviewState&&f.verification==='unavailable'?badge('Verification unavailable','warning'):''}${showReviewState&&f.dismissed?badge('Dismissed'):''}${showReviewState&&f.acknowledged&&!f.dismissed&&f.condition!=='resolved'?badge('Acknowledged'):''}`;
+    return `${badge(f.severity,['critical','high'].includes(f.severity)?'danger':'neutral')}${f.condition==='resolved'?badge('Verified resolved','success'):f.condition==='closed'?badge('Closed'):badge(f.change,changeTone)}${showReviewState&&f.verification==='unavailable'?badge('Verification unavailable','warning'):''}${showReviewState&&f.dismissed?badge('Dismissed'):''}${showReviewState&&f.acknowledged&&!f.dismissed&&isOpenFinding(f)?badge('Acknowledged'):''}`;
   }
   function elapsedMinutes(value) {const match=value.match(/(\d+)\s*(m|h|day)/);return match?Number(match[1])*(match[2]==='day'?1440:match[2]==='h'?60:1):0;}
   function matchesFindingState(f) {
     if(findingState==='all')return true;
-    if(findingState==='open')return f.condition!=='resolved';
+    if(findingState==='open')return isOpenFinding(f);
     if(findingState==='resolved')return f.condition==='resolved';
     if(findingState==='unavailable')return f.verification==='unavailable';
     return f.change.toLowerCase()===findingState;
@@ -298,7 +316,7 @@
     'chat-finding':{label:'Start a Chat',glyph:'sparkles'}
   };
   function findingReviewControl(f,{modal=false}={}) {
-    const disabled=action=>modal&&((action==='acknowledge-open'&&f.acknowledged)||(f.condition==='resolved'&&action!=='chat-finding'));
+    const disabled=action=>modal&&((action==='acknowledge-open'&&f.acknowledged)||(!isOpenFinding(f)&&action!=='chat-finding'));
     return `<span class="as-finding-split-action">
         <button type="button" class="as-finding-icon-button" data-finding-primary data-specialist-action="acknowledge-open" data-finding-id="${f.id}" aria-label="Acknowledge for Later" title="Acknowledge for Later"${disabled('acknowledge-open')?' disabled':''}>${icon('check')}<span>Acknowledge</span></button>
         <details class="as-finding-action-menu"><summary aria-label="Choose Finding Action" title="Choose Finding Action"><svg class="as-finding-dropdown-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary>
@@ -318,9 +336,9 @@
     const recommendation=options.recommendation
       ? `<span class="specialist-finding-aside">${checkedTime}<span class="specialist-finding-recommendation"><strong class="text-xs font-medium">${icon('sparkles')}Ivy recommends...</strong><span class="text-xs">${esc(suggestionCopy[f.id]?.ready?suggestionCopy[f.id].title:f.next||'No recommendation available.')}</span></span></span>${findingActions}`
       : `<span class="specialist-finding-arrow">${icon('arrow')}</span>`;
-    if(options.findingsTab)return `<button type="button" class="specialist-finding specialist-issue-row specialist-tab-finding p-4 rounded-lg" data-severity="${f.severity}" data-specialist-action="finding" data-finding-id="${f.id}"><span class="specialist-finding-icon" data-severity="${f.severity}">${icon('alert')}</span><span class="specialist-finding-copy"><span class="specialist-issue-top"><span class="specialist-finding-top text-xs">${lifecycleBadges(f)}<span class="specialist-finding-assistant ml-2">${icon('assistants','h-3 w-3')}${esc(a.title)}</span></span><span class="specialist-issue-time text-xs">${f.verification==='unavailable'?'Last Evidence '+esc(f.observed):'Checked '+esc(f.checked)}</span></span><strong class="text-sm font-semibold">${esc(headline)}</strong><span class="specialist-issue-evidence text-xs">${esc(evidence)}</span></span><span class="specialist-tab-finding-footer flex gap-4"><span class="specialist-issue-meta text-xs">${source(f.source)}<span aria-hidden="true">•</span><span class="inline-flex items-center gap-1">${icon('identity','h-3 w-3')}${esc(f.affected)}</span></span><span class="specialist-finding-arrow">${icon('arrow')}</span></span></button>`;
+    if(options.findingsTab)return `<button type="button" class="specialist-finding specialist-issue-row specialist-tab-finding p-4 rounded-lg" data-severity="${f.severity}" data-specialist-action="finding" data-finding-id="${f.id}"><span class="specialist-finding-icon" data-severity="${f.severity}">${icon('alert')}</span><span class="specialist-finding-copy"><span class="specialist-issue-top"><span class="specialist-finding-top text-xs">${lifecycleBadges(f)}<span class="specialist-finding-assistant ml-2">${icon('assistants')}${esc(a.title)}</span></span><span class="specialist-issue-time text-xs">${f.verification==='unavailable'?'Last Evidence '+esc(f.observed):'Checked '+esc(f.checked)}</span></span><strong class="text-sm font-semibold">${esc(headline)}</strong><span class="specialist-issue-evidence text-xs">${esc(evidence)}</span></span><span class="specialist-tab-finding-footer flex gap-4"><span class="specialist-issue-meta text-xs">${source(f.source)}<span aria-hidden="true">•</span><span class="inline-flex items-center gap-1">${icon('identity','h-3 w-3')}${esc(f.affected)}</span></span><span class="specialist-finding-arrow">${icon('arrow')}</span></span></button>`;
 
-    return `<${options.recommendation?'article':'button type="button"'} class="specialist-finding specialist-issue-row${options.recommendation?' specialist-finding-with-recommendation':''} ${options.list?'specialist-issue-list-row px-2 py-3 rounded-none':'p-4 rounded-lg'}${priority?' specialist-issue-priority':''}" data-severity="${f.severity}"${options.recommendation?'':` data-specialist-action="finding" data-finding-id="${f.id}"`}${options.descriptionTooltip?` title="${esc(evidence)}"`:""}>${options.list?'':`<span class="specialist-finding-icon" data-severity="${f.severity}">${icon('alert')}</span>`}<span class="specialist-finding-copy"><span class="specialist-issue-top"><span class="specialist-finding-top text-xs">${priority?'<span class="specialist-priority-label font-medium">Top Priority</span>':''}${lifecycleBadges(f,!options.preview)}</span>${options.recommendation?'':checkedTime}</span><strong class="text-sm font-semibold">${esc(headline)}</strong>${options.preview||options.descriptionTooltip?'':`<span class="specialist-issue-evidence text-xs">${esc(evidence)}</span>`}<span class="specialist-issue-meta text-xs">${options.descriptionTooltip?`${source(f.source)}<span aria-hidden="true">•</span><span class="inline-flex items-center gap-1">${icon('identity','h-3 w-3')}${esc(f.affected)}</span><span aria-hidden="true">•</span><span class="specialist-finding-assistant">${icon('assistants','h-3 w-3')}${esc(a.title)}</span>`:`<span class="inline-flex items-center gap-1">${icon('identity','h-3 w-3')}${esc(f.affected)}</span><span aria-hidden="true">•</span>${source(f.source)}<span aria-hidden="true">•</span><span class="specialist-finding-assistant">${icon('assistants','h-3 w-3')}${esc(a.title)}</span>`}</span>${options.history===true?`<span class="specialist-history-events text-xs">${f.history.map(event=>`<span>${esc(event)}</span>`).join('')}</span>`:''}</span>${recommendation}</${options.recommendation?'article':'button'}>`;
+    return `<${options.recommendation?'article':'button type="button"'} class="specialist-finding specialist-issue-row${options.recommendation?' specialist-finding-with-recommendation':''} ${options.list?'specialist-issue-list-row px-2 py-3 rounded-none':'p-4 rounded-lg'}${priority?' specialist-issue-priority':''}" data-severity="${f.severity}"${options.recommendation?'':` data-specialist-action="finding" data-finding-id="${f.id}"`}${options.descriptionTooltip?` title="${esc(evidence)}"`:""}>${options.list?'':`<span class="specialist-finding-icon" data-severity="${f.severity}">${icon('alert')}</span>`}<span class="specialist-finding-copy"><span class="specialist-issue-top"><span class="specialist-finding-top text-xs">${priority?'<span class="specialist-priority-label font-medium">Top Priority</span>':''}${lifecycleBadges(f,!options.preview)}</span>${options.recommendation?'':checkedTime}</span><strong class="text-sm font-semibold">${esc(headline)}</strong>${options.preview||options.descriptionTooltip?'':`<span class="specialist-issue-evidence text-xs">${esc(evidence)}</span>`}<span class="specialist-issue-meta text-xs">${options.descriptionTooltip?`${source(f.source)}<span aria-hidden="true">•</span><span class="inline-flex items-center gap-1">${icon('identity','h-3 w-3')}${esc(f.affected)}</span><span aria-hidden="true">•</span><span class="specialist-finding-assistant">${icon('assistants')}${esc(a.title)}</span>`:`<span class="inline-flex items-center gap-1">${icon('identity','h-3 w-3')}${esc(f.affected)}</span><span aria-hidden="true">•</span>${source(f.source)}<span aria-hidden="true">•</span><span class="specialist-finding-assistant">${icon('assistants')}${esc(a.title)}</span>`}</span>${options.history===true?`<span class="specialist-history-events text-xs">${f.history.map(event=>`<span>${esc(event)}</span>`).join('')}</span>`:''}</span>${recommendation}</${options.recommendation?'article':'button'}>`;
   }
   function findingsTable(items,{includeAssistant=false}={}) {
     const widths=includeAssistant?[30,18,10,15,14,13]:[38,12,18,17,15];
@@ -328,7 +346,7 @@
       <colgroup>${widths.map(width=>`<col style="width:${width}%">`).join('')}</colgroup>
       <thead><tr><th scope="col">Finding</th>${includeAssistant?'<th scope="col">Assistant</th>':''}<th scope="col">Priority</th><th scope="col">Status</th><th scope="col">Source</th><th scope="col">Last Checked</th></tr></thead>
       <tbody>${items.map(f=>{
-        const status=f.condition==='resolved'?'Resolved':f.dismissed?'Dismissed':f.acknowledged?'Acknowledged':f.change||'Open';
+        const status=f.condition==='resolved'?'Resolved':f.condition==='closed'?'Closed':f.dismissed?'Dismissed':f.acknowledged?'Acknowledged':f.change||'Open';
         const tone=f.condition==='resolved'?'success':['Worsened','Resurfaced'].includes(status)?'warning':status==='New'?'info':'neutral';
         return `<tr data-specialist-action="finding" data-finding-id="${f.id}">
           <td><button type="button" class="as-finding-table-open" data-specialist-action="finding" data-finding-id="${f.id}">${esc(f.title)}</button><span class="as-finding-table-affected">${esc(f.affected)}</span></td>
@@ -351,7 +369,7 @@
   function seedAssistantRuns() {
     const now=Date.now();
     for(const a of assistants.filter(item=>item.last)){
-      const current=findings.filter(f=>f.assistant===a.id&&f.condition!=='resolved');
+      const current=findings.filter(f=>f.assistant===a.id&&isOpenFinding(f));
       for(let day=0;day<14;day++){
         const startedAt=now-(day?day*86400000:elapsedMinutes(a.last)*60000);
         const error=day===2&&a.id===2?'Could not access Intune. The run stopped before completing the investigation.':null;
@@ -388,15 +406,15 @@
   function runCount(run) {
     return run.status==='Completed'?String(run.findings.length):'—';
   }
-  function runList(assistantId,limit=5) {
-    const runs=getAssistantRuns(assistantId).slice(0,limit);
+  function runList(assistantId,limit=5,sampleRuns) {
+    const runs=(sampleRuns??getAssistantRuns(assistantId)).slice(0,limit);
     return `<ul class="specialist-index-runs specialist-clickable-runs">${runs.map(run=>{
       const a=assistants.find(item=>item.id===run.assistantId);
-      return `<li><button type="button" class="specialist-run-link" data-specialist-action="run-result" data-run-id="${esc(run.id)}" aria-label="View Run ${run.number} for ${esc(a.title)}">
+      return `<li>${sampleRuns?'<div class="specialist-run-link">':`<button type="button" class="specialist-run-link" data-specialist-action="run-result" data-run-id="${esc(run.id)}" aria-label="View Run ${run.number} for ${esc(a.title)}">`}
         <span class="specialist-index-run-icon" data-run-state="${run.status==='Completed'?'complete':run.status==='Running'?'running':'error'}">${icon(run.status==='Completed'?'check':run.status==='Running'?'clock':'alert')}</span>
         <span class="specialist-index-run-copy">${assistantId===undefined?`<strong class="text-xs font-medium">${esc(a.title)}</strong>`:''}<span class="text-xs">#${run.number} · ${esc(runTime(run))}</span></span>
         ${run.status==='Completed'?`<span class="specialist-index-run-count text-xs">${runCount(run)} ${run.findings.length===1?'Finding':'Findings'}</span>`:runStatus(run)}
-      </button></li>`;
+      ${sampleRuns?'</div>':'</button>'}</li>`;
     }).join('')}${!runs.length?'<li class="text-xs">No Runs Yet</li>':''}</ul>`;
   }
   function runHistoryTable(runs,{includeAssistant=false}={}) {
@@ -409,6 +427,16 @@
         <td>${esc(runTime(run))}</td><td>${runStatus(run)}</td><td>${runCount(run)}</td><td>${runDuration(run)}</td><td>${run.trigger}</td>
       </tr>`).join('')}</tbody>
     </table></div>`;
+  }
+  function historyPagination(totalPages) {
+    const button=(page,label,content,disabled=false)=>`<button type="button" data-specialist-action="history-page" data-history-page="${page}" aria-label="${label}"${disabled?' disabled':''}${page===historyPage&&label.startsWith('Page ')?' aria-current="page"':''}>${content}</button>`;
+    const pages=Array.from({length:totalPages},(_,i)=>i+1).filter(page=>totalPages<=7||page<=3||page>totalPages-3||Math.abs(page-historyPage)<=1);
+    let previous=0;
+    return button(historyPage-1,'Previous Page',icon('arrowLeft'),historyPage===1)+pages.map(page=>{
+      const gap=previous&&page>previous+1?'<span aria-hidden="true">…</span>':'';
+      previous=page;
+      return gap+button(page,`Page ${page}`,page);
+    }).join('')+button(historyPage+1,'Next Page',icon('arrow'),historyPage===totalPages);
   }
   function openRunResult(run) {
     const a=assistants.find(item=>item.id===run.assistantId);
@@ -432,13 +460,12 @@
     dialog.dataset.runId=run.id;
   }
   function indexRecentRuns(expanded=false) {
-    return `<header class="specialist-section-heading"><h2 ${expanded?'id="assistant-dialog-title"':''} class="text-sm font-medium">${expanded?'Run History':'Recent Runs'}</h2>${expanded?'':'<button type="button" class="a-text" data-specialist-action="all-runs">View All</button>'}</header>
+    return `<header class="specialist-section-heading"><h2 ${expanded?'id="assistant-dialog-title"':''} class="text-sm font-medium${expanded?'':' flex items-center gap-2'}">${expanded?'Run History':icon('clock')+'Recent Runs'}</h2>${expanded?'':'<button type="button" class="a-text" data-specialist-action="all-runs">View All</button>'}</header>
       ${expanded?runHistoryTable(getAssistantRuns(),{includeAssistant:true}):runList()}`;
   }
   function updateAttentionScrollbar() {
     const {clientWidth,scrollLeft,scrollWidth}=attentionRail;
-    const hasFindings=attentionRail.firstElementChild?.matches('.specialist-finding');
-    const overflow=clientWidth&&hasFindings?Math.max(0,scrollWidth-clientWidth):0;
+    const overflow=clientWidth?Math.max(0,scrollWidth-clientWidth):0;
     attentionScrollbar.max=String(overflow);
     attentionScrollbar.disabled=overflow===0;
     attentionScrollbar.value=String(Math.max(0,Math.min(scrollLeft,overflow)));
@@ -448,20 +475,120 @@
     if(!attentionRail)return;
     const attention=waiting(findings).filter(f=>['New','Worsened','Resurfaced'].includes(f.change)||f.severity==='critical').sort((a,b)=>rank[b.severity]-rank[a.severity]||Number(b.change==='Worsened')-Number(a.change==='Worsened'));
     $('#assistant-attention').hidden=view!=='overview';
-    attentionRail.innerHTML=attention.length?attention.map(f=>findingRow(f,{descriptionTooltip:true})).join(''):'<div class="specialist-caught-up text-sm">No new, worsening, or urgent conditions to review. Ongoing findings remain available in Stream.</div>';
+    const {critical,nonCritical}=openFindingCounts();
+    $('#assistant-attention-count').textContent=`${attention.length} of ${critical+nonCritical} open findings.`;
+    const cards=attention.length?attention.map(f=>findingRow(f,{descriptionTooltip:true})).join(''):'<div class="specialist-caught-up text-sm">No new, worsening, or urgent conditions to review. Ongoing findings remain available in Stream.</div>';
+    attentionRail.innerHTML=`${cards}<button type="button" class="specialist-attention-all" data-specialist-action="all-findings">
+      <strong class="text-sm font-medium">+${nonCritical} open non-critical ${nonCritical===1?'finding':'findings'}</strong>
+      <span class="text-xs">View all ${icon('arrow','h-3 w-3')}</span>
+    </button>`;
     updateAttentionScrollbar();
   }
+  function openFindingCounts() {
+    const open=findings.filter(f=>isOpenFinding(f));
+    return {critical:open.filter(f=>f.severity==='critical').length,nonCritical:open.filter(f=>f.severity!=='critical').length};
+  }
+  function summaryFindingStatus(enabled) {
+    const {critical,nonCritical}=openFindingCounts();
+    return `<div class="specialist-summary-statuses"><div class="specialist-summary-status"><strong>${enabled.length} of ${assistants.length}</strong><span>Assistants Enabled</span></div><div class="specialist-summary-status"><strong>${critical}</strong><span>Open Critical Findings</span></div><div class="specialist-summary-status"><strong>${nonCritical}</strong><span>Open Non-Critical Findings</span></div></div>`;
+  }
+  function findingsTrendChart(width=390,graphicOnly=false) {
+    const {critical,nonCritical}=openFindingCounts();
+    const series=[
+      {label:'Critical',color:'var(--ivy-color-error-500)',values:[3,2,4,3,1,2,3,2,2,1,2,critical]},
+      {label:'Non-Critical',color:'var(--ivy-color-gray-400)',values:[14,12,15,11,13,10,12,11,9,10,9,nonCritical]}
+    ];
+    const point=(value,index)=>[8+index*(width-16)/11,98-value/20*84];
+    const marks=[...series].reverse().map(({label,color,values})=>{
+      const points=values.map(point);
+      const line=points.reduce((path,[x,y],index)=>{
+        if(!index)return `M ${x} ${y}`;
+        const [px,py]=points[index-1],middle=(px+x)/2;
+        return `${path} C ${middle} ${py}, ${middle} ${y}, ${x} ${y}`;
+      },'');
+      const gradientId=`specialist-weekly-${label.toLowerCase()}-fill`;
+      const area=`<defs><linearGradient id="${gradientId}" x1="0%" y1="0%" x2="0%" y2="100%"><stop offset="0%" stop-color="${color}" stop-opacity="0.12"/><stop offset="100%" stop-color="${color}" stop-opacity="0"/></linearGradient></defs>
+        <path d="${line} L ${width-8} 98 L 8 98 Z" style="fill:url(#${gradientId});stroke:none;pointer-events:none" aria-hidden="true"/>`;
+      return `${area}<path d="${line}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linecap="round" vector-effect="non-scaling-stroke"${label==='Non-Critical'?' stroke-dasharray="5 6"':''}/>${points.map(([x,y],i)=>`<g class="specialist-weekly-point" tabindex="0" aria-label="${i===11?'This Week':`${11-i} Weeks Ago`}: ${values[i]} ${label} Findings"><title>${i===11?'This Week':`${11-i} Weeks Ago`}: ${values[i]} ${label} Findings</title><circle cx="${x}" cy="${y}" r="10" fill="transparent" style="pointer-events:all"/><circle class="specialist-weekly-point-dot" cx="${x}" cy="${y}" r="3" fill="${color}"/></g>`).join('')}`;
+    }).join('');
+    const grid=[0,10,20].map(value=>`<line x1="8" x2="${width-8}" y1="${98-value/20*84}" y2="${98-value/20*84}" stroke="var(--ivy-color-indigo-100)"/>`).join('');
+    const graphic=grid+marks;
+    if(graphicOnly)return graphic;
+    return `<figure class="specialist-resolution-trend"><figcaption><span class="specialist-weekly-heading">Findings per Week<span class="specialist-weekly-key">${series.map(({label,color})=>`<span><i style="border-color:${color}"${label==='Non-Critical'?' class="is-dashed"':''}></i>${label}</span>`).join('')}</span></span><span>Last 12 Weeks</span></figcaption>
+      <div class="specialist-weekly-plot"><div class="specialist-weekly-y-axis" aria-hidden="true">${[20,10,0].map(value=>`<span style="top:${(98-value/20*84)/112*100}%">${value}</span>`).join('')}</div><svg class="specialist-resolution-line" viewBox="0 0 ${width} 112" role="img" aria-label="Illustrative weekly finding counts. ${series.map(item=>item.label+': '+item.values.join(', ')).join('. ')}. Oldest to newest." style="stroke:none">
+        ${graphic}
+      </svg></div><div class="specialist-resolution-axis"><span>12 Weeks Ago</span><span>This Week</span></div></figure>`;
+  }
+  function observeSummaryChart() {
+    if(summaryChartObserver)summaryChartObserver.disconnect();
+    const chart=$('#assistant-summary .specialist-resolution-line');
+    if(!chart)return;
+    summaryChartObserver=new ResizeObserver(entries=>{
+      const width=entries[0].contentRect.width;
+      if(width<=0)return;
+      chart.setAttribute('viewBox',`0 0 ${width} 112`);
+      chart.innerHTML=findingsTrendChart(width,true);
+    });
+    summaryChartObserver.observe(chart);
+  }
+  function summaryMetricChart(key,color,values) {
+    const maximum=Math.max(...values,1);
+    const points=values.map((value,index)=>[8+index*28,60-value/maximum*44]);
+    const line=points.reduce((path,[x,y],index)=>{
+      if(!index)return `M ${x} ${y}`;
+      const [px,py]=points[index-1],middle=(px+x)/2;
+      return `${path} C ${middle} ${py}, ${middle} ${y}, ${x} ${y}`;
+    },'');
+    return `<svg class="specialist-summary-sparkline" viewBox="0 0 212 68" preserveAspectRatio="none" aria-hidden="true" style="stroke:none"><defs><linearGradient id="summary-fill-${key}" x1="0" y1="0" x2="0" y2="1"><stop stop-color="var(--ivy-color-${color}-100)"/><stop offset="1" stop-color="var(--ivy-color-brand-25)"/></linearGradient></defs><path d="${line} L 204 68 L 8 68 Z" fill="url(#summary-fill-${key})"/><path d="${line}" fill="none" stroke="var(--ivy-color-${color}-500)" stroke-width="2" stroke-linecap="round"/></svg>`;
+  }
+  async function selectSummarySlide(next) {
+    if(next===summarySlide||summaryAnimating||![0,1].includes(next))return;
+    const root=$('#assistant-summary');
+    const slides=[...root.querySelectorAll('.specialist-summary-slide')];
+    const outgoing=slides[summarySlide],incoming=slides[next];
+    summaryAnimating=true;
+    const duration=window.matchMedia('(prefers-reduced-motion: reduce)').matches?0:240;
+    try {
+      await outgoing.animate([{opacity:1,transform:'translateX(0)'},{opacity:0,transform:'translateX(16px)'}],{duration,easing:'ease-in'}).finished;
+      outgoing.setAttribute('aria-hidden','true');outgoing.inert=true;
+      incoming.setAttribute('aria-hidden','false');incoming.inert=false;
+      summarySlide=next;
+      root.querySelectorAll('[data-summary-slide]').forEach(button=>button.setAttribute('aria-pressed',String(Number(button.dataset.summarySlide)===next)));
+      await incoming.animate([{opacity:0,transform:'translateX(-16px)'},{opacity:1,transform:'translateX(0)'}],{duration,easing:'ease-out'}).finished;
+    } finally {summaryAnimating=false;}
+  }
   function render() {
+    for(const f of findings){
+      if(isOpenFinding(f)&&!assistants.find(a=>a.id===f.assistant).enabled){
+        f.condition='closed';
+        delete f.alertAt;
+      }
+    }
     saveSession();
     if(isShow){showPage.render();return;}
     if(isOnboardingPreview)document.querySelectorAll('[data-preview-finding]').forEach(slide=>{
-      const finding=findings.find(item=>item.id===slide.dataset.previewFinding);
+      const finding=[...findings,...networkExampleFindings].find(item=>item.id===slide.dataset.previewFinding);
       if(finding)slide.innerHTML=findingRow(finding,{preview:true});
     });
     renderAttention();
     const enabled=assistants.filter(a=>a.enabled),unreviewed=waiting(findings),changed=unreviewed.filter(f=>['New','Worsened','Resurfaced'].includes(f.change)),items=filtered();
     if(!isOnboarding){
-    $('#assistant-summary').innerHTML=`<div class="specialist-summary-intro"><span class="specialist-eyebrow text-xs">PROACTIVE BY DESIGN</span><h2 class="text-xl font-semibold">Specialists that discover what needs your attention.</h2><p class="text-sm">Enable a focused role, connect its evidence, and let Ivy investigate changes over time.</p></div><div class="specialist-summary-stats">${[[`${enabled.length} of 5`,'Enabled'],[unreviewed.length,'To review'],[changed.length,'New or worsened'],[assistants.filter(a=>a.enabled&&a.coverageGap).length,'Coverage gaps']].map(([value,label])=>`<div><strong class="text-2xl font-semibold">${value}</strong><span class="text-xs">${label}</span></div>`).join('')}</div>`;
+    const resolvedCount=findings.filter(f=>f.condition==='resolved').length;
+    const coverageCount=assistants.filter(a=>a.enabled&&a.coverageGap).length;
+    const summaryMetrics=[
+      ['review',unreviewed.length,'To Review','blue',[11,9,10,8,9,8,7,unreviewed.length]],
+      ['changed',changed.length,'New or Worsened','purple',[2,4,3,5,3,6,5,changed.length]],
+      ['resolved',resolvedCount,'Findings Resolved','teal',[0,0,1,1,0,2,1,resolvedCount]],
+      ['coverage',coverageCount,'Coverage Gaps','orange',[3,3,2,3,2,2,1,coverageCount]]
+    ].map(([key,value,label,color,values])=>`<article class="specialist-metric-card" style="--metric-color:var(--ivy-color-${color}-500)"><h3>${label}</h3><strong>${value}</strong><span class="specialist-metric-caption">${key==='coverage'?'Enabled Assistants':key==='resolved'?'Verified Resolved':'Open Findings'}</span>${summaryMetricChart(key,color,values)}<div class="specialist-summary-metric-axis" aria-hidden="true"><span>8 Weeks Ago</span><span>This Week</span></div></article>`).join('');
+    $('#assistant-summary').innerHTML=`<div class="specialist-summary-heading"><span class="specialist-summary-pill text-xs"><svg class="h-4 w-4" style="fill:currentColor;stroke:none" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="m9 3 2.2 5.8L17 11l-5.8 2.2L9 19l-2.2-5.8L1 11l5.8-2.2Z M19 13l1.1 2.9L23 17l-2.9 1.1L19 21l-1.1-2.9L15 17l2.9-1.1Z"/></svg>Proactive by Design</span></div><div class="specialist-summary-stage">
+      <div id="assistant-summary-proactive" class="specialist-summary-slide specialist-summary-proactive" role="group" aria-roledescription="slide" aria-label="1 of 2: Proactive by Design" aria-hidden="${summarySlide!==0}" ${summarySlide!==0?'inert':''}>
+        <div class="specialist-summary-intro"><h2 class="text-display-sm font-bold">Discover what needs your attention.</h2><p class="text-gray-500">Enable a focused role, connect relevant sources, and let Ivy investigate changes over time.</p>${summaryFindingStatus(enabled)}</div>
+        ${findingsTrendChart()}
+      </div>
+      <div id="assistant-summary-metrics" class="specialist-summary-slide specialist-summary-metrics" role="group" aria-roledescription="slide" aria-label="2 of 2: Assistant Overview" aria-hidden="${summarySlide!==1}" ${summarySlide!==1?'inert':''}>${summaryMetrics}</div>
+    </div><nav class="specialist-summary-controls" aria-label="Assistant Highlights Slides">${['Proactive by Design','Assistant Overview'].map((label,index)=>`<button type="button" data-specialist-action="summary-slide" data-summary-slide="${index}" aria-label="Show ${label}" aria-controls="assistant-summary-${index===0?'proactive':'metrics'}" aria-pressed="${summarySlide===index}"></button>`).join('')}</nav>`;
+    observeSummaryChart();
     $('#assistant-recent-runs').innerHTML=indexRecentRuns();
     }
     $('#assistant-grid').innerHTML=layout==='list'?(items.length?assistantTable(items):''):items.map(isOnboarding?onboardingCard:view==='overview'?overviewCard:card).join('');
@@ -480,7 +607,13 @@
     if(!isOnboarding)$('#assistant-catalog-title').textContent='Assistants';
     const queryText=searchText().toLowerCase();
     const history=getAssistantRuns().filter(run=>`${assistants.find(a=>a.id===run.assistantId).title} ${run.number} ${run.status} ${run.trigger} ${run.sources.join(' ')}`.toLowerCase().includes(queryText));
-    $('#assistant-history-list').innerHTML=history.length?runHistoryTable(history,{includeAssistant:true}):'';
+    const historyNav=$('#assistant-history-pagination');
+    if(queryText!==historyQuery){historyPage=1;historyQuery=queryText;}
+    const historyPages=Math.max(1,Math.ceil(history.length/historyPageSize));
+    historyPage=Math.max(1,Math.min(historyPage,historyPages));
+    if(historyNav)historyNav.innerHTML=historyPagination(historyPages);
+    const visibleHistory=historyNav?history.slice((historyPage-1)*historyPageSize,historyPage*historyPageSize):history;
+    $('#assistant-history-list').innerHTML=history.length?runHistoryTable(visibleHistory,{includeAssistant:true}):'';
     $('#assistant-history-empty').hidden=history.length>0;
     const stream=findings.filter(matchesFindingState).filter(f=>`${f.title} ${assistants.find(a=>a.id===f.assistant).title} ${f.source} ${f.evidence}`.toLowerCase().includes(queryText)).sort((a,b)=>elapsedMinutes(a.checked)-elapsedMinutes(b.checked)||rank[b.severity]-rank[a.severity]);
     $('#assistant-stream-list').classList.toggle('specialist-findings-card-grid',findingsView==='cards');
@@ -522,23 +655,22 @@
     4:'Trace recurring connection problems across devices and sites.',
     5:'Find out what’s blocking app access and where licenses may be going unused.'
   };
+  function previewFindingCard(f) {
+    const severity=f.severity||'low';
+    const label=severity[0].toUpperCase()+severity.slice(1);
+    const tone=['critical','high'].includes(severity)?'danger':'neutral';
+    return `<article class="specialist-finding specialist-issue-row p-4 rounded-lg shadow-md" data-severity="${severity}">
+      <span class="specialist-finding-icon" data-severity="${severity}" aria-hidden="true">${icon('alert')}</span>
+      <div class="specialist-finding-copy">
+        <div class="specialist-finding-top">${badge(label,tone)}</div>
+        <strong class="text-sm font-semibold">${esc(findingHeadlines[f.id]||f.title)}</strong>
+        <span class="specialist-issue-evidence text-xs">${esc(findingEvidence[f.id]||f.confirmed?.[0]||f.evidence)}</span>
+        <div class="specialist-issue-meta text-xs">${source(f.source)}<span aria-hidden="true">•</span><span>${esc(f.affected)}</span></div>
+      </div>
+    </article>`;
+  }
   function previewFindingCarousel(examples) {
-    const findingCards=examples.map(f=>{
-      const severity=f.severity||'low';
-      const label=severity[0].toUpperCase()+severity.slice(1);
-      const tone=['critical','high'].includes(severity)?'danger':'neutral';
-      return `<li class="assistant-preview-finding-card">
-      <article class="specialist-finding specialist-issue-row p-4 rounded-lg shadow-md" data-severity="${severity}">
-        <span class="specialist-finding-icon" data-severity="${severity}" aria-hidden="true">${icon('alert')}</span>
-        <div class="specialist-finding-copy">
-          <div class="specialist-finding-top">${badge(label,tone)}</div>
-          <strong class="text-sm font-semibold">${esc(findingHeadlines[f.id]||f.title)}</strong>
-          <span class="specialist-issue-evidence text-xs">${esc(findingEvidence[f.id]||f.confirmed?.[0]||f.evidence)}</span>
-          <div class="specialist-issue-meta text-xs">${source(f.source)}<span aria-hidden="true">•</span><span>${esc(f.affected)}</span></div>
-        </div>
-      </article>
-    </li>`;
-    });
+    const findingCards=examples.map(f=>`<li class="assistant-preview-finding-card">${previewFindingCard(f)}</li>`);
     const cards=findingCards.join('');
     // Keep each half of the loop wider than the carousel on desktop.
     const repeat=examples.length<3?`<ul class="assistant-preview-finding-group" aria-hidden="true" inert>${cards}</ul>`:'';
@@ -555,7 +687,8 @@
   const inlineDetails=$('[data-assistant-inline-details]');
   let inlinePreview;
   function previewFindings(a) {
-    return [...owned(a),...(additionalPreviewFindings[a.id]||[])]
+    const examples=a.id===4&&!a.last?networkExampleFindings.filter(isOpenFinding):findings.filter(f=>f.assistant===a.id&&f.condition!=='resolved');
+    return [...examples,...(additionalPreviewFindings[a.id]||[])]
       .sort((first,second)=>Number(second.severity==='critical')-Number(first.severity==='critical'));
   }
   function showInlineAssistant(a) {
@@ -696,7 +829,7 @@
     panel.classList.add('assistant-preview-panel-enter');
   }
   function openSuggestion(f) {
-    const copy=suggestionCopy[f.id];if(!copy?.ready||f.condition==='resolved')return;
+    const copy=suggestionCopy[f.id];if(!copy?.ready||!isOpenFinding(f))return;
     const a=assistants.find(a=>a.id===f.assistant);
     openDialog(`<span class="specialist-eyebrow text-xs">SUGGESTED ACTION</span><h2 id="assistant-dialog-title">${esc(copy.title)}</h2><p class="text-xs">From ${esc(a.title)}</p><h3 class="text-sm font-semibold">Why this is worth doing</h3><p class="text-sm">${esc(copy.reason)}</p><div class="specialist-next-step"><span class="text-xs">Proposed next step</span><p class="text-sm">${esc(copy.step)}</p></div><h3 class="text-sm font-semibold">Supporting evidence</h3><p class="text-sm">${esc(f.evidence)}</p><div class="specialist-source-list">${(f.supportingSources||[f.source]).map(source).join('')}</div><p class="text-xs">Reviewing this recommendation does not change connected systems. It remains available after the finding is acknowledged, until dismissed or the condition is verified resolved.</p><div class="assistant-dialog-actions"><button type="button" class="a-primary" data-specialist-action="finding" data-finding-id="${f.id}">View underlying finding</button><button type="button" class="a-secondary" data-specialist-action="dismiss-suggestion" data-finding-id="${f.id}">Dismiss suggestion</button></div>`);
   }
@@ -726,19 +859,19 @@
     dialog.querySelector('textarea').focus();
   }
   function checkFindingAlerts() {
-    const due=findings.filter(f=>f.alertAt&&f.alertAt<=Date.now());
+    const due=findings.filter(f=>isOpenFinding(f)&&f.alertAt&&f.alertAt<=Date.now());
     if(!due.length)return;
     for(const f of due){delete f.alertAt;f.acknowledged=false;f.dismissed=false;}
     render();
     toast(due.length===1?`Reminder: ${due[0].title}`:`${due.length} findings are ready for review.`);
   }
   function openFinding(f) {
-    const a=assistants.find(a=>a.id===f.assistant),resolved=f.condition==='resolved',related=findings.find(item=>item.id===f.related);
+    const a=assistants.find(a=>a.id===f.assistant),resolved=f.condition==='resolved',closed=f.condition==='closed',related=findings.find(item=>item.id===f.related);
     const changeTone=['Worsened','Resurfaced'].includes(f.change)?'warning':f.change==='Improving'?'success':f.change==='New'?'info':'neutral';
-    const reviewStatus=resolved?'Not Required':f.dismissed?'Dismissed':f.acknowledged?'Acknowledged':'Needs Review';
+    const reviewStatus=!isOpenFinding(f)?'Not Required':f.dismissed?'Dismissed':f.acknowledged?'Acknowledged':'Needs Review';
     const list=items=>`<ul class="specialist-checks text-sm">${items.map(item=>`<li>${esc(item)}</li>`).join('')}</ul>`;
     const evidenceList=(items,glyph)=>`<ul class="specialist-checks specialist-evidence-list text-sm">${items.map(item=>`<li>${icon(glyph)}<span>${esc(item)}</span></li>`).join('')}</ul>`;
-    openDialog(`<header class="specialist-finding-modal-header"><h2 id="assistant-dialog-title" class="font-bold">${esc(f.title)}</h2><div class="specialist-finding-context"><p class="specialist-finding-context-summary text-sm"><span class="specialist-finding-assistant-label bg-bluegray-100 rounded-sm hover:shadow-xs">${icon('assistants')}<span>${esc(a.title)}</span></span><span>· ${esc(f.affected)}</span></p><dl class="specialist-finding-timing text-xs"><div><dt>First Observed</dt><dd>${esc(f.first)}</dd></div><div><dt>Last Check</dt><dd>${esc(f.checked)}</dd></div></dl></div></header><div class="specialist-finding-modal-body"><div class="specialist-finding-statuses">${badge(f.severity,['critical','high'].includes(f.severity)?'danger':'neutral')}${badge(resolved?'Verified Resolved':'Open',resolved?'success':'info')}${badge(f.change,changeTone)}${badge(reviewStatus,!resolved&&!f.acknowledged&&!f.dismissed?'review':'neutral')}</div>${f.verification==='unavailable'?'<div class="specialist-verification-note text-sm">Current state cannot be verified. The last known condition remains open; missing evidence does not establish resolution.</div>':''}${resolved?`<div class="specialist-resolution-note text-sm"><strong class="font-semibold">Why this occurrence is closed</strong><p class="text-sm">${esc(f.resolution)}</p></div>`:''}<h3 class="specialist-finding-evidence-heading text-sm font-semibold"><span class="specialist-source-list">${(f.supportingSources||[f.source]).map(source).join('')}</span><span>Evidence</span></h3><p class="text-sm">${esc(f.evidence)}</p><div class="specialist-assessment"><section class="specialist-assessment-confirmed px-6 py-4"><h3 class="text-sm font-semibold">Confirmed</h3>${evidenceList(f.confirmed,'info')}</section><section class="px-6 py-4"><h3 class="text-sm font-semibold">Still uncertain</h3>${f.unknowns.length?evidenceList(f.unknowns,'question'):'<p class="text-sm">No unresolved questions about the closure of this occurrence.</p>'}</section></div>${f.hypotheses.length?`<section class="specialist-hypothesis"><h3 class="text-sm font-semibold">Supported hypotheses · not confirmed causes</h3>${list(f.hypotheses)}</section>`:''}<details class="specialist-affected" open><summary class="text-sm font-semibold">Affected objects · ${f.objects.length}</summary><div class="specialist-object-scroll"><table class="specialist-objects text-xs" aria-label="Affected objects for ${esc(f.reference)}"><thead><tr><th scope="col">Object</th><th scope="col">Type</th><th scope="col">Source record ID</th></tr></thead><tbody>${f.objects.map(([name,type,id])=>`<tr><td>${esc(name)}</td><td>${esc(type)}</td><td>${esc(id)}</td></tr>`).join('')}</tbody></table></div></details><h3 class="text-sm font-semibold">Occurrence History</h3>${list(f.history)}${related?`<div class="specialist-related"><p class="text-xs">${resolved?'This occurrence stays closed. A later recurrence has its own evidence and review status.':'New occurrence of a known condition. The earlier occurrence remains verified resolved.'}</p><button type="button" class="a-secondary" data-specialist-action="finding" data-finding-id="${related.id}">${resolved?'View new occurrence':'View previous occurrence'} · ${esc(related.reference)}</button></div>`:''}${f.next?`<div class="specialist-next-step"><span class="specialist-next-step-heading text-xs"><img src="../assets/ivy-stars-light.svg" width="20" height="21" alt=""/>Recommended next step</span><p class="text-sm">${esc(f.next)}</p></div>`:''}<p class="text-xs">${resolved?'Resolution is based on source evidence, not acknowledgment.':'Acknowledging marks this finding as reviewed. It does not resolve the condition.'}</p></div><footer class="specialist-finding-modal-footer">
+    openDialog(`<header class="specialist-finding-modal-header"><h2 id="assistant-dialog-title" class="font-bold">${esc(f.title)}</h2><div class="specialist-finding-context"><p class="specialist-finding-context-summary text-sm"><span class="specialist-finding-assistant-label bg-bluegray-100 rounded-sm hover:shadow-xs">${icon('assistants')}<span>${esc(a.title)}</span></span><span>· ${esc(f.affected)}</span></p><dl class="specialist-finding-timing text-xs"><div><dt>First Observed</dt><dd>${esc(f.first)}</dd></div><div><dt>Last Check</dt><dd>${esc(f.checked)}</dd></div></dl></div></header><div class="specialist-finding-modal-body"><div class="specialist-finding-statuses">${badge(f.severity,['critical','high'].includes(f.severity)?'danger':'neutral')}${badge(resolved?'Verified Resolved':closed?'Closed':'Open',resolved?'success':closed?'neutral':'info')}${badge(f.change,changeTone)}${badge(reviewStatus,isOpenFinding(f)&&!f.acknowledged&&!f.dismissed?'review':'neutral')}</div>${isOpenFinding(f)&&f.verification==='unavailable'?'<div class="specialist-verification-note text-sm">Current state cannot be verified. The last known condition remains open; missing evidence does not establish resolution.</div>':''}${closed?`<div class="specialist-resolution-note text-sm">${esc(f.closureReason||'This finding was closed when the assistant was turned off.')}</div>`:''}${resolved?`<div class="specialist-resolution-note text-sm"><strong class="font-semibold">Why this occurrence is closed</strong><p class="text-sm">${esc(f.resolution)}</p></div>`:''}<h3 class="specialist-finding-evidence-heading text-sm font-semibold"><span class="specialist-source-list">${(f.supportingSources||[f.source]).map(source).join('')}</span><span>Evidence</span></h3><p class="text-sm">${esc(f.evidence)}</p><div class="specialist-assessment"><section class="specialist-assessment-confirmed px-6 py-4"><h3 class="text-sm font-semibold">Confirmed</h3>${evidenceList(f.confirmed,'info')}</section><section class="px-6 py-4"><h3 class="text-sm font-semibold">Still uncertain</h3>${f.unknowns.length?evidenceList(f.unknowns,'question'):'<p class="text-sm">No unresolved questions about the closure of this occurrence.</p>'}</section></div>${f.hypotheses.length?`<section class="specialist-hypothesis"><h3 class="text-sm font-semibold">Supported hypotheses · not confirmed causes</h3>${list(f.hypotheses)}</section>`:''}<details class="specialist-affected" open><summary class="text-sm font-semibold">Affected objects · ${f.objects.length}</summary><div class="specialist-object-scroll"><table class="specialist-objects text-xs" aria-label="Affected objects for ${esc(f.reference)}"><thead><tr><th scope="col">Object</th><th scope="col">Type</th><th scope="col">Source record ID</th></tr></thead><tbody>${f.objects.map(([name,type,id])=>`<tr><td>${esc(name)}</td><td>${esc(type)}</td><td>${esc(id)}</td></tr>`).join('')}</tbody></table></div></details><h3 class="text-sm font-semibold">Occurrence History</h3>${list(f.history)}${related?`<div class="specialist-related"><p class="text-xs">${resolved?'This occurrence stays closed. A later recurrence has its own evidence and review status.':'New occurrence of a known condition. The earlier occurrence remains verified resolved.'}</p><button type="button" class="a-secondary" data-specialist-action="finding" data-finding-id="${related.id}">${resolved?'View new occurrence':'View previous occurrence'} · ${esc(related.reference)}</button></div>`:''}${f.next?`<div class="specialist-next-step"><span class="specialist-next-step-heading text-xs"><img src="../assets/ivy-stars-light.svg" width="20" height="21" alt=""/>Recommended next step</span><p class="text-sm">${esc(f.next)}</p></div>`:''}<p class="text-xs">${resolved?'Resolution is based on source evidence, not acknowledgment.':closed?'':'Acknowledging marks this finding as reviewed. It does not resolve the condition.'}</p></div><footer class="specialist-finding-modal-footer">
       <button type="button" class="a-secondary gap-2" data-specialist-action="${isShow?'close':'open'}" data-assistant-id="${a.id}" aria-label="${isShow?'Back to Assistant':'View Assistant'}">${isShow?`Back ${icon('arrow')}`:`${icon('arrow')} View Assistant`}</button>
       ${findingReviewControl(f,{modal:true})}
     </footer>`);
@@ -773,13 +906,15 @@
     }
     const button=event.target.closest('[data-specialist-action]');if(!button)return;
     const action=button.dataset.specialistAction;
+    if(action==='summary-slide'){selectSummarySlide(Number(button.dataset.summarySlide));return;}
+    if(action==='history-page'){historyPage=Number(button.dataset.historyPage);render();$('#assistant-history-pagination [aria-current="page"]')?.focus({preventScroll:true});return;}
     if(action==='choose-finding-action'){
       const option=findingReviewActions[button.dataset.findingAction];
       const menu=button.closest('.as-finding-action-menu');
       const primary=menu.parentElement.querySelector('[data-finding-primary]');
       primary.dataset.specialistAction=button.dataset.findingAction;
       const currentFinding=findings.find(item=>item.id===primary.dataset.findingId);
-      primary.disabled=Boolean(button.closest('.specialist-finding-modal-footer')&&((button.dataset.findingAction==='acknowledge-open'&&currentFinding.acknowledged)||(currentFinding.condition==='resolved'&&button.dataset.findingAction!=='chat-finding')));
+      primary.disabled=Boolean(button.closest('.specialist-finding-modal-footer')&&((button.dataset.findingAction==='acknowledge-open'&&currentFinding.acknowledged)||(!isOpenFinding(currentFinding)&&button.dataset.findingAction!=='chat-finding')));
       primary.setAttribute('aria-label',option.label);
       primary.title=option.label;
       primary.innerHTML=icon(option.glyph)+`<span>${button.dataset.findingAction==='acknowledge-open'?'Acknowledge':option.label}</span>`;
@@ -836,7 +971,7 @@
     if(action==='toggle-power'&&a){if(a.enabled)stopAssistant(a);else{dialog.dataset.assistantId=String(a.id);configure(a,true);}}
     if(action==='run-now'&&a)runNow(a);
     if(action==='enable-assistant'&&a){dialog.dataset.assistantId=String(a.id);configure({...a,enabled:false},true);}
-    if(action==='dismiss-finding'&&f){
+    if(action==='dismiss-finding'&&f&&isOpenFinding(f)){
       if(button.closest('.specialist-finding-modal-footer'))dialog.close();
       delete f.alertAt;
       f.dismissed=true;
@@ -845,9 +980,9 @@
       toast('Finding dismissed.');
       return;
     }
-    if(action==='schedule-finding-alert'&&f){scheduleFindingAlert(f);return;}
+    if(action==='schedule-finding-alert'&&f&&isOpenFinding(f)){scheduleFindingAlert(f);return;}
     if(action==='chat-finding'&&f){startFindingChat(f);return;}
-    if(action==='acknowledge-open'&&f&&f.condition!=='resolved'){
+    if(action==='acknowledge-open'&&f&&isOpenFinding(f)){
       if(button.closest('.specialist-finding-modal-footer'))dialog.close();
       delete f.alertAt;
       f.acknowledged=true;
@@ -857,7 +992,7 @@
       toast('Finding acknowledged.');
       return;
     }
-    if(action==='acknowledge'&&f&&f.condition!=='resolved'){delete f.alertAt;f.dismissed=false;f.acknowledged=!f.acknowledged;render();openFinding(f);toast(f.acknowledged?'Finding acknowledged. Its condition remains open.':'Finding marked as unreviewed.');}
+    if(action==='acknowledge'&&f&&isOpenFinding(f)){delete f.alertAt;f.dismissed=false;f.acknowledged=!f.acknowledged;render();openFinding(f);toast(f.acknowledged?'Finding acknowledged. Its condition remains open.':'Finding marked as unreviewed.');}
   }
   $('.assistants-content').addEventListener('click',handleClick);dialog.addEventListener('click',handleClick);
   $('.assistants-content').addEventListener('keydown',event=>{
@@ -957,7 +1092,7 @@
   function clearSearch() {if(!isOnboarding)$('#assistant-search').value='';render();}
   if(!isOnboarding)$('#clear-filters').addEventListener('click',clearSearch);$('#empty-clear').addEventListener('click',clearSearch);
   } else {
-    showPage=window.IvyAssistantShow.create({assistants,findings,owned,waiting,esc,icon,source,badge,stateLabel,cadenceLabels,scheduleLabel,powerToggle,findingRow,findingsTable,findingReviewControl,getAssistantRuns,runList,runHistoryTable,openDialog});
+    showPage=window.IvyAssistantShow.create({assistants,findings,owned,waiting,esc,icon,source,badge,stateLabel,cadenceLabels,scheduleLabel,powerToggle,findingRow,findingsTable,findingReviewControl,getAssistantRuns,runList,runHistoryTable,openDialog,previewFindings,previewFindingCard});
   }
   if(highlightsToggle){
     highlightsToggle.addEventListener('click',()=>{

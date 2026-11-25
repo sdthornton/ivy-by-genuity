@@ -105,13 +105,15 @@ window.IvyAssistantShow=(()=>{
     grid.querySelector(`[data-show-capability="${index}"]`).focus();
     return next;
   }
-  function create({assistants,findings,owned,waiting,esc,icon,source,badge,stateLabel,cadenceLabels,scheduleLabel,powerToggle,findingRow,findingsTable,findingReviewControl,getAssistantRuns,runList,runHistoryTable,openDialog}) {
+  function create({assistants,findings,owned,waiting,esc,icon,source,badge,stateLabel,cadenceLabels,scheduleLabel,powerToggle,findingRow,findingsTable,findingReviewControl,getAssistantRuns,runList,runHistoryTable,openDialog,previewFindings,previewFindingCard}) {
     const root=document.querySelector('#assistant-show');
     const offVariant=document.body?.dataset.assistantVariant==='off';
     const id=Number(new URLSearchParams(window.location.search).get('id')||1);
     const assistant=assistants.find(a=>a.id===id);
     let tab='overview',selectedCapability=null;
     let highlightsHidden=false,openFindingIndex=0,allFindingsView='cards';
+    let samplePreview=false;
+    const sampleLabel=' <span class="as-sample-label text-xs">(sample)</span>';
     const capabilitySets=window.IvyAssistantCapabilities;
     const tabs=[['overview','Overview'],['findings','Findings'],['history','History']];
     function capabilities(a) {
@@ -129,7 +131,7 @@ window.IvyAssistantShow=(()=>{
       4:{raised:[2,1,3,2,4,2,1],resolved:[1,0,2,3,1,2,2],reviewHours:[7.4,6.8,7.1,5.6,5.2,4.8,4.1]},
       5:{raised:[1,2,2,1,3,2,2],resolved:[0,1,1,2,1,2,3],reviewHours:[9.2,8.4,8.8,7.1,6.6,5.9,5.4]}
     };
-    function highlights(a) {
+    function highlights(a,sample=false) {
       const history=highlightHistory[a.id];
       const series=[
         {key:'raised',title:'New Findings',description:'First-time findings, by day',color:'blue',type:'line'},
@@ -142,6 +144,8 @@ window.IvyAssistantShow=(()=>{
         return date.toLocaleDateString('en-US',{month:'short',day:'numeric'});
       });
       return series.map(metric=>{
+        const pending=a.pending&&!sample;
+        const color=pending?'gray':metric.color;
         const values=history[metric.key];
         const total=values.reduce((sum,value)=>sum+value,0);
         const value=metric.key==='reviewHours'?(total/values.length).toFixed(1)+'h':total;
@@ -154,14 +158,20 @@ window.IvyAssistantShow=(()=>{
           return path+` C ${midpoint} ${previousY}, ${midpoint} ${y}, ${x} ${y}`;
         },'');
         const gradient=`as-history-${a.id}-${metric.key}`;
+        const pointTitle=i=>pending?'':`<title>${dates[i]}: ${values[i]}${metric.key==='reviewHours'?' hours':''}</title>`;
         const marks=metric.type==='bars'
-          ? points.map(([x,y],i)=>`<rect x="${x-7}" y="${y}" width="14" height="${76-y}" rx="3" fill="currentColor"><title>${dates[i]}: ${values[i]}</title></rect>`).join('')
-          : `<defs><linearGradient id="${gradient}" x1="0" y1="0" x2="0" y2="1"><stop stop-color="var(--ivy-color-${metric.color}-100)"/><stop offset="1" stop-color="var(--ivy-color-gray-25)"/></linearGradient></defs>
+          ? points.map(([x,y],i)=>`<rect x="${x-7}" y="${y}" width="14" height="${76-y}" rx="3" fill="currentColor">${pointTitle(i)}</rect>`).join('')
+          : `<defs><linearGradient id="${gradient}" x1="0" y1="0" x2="0" y2="1"><stop stop-color="var(--ivy-color-${color}-100)"/><stop offset="1" stop-color="var(--ivy-color-gray-25)"/></linearGradient></defs>
             <path d="${line} L 232 80 L 8 80 Z" fill="url(#${gradient})"/>
             <path d="${line}" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-            ${points.map(([x,y],i)=>`<circle cx="${x}" cy="${y}" r="3" fill="currentColor"><title>${dates[i]}: ${values[i]}${metric.key==='reviewHours'?' hours':''}</title></circle>`).join('')}`;
-        return `<article class="as-history-highlight" style="--history-accent:var(--ivy-color-${metric.color}-600)">
+            ${points.map(([x,y],i)=>`<circle cx="${x}" cy="${y}" r="3" fill="currentColor">${pointTitle(i)}</circle>`).join('')}`;
+        if(pending)return `<article class="as-history-highlight" style="--history-accent:var(--ivy-color-gray-300)">
           <header><h2 class="text-sm font-medium">${metric.title}</h2><p class="text-xs">${metric.description}</p></header>
+          <span class="as-history-period text-xs">First check pending</span>
+          <svg class="as-history-chart" viewBox="0 0 240 84" aria-hidden="true" style="stroke:none">${marks}</svg>
+        </article>`;
+        return `<article class="as-history-highlight" style="--history-accent:var(--ivy-color-${metric.color}-600)">
+          <header><h2 class="text-sm font-medium">${metric.title}${sample?sampleLabel:''}</h2><p class="text-xs">${metric.description}</p></header>
           <div class="as-history-value">${value}</div><span class="as-history-period text-xs">Last 7 Days</span>
           <svg class="as-history-chart" viewBox="0 0 240 84" role="img" aria-label="${metric.title}. ${values.map((n,i)=>dates[i]+': '+n).join(', ')}" style="stroke:none">${marks}</svg>
           <div class="as-history-dates text-xs" aria-hidden="true"><span>${dates[0]}</span><span>${dates[6]}</span></div>
@@ -176,8 +186,8 @@ window.IvyAssistantShow=(()=>{
       const empty=`<section class="as-panel p-4 rounded-lg"><h2 class="text-base font-medium">${!a.enabled?'Assistant Is Off':a.pending?'First Check Pending':!a.last?'Ready for the First Check':'No Open Findings'}</h2><p class="text-sm">${!a.enabled?'Turn on this assistant to resume investigations. Previous findings and history stay available.':!a.last?'Findings will appear after the first investigation. Use Run Now to start a preview check.':'No open conditions in the available source evidence. Check source coverage for any gaps.'}</p></section>`;
       return `<div class="as-overview">${summary}${allOpen.length?`<section aria-labelledby="as-all-findings-heading"><header class="as-overview-section-header"><h2 id="as-all-findings-heading" class="text-base font-medium">Recent Findings</h2><button type="button" class="a-text" data-show-tab="findings">View all</button></header><ul class="as-open-findings-grid grid gap-4${highlightsHidden?' as-open-findings-full-width':''}">${allOpen.map(f=>`<li>${findingRow(f)}</li>`).join('')}</ul></section>`:empty}</div>`;
     }
-    function openFindingsCarousel(items) {
-      if(!items.length)return '<p class="specialist-inline-empty text-sm" tabindex="-1" data-open-findings-empty>No findings waiting for review.</p>';
+    function openFindingsCarousel(items,enabled) {
+      if(!items.length)return `<p class="specialist-inline-empty text-sm" tabindex="-1" data-open-findings-empty>${enabled?'No findings waiting for review.':'No new findings are available while this assistant is off.'}</p>`;
       openFindingIndex=Math.min(openFindingIndex,items.length-1);
       const finding=items[openFindingIndex];
       return `<section class="as-open-carousel" role="region" aria-roledescription="carousel" aria-label="Open Findings">
@@ -209,46 +219,86 @@ window.IvyAssistantShow=(()=>{
     }
     function content(a) {
       const open=owned(a),all=findings.filter(f=>f.assistant===a.id);
-      if(tab==='findings')return `<section class="specialist-suggestions as-open-findings-panel" aria-labelledby="as-open-findings-heading"><header class="as-section-heading"><div class="as-open-findings-title"><h2 id="as-open-findings-heading" class="text-base font-semibold">Open Findings</h2><span class="text-xs">${waiting(open).length} to review</span></div></header>${openFindingsCarousel(waiting(open))}</section>
+      if(tab==='findings')return `<section class="specialist-suggestions as-open-findings-panel" aria-labelledby="as-open-findings-heading"><header class="as-section-heading"><div class="as-open-findings-title"><h2 id="as-open-findings-heading" class="text-base font-semibold">Open Findings</h2><span class="text-xs">${waiting(open).length} to review</span></div></header>${openFindingsCarousel(waiting(open),a.enabled)}</section>
         ${allFindingsSection(all)}`;
       if(tab==='history')return `<header class="as-section-heading"><h2 class="text-base font-semibold">Run History</h2></header>${runHistoryTable(getAssistantRuns(a.id))}`;
-      return overview(a);
+      return a.enabled?overview(a):offOverview(a);
     }
-    function systemRows(a) {
+    function systemRows(a,sample=false) {
       return a.sources.map(name=>{
-        const state=name==='Intune'?'setup':name==='Microsoft 365'?'syncing':'synced';
+        const state=sample?'synced':name==='Intune'?'setup':name==='Microsoft 365'?'syncing':'synced';
         const status=state==='setup'?`<button type="button" class="as-source-status" data-sync-state="setup" aria-label="Set up ${esc(name)}">Set up ${icon('arrow','h-3 w-3')}</button>`:`<span class="as-source-status" data-sync-state="${state}">${state==='syncing'?'Syncing...':'Synced'}</span>`;
         return `<div class="as-system-row text-xs"><span class="as-system-identity" ${state==='setup'?'data-setup="missing"':''}>${source(name,'source-card')}</span>${status}</div>`;
       }).join('');
     }
-    function recentRuns(a) {
+    function recentRuns(a,sampleRuns) {
       return `<section class="as-panel as-recent-runs p-5 rounded-lg" aria-labelledby="as-recent-runs-heading">
-        <header class="flex items-center justify-between gap-3 mb-4"><h2 id="as-recent-runs-heading" class="flex items-center gap-2 text-md font-medium !mb-0">${icon('clock','h-4 w-4')}Recent Runs</h2><button type="button" class="a-text" data-show-tab="history">View All</button></header>
-        ${runList(a.id)}
+        <header class="flex items-center justify-between gap-3 mb-4"><h2 id="as-recent-runs-heading" class="flex items-center gap-2 text-md font-medium">${icon('clock','h-4 w-4')}Recent Runs${sampleRuns?sampleLabel:''}</h2>${sampleRuns?'':'<button type="button" class="a-text" data-show-tab="history">View All</button>'}</header>
+        ${runList(a.id,5,sampleRuns)}
       </section>`;
     }
-    function sidebar(a) {
+    function sidebar(a,{startingBlank=false,sampleFindings,sampleRuns}={}) {
       const useful=`<section class="as-panel as-deliverables p-4"><h2 class="text-sm font-semibold">Useful for...</h2><ul class="text-sm">${['Findings and meaningful changes','Affected users, devices, apps, or sites','Source evidence and its limitations','Recommended next steps'].map(text=>`<li>${icon('check')}${text}</li>`).join('')}</ul></section>`;
-      const open=owned(a),affected=new Set(open.flatMap(f=>(f.objects||[]).map(object=>object[2]))).size;
-      const glance=`<section class="as-glance border p-5 rounded-lg" aria-labelledby="as-glance-heading"><div class="flex items-center justify-between gap-3 mb-4"><h2 id="as-glance-heading" class="flex items-center gap-2 text-md font-medium !mb-0">${icon('info','h-4 w-4')}At a Glance</h2><span class="text-xs text-gray-600 text-right">${esc(a.scope||'Scope available after the first check')}</span></div><dl class="as-glance-stats grid grid-cols-3 border rounded-lg">${[[open.filter(f=>['high','critical'].includes(f.severity)).length,'High Priority'],[open.length,'Total Findings'],[affected,'Affected Objects']].map(([value,label])=>`<div class="px-3 py-2"><dd class="text-xl font-semibold">${value}</dd><dt class="text-xs">${label}</dt></div>`).join('')}</dl><dl class="as-glance-details text-xs">${[['Last Check',a.running?'Checking Now':a.pending?'First Check Pending':a.last||'Not Checked Yet'],['Capabilities',`${a.enabled?a.selectedCapabilities.length:0} of ${capabilitySets[a.id].length} On`]].map(([label,value])=>`<div><dt>${label}</dt><dd>${esc(value)}</dd></div>`).join('')}</dl></section>`;
-      const sources=`<section class="as-panel p-4"><h2 class="text-sm font-semibold">Recommended Sources</h2><div class="as-system-list">${systemRows(a)}</div></section>`;
-      return `<aside class="as-sidebar">${offVariant?useful:glance+recentRuns(a)}${sources}</aside>`;
+      const sources=`<section class="as-panel p-4"><h2 class="text-sm font-semibold">${startingBlank?'Recommended Sources':'Sources'}${sampleRuns?sampleLabel:''}</h2><div class="as-system-list">${systemRows(a,Boolean(sampleRuns))}</div></section>`;
+      if(startingBlank)return `<aside class="as-sidebar">${useful}${sources}</aside>`;
+      const open=sampleFindings??owned(a);
+      const affected=sampleFindings
+        ? sampleFindings.reduce((total,f)=>total+(parseInt(f.affected,10)||0),0)
+        : new Set(open.flatMap(f=>(f.objects||[]).map(object=>object[2]))).size;
+      const glance=`<section class="as-glance border p-5 rounded-lg" aria-labelledby="as-glance-heading"><div class="flex items-center justify-between gap-3 mb-4"><h2 id="as-glance-heading" class="flex items-center gap-2 text-md font-medium !mb-0">${icon('info','h-4 w-4')}At a Glance${sampleRuns?sampleLabel:''}</h2>${sampleRuns?'':`<span class="text-xs text-gray-600 text-right">${esc(a.scope||'Scope available after the first check')}</span>`}</div><dl class="as-glance-stats grid grid-cols-3 border rounded-lg">${[[open.filter(f=>['high','critical'].includes(f.severity)).length,'High Priority'],[open.length,'Total Findings'],[affected,'Affected Objects']].map(([value,label])=>`<div class="px-3 py-2"><dd class="text-xl font-semibold">${value}</dd><dt class="text-xs">${label}</dt></div>`).join('')}</dl><dl class="as-glance-details text-xs">${[['Last Check',sampleRuns?'20m ago':a.running?'Checking Now':a.pending?'First Check Pending':a.last||'Not Checked Yet'],['Capabilities',`${sampleRuns?capabilitySets[a.id].length:a.enabled?a.selectedCapabilities.length:0} of ${capabilitySets[a.id].length} On`]].map(([label,value])=>`<div><dt>${label}</dt><dd>${esc(value)}</dd></div>`).join('')}</dl></section>`;
+      return `<aside class="as-sidebar">${glance}${recentRuns(a,sampleRuns)}${sources}</aside>`;
     }
     function offOverview(a) {
       return `<header class="as-section-heading"><h2 class="text-base font-semibold">How This Assistant Helps</h2></header>${situationCards(a,{esc,icon})}<section class="as-off-capability-details" aria-label="Built-In Capabilities"><div class="as-off-capability-details-body">${capabilities(a)}</div></section>`;
     }
+    function offContent(a) {
+      if(!samplePreview){
+        const recommended={...a,selectedSources:[...a.sources]};
+        return `<div class="as-layout"><section class="as-content" id="as-content">${offOverview(recommended)}</section>${sidebar(recommended,{startingBlank:true})}</div>`;
+      }
+      const sampleFindings=previewFindings(a).slice(0,4);
+      const now=Date.now();
+      const sampleRuns=[20,1440,2880].map((minutes,index)=>({
+        assistantId:a.id,
+        number:3-index,
+        startedAt:now-minutes*60000,
+        status:'Completed',
+        findings:sampleFindings.slice(0,Math.max(1,sampleFindings.length-index))
+      }));
+      return `<div class="as-layout"><section class="as-content as-overview" id="as-content">
+        <div class="as-sample-notice">
+          ${icon('info','h-4 w-4 shrink-0')}
+          <div><strong class="text-sm font-medium">You’re viewing sample data</strong>
+            <p class="text-xs">These example findings, trends, and runs show what this assistant can surface once enabled.</p></div>
+        </div>
+        <section class="as-history-highlights" aria-label="Sample finding trends over the last seven days">${highlights(a,true)}</section>
+        <section aria-labelledby="as-sample-findings-title">
+          <header class="as-overview-section-header"><h2 id="as-sample-findings-title" class="text-base font-medium">Open Findings${sampleLabel}</h2></header>
+          <ul class="as-open-findings-grid grid gap-4">${sampleFindings.map(f=>`<li>${previewFindingCard(f)}</li>`).join('')}</ul>
+        </section>
+      </section>${sidebar(a,{sampleFindings,sampleRuns})}</div>`;
+    }
     function renderOff(a) {
       const recommended={...a,selectedSources:[...a.sources]};
       document.title=a.title+' | Enable Assistant | Ivy';document.querySelector('#assistant-show-breadcrumb').textContent=a.title;
-      root.innerHTML=`<header class="as-header"><div class="as-heading mb-6"><span class="assistant-icon h-11 w-11" style="--icon-bg:var(--ivy-color-${a.family}-100);--icon-border:var(--ivy-color-${a.family}-200)">${icon(a.glyph,'h-5 w-5')}</span><div><div class="as-title-row"><h1>${esc(a.title)}</h1><span class="as-title-status">${badge('Off')}</span></div><p class="text-sm">${esc(a.description)}</p></div></div><div class="as-header-action"><button type="button" class="a-primary" data-specialist-action="enable-assistant" data-assistant-id="${a.id}">Enable Assistant</button><p class="as-off-enable-help text-xs">Choose sources and a schedule, or run on demand.</p></div></header><hr class="as-off-divider"/><div class="as-layout"><section class="as-content" id="as-content">${offOverview(recommended)}</section>${sidebar(recommended)}</div><dialog id="assistant-how-dialog" class="assistant-dialog specialist-dialog as-how-dialog text-sm ivy-modal px-4 py-5 sm:px-6 sm:py-6 2xl:px-12 2xl:py-12" aria-labelledby="assistant-how-title"><button type="button" class="assistant-dialog-close" data-show-close-how aria-label="Close How It Works">${icon('close','h-5 w-5')}</button>${how(recommended).replace('<h2 class="text-base font-semibold">','<h2 id="assistant-how-title" class="text-base font-semibold">')}</dialog>`;
+      root.innerHTML=`<header class="as-header"><div class="as-heading mb-6"><span class="assistant-icon h-11 w-11" style="--icon-bg:var(--ivy-color-${a.family}-100);--icon-border:var(--ivy-color-${a.family}-200)">${icon(a.glyph,'h-5 w-5')}</span><div><div class="as-title-row"><h1>${esc(a.title)}</h1><span class="as-title-status">${badge('Off')}</span></div><p class="text-sm">${esc(a.description)}</p></div></div><div class="as-header-action"><button type="button" class="a-primary" data-specialist-action="enable-assistant" data-assistant-id="${a.id}">Enable Assistant</button><p class="as-off-enable-help text-xs">Choose sources and a schedule, or run on demand.</p></div></header><div class="as-highlights-nav as-tabs-toolbar as-off-toolbar"><button type="button" class="specialist-power text-xs" role="switch" aria-checked="${samplePreview}" aria-controls="as-off-content" data-show-sample><span class="specialist-power-track" aria-hidden="true"></span><span>Preview sample data</span></button></div><div id="as-off-content">${offContent(a)}</div><dialog id="assistant-how-dialog" class="assistant-dialog specialist-dialog as-how-dialog text-sm ivy-modal px-4 py-5 sm:px-6 sm:py-6 2xl:px-12 2xl:py-12" aria-labelledby="assistant-how-title"><button type="button" class="assistant-dialog-close" data-show-close-how aria-label="Close How It Works">${icon('close','h-5 w-5')}</button>${how(recommended).replace('<h2 class="text-base font-semibold">','<h2 id="assistant-how-title" class="text-base font-semibold">')}</dialog>`;
     }
     function render() {
       if(!assistant){root.innerHTML='<div class="as-panel p-4"><h1 class="text-xl font-semibold">Assistant Not Found</h1><p class="text-sm">Choose one of the five built-in assistants from the index.</p><a class="a-secondary" href="assistants.html">Back to Assistants</a></div>';return;}
-      if(offVariant){renderOff(assistant);return;}
+      const startingBlank=offVariant||(!assistant.enabled&&!assistant.last);
+      root.classList.toggle('as-starting-blank',startingBlank);
+      if(startingBlank){renderOff(assistant);return;}
       const a=assistant,open=owned(a);
       document.title=a.title+' | Assistants | Ivy';document.querySelector('#assistant-show-breadcrumb').textContent=a.title;
-      root.innerHTML=`<header class="as-header"><div class="as-heading mb-6"><span class="assistant-icon h-11 w-11" style="--icon-bg:var(--ivy-color-${a.family}-100);--icon-border:var(--ivy-color-${a.family}-200)">${icon(a.glyph,'h-5 w-5')}</span><div><div class="as-title-row"><h1>${esc(a.title)}</h1><span class="as-title-status">${badge(a.enabled?'Enabled':'Off',a.enabled?'success':'neutral')}</span></div><p class="text-sm">${esc(a.description)}</p></div></div><div class="as-header-action"><span class="inline-flex items-center gap-2 text-xs text-gray-500">${a.enabled?a.selectedCapabilities.length:0} of ${capabilitySets[a.id].length} Capabilities On</span>${a.enabled?`<span class="text-xs text-gray-500" aria-hidden="true">•</span><span class="inline-flex items-center gap-2 text-xs text-gray-500 mr-3">${icon('calendar')}${esc(scheduleLabel(a))}</span>`:`<button type="button" class="a-primary" data-specialist-action="enable-assistant" data-assistant-id="${a.id}">Enable Assistant</button>`}<button type="button" class="a-secondary as-header-config border" data-specialist-action="configure" data-assistant-id="${a.id}">${icon('settings')} Config</button>${a.enabled?`<button type="button" class="a-secondary" data-specialist-action="run-now" data-assistant-id="${a.id}" ${a.running?'disabled aria-busy="true"':''}>${icon('arrow')}${a.running?'Checking…':'Run Now'}</button>`:''}</div></header><nav class="as-highlights-nav as-tabs-toolbar" aria-label="Assistant Navigation"><div class="assistants-tabs as-tabs" role="tablist" aria-label="Assistant Details">${tabs.map(([key,label])=>`<button type="button" role="tab" id="as-tab-${key}" aria-controls="as-content" aria-selected="${tab===key}" tabindex="${tab===key?0:-1}" data-show-tab="${key}">${label}${key==='findings'?` <span>${open.length}</span>`:''}</button>`).join('')}</div><button type="button" class="as-nav-configuration" data-specialist-action="configure" data-assistant-id="${a.id}" aria-haspopup="dialog">Configuration</button><button type="button" class="as-highlights-toggle" data-show-highlights="" aria-controls="as-highlights" aria-expanded="${!highlightsHidden}" style="margin-left: auto;"${tab==='overview'?'':' hidden'}><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"></rect><path d="M3 10h18M9 4v6M15 4v6"></path></svg><span style="background: none; font-size: 12px; font-weight: 400; padding: 0;">${highlightsHidden?'Show highlights':'Hide highlights'}</span></button></nav><div class="as-layout"><section class="as-content" id="as-content" role="tabpanel" aria-labelledby="as-tab-${tab}" tabindex="0">${content(a)}</section>${sidebar(a)}</div>`;
+      root.innerHTML=`<header class="as-header"><div class="as-heading mb-6"><span class="assistant-icon h-11 w-11" style="--icon-bg:var(--ivy-color-${a.family}-100);--icon-border:var(--ivy-color-${a.family}-200)">${icon(a.glyph,'h-5 w-5')}</span><div><div class="as-title-row"><h1>${esc(a.title)}</h1><span class="as-title-status">${badge(a.enabled?'Enabled':'Off',a.enabled?'success':'neutral')}</span></div><p class="text-sm">${esc(a.description)}</p></div></div><div class="as-header-action"><span class="inline-flex items-center gap-2 text-xs text-gray-500">${a.enabled?a.selectedCapabilities.length:0} of ${capabilitySets[a.id].length} Capabilities On</span>${a.enabled?`<span class="text-xs text-gray-500" aria-hidden="true">•</span><span class="inline-flex items-center gap-2 text-xs text-gray-500 mr-3">${icon('calendar')}${esc(scheduleLabel(a))}</span>`:`<button type="button" class="a-primary" data-specialist-action="enable-assistant" data-assistant-id="${a.id}">Enable Assistant</button>`}<button type="button" class="a-secondary as-header-config border" data-specialist-action="configure" data-assistant-id="${a.id}">${icon('settings')} Config</button>${a.enabled?`<button type="button" class="a-secondary" data-specialist-action="run-now" data-assistant-id="${a.id}" ${a.running?'disabled aria-busy="true"':''}>${icon('arrow')}${a.running?'Checking…':'Run Now'}</button>`:''}</div></header><nav class="as-highlights-nav as-tabs-toolbar" aria-label="Assistant Navigation"><div class="assistants-tabs as-tabs" role="tablist" aria-label="Assistant Details">${tabs.map(([key,label])=>`<button type="button" role="tab" id="as-tab-${key}" aria-controls="as-content" aria-selected="${tab===key}" tabindex="${tab===key?0:-1}" data-show-tab="${key}">${label}${key==='findings'?` <span>${open.length}</span>`:''}</button>`).join('')}</div><button type="button" class="as-nav-configuration" data-specialist-action="configure" data-assistant-id="${a.id}" aria-haspopup="dialog">Configuration</button><button type="button" class="as-highlights-toggle" data-show-highlights="" aria-controls="as-highlights" aria-expanded="${!highlightsHidden}" style="margin-left: auto;"${a.enabled&&tab==='overview'?'':' hidden'}><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"></rect><path d="M3 10h18M9 4v6M15 4v6"></path></svg><span style="background: none; font-size: 12px; font-weight: 400; padding: 0;">${highlightsHidden?'Show highlights':'Hide highlights'}</span></button></nav><div class="as-layout"><section class="as-content" id="as-content" role="tabpanel" aria-labelledby="as-tab-${tab}" tabindex="0">${content(a)}</section>${sidebar(a,{startingBlank:!a.enabled&&tab==='overview'})}</div>`;
     }
+    root.addEventListener('click',event=>{
+      const toggle=event.target.closest('[data-show-sample]');
+      if(!toggle)return;
+      samplePreview=!samplePreview;
+      toggle.setAttribute('aria-checked',String(samplePreview));
+      root.querySelector('#as-off-content').innerHTML=offContent(assistant);
+    });
     root.addEventListener('click',event=>{
       const toggle=event.target.closest('[data-show-highlights]');
       if(!toggle)return;

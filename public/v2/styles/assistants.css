@@ -91,7 +91,7 @@ body { font-family: var(--font-outfit); }
 .assistants-empty { padding: 64px 24px; text-align: center; color: var(--ivy-color-gray-500); border: 1px dashed var(--ivy-color-gray-300); border-radius: 12px; }
 .assistants-empty h2 { color: var(--ivy-color-gray-700); margin: 0 0 8px; font-size: 20px; }
 .assistants-empty p { margin: 0 0 20px; }
-.assistants-shell svg:not(.assistant-onboarding-symbol svg), .assistant-dialog svg { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
+.assistants-shell svg:not(.assistant-onboarding-symbol svg, .ivy-assistants-icon), .assistant-dialog svg:not(.ivy-assistants-icon) { fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
 .assistant-dialog { width: min(560px, calc(100vw - 32px)); max-height: 85vh; padding: 28px; border: 1px solid var(--ivy-color-gray-200); border-radius: 16px; background: var(--ivy-color-gray-25); color: var(--ivy-color-gray-700); font-family: inherit; }
 .assistant-dialog:not(.shadow-2xl) { box-shadow: 0 8px 32px var(--ivy-color-gray-400); }
 .assistant-dialog::backdrop { background: var(--ivy-color-gray-800); }
